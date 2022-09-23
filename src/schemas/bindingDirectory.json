@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Generated schema for Root",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "object": {
+        "type": "string",
+        "description": "Name of object"
+      },
+      "library": {
+        "type": "string",
+        "description": "Library where objecy resides"
+      },
+      "type": {
+        "type": "string",
+        "description": "Type of object."
+      },
+      "activation": {
+        "type": "string",
+        "description": "Type of activation. Usually `*IMMED` or `*DEFER`."
+      },
+      "creation": {
+        "type": "object",
+        "description": "Date and time of when object was added to binding directory.",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "time"
+        ]
+      }
+    },
+    "required": [
+      "object",
+      "library",
+      "type",
+      "activation",
+      "creation"
+    ]
+  }
+}
