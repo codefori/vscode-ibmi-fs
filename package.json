@@ -4,9 +4,18 @@
   "description": "File system provider for IBM i QSYS",
   "version": "0.0.1",
   "preview": true,
+  "license": "MIT",
   "engines": {
     "vscode": "^1.71.0"
   },
+	"author": {
+		"name": "Halcyon Tech Ltd",
+		"url": "https://github.com/halcyon-tech"
+	},
+	"publisher": "halcyontechltd",
+	"repository": {
+		"url": "https://github.com/halcyon-tech/vscode-ibmi-fs"
+	},
   "categories": [
     "Other"
   ],
