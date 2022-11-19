@@ -31,7 +31,7 @@
     "customEditors": [
       {
         "viewType": "vscode-ibmi-fs.editor",
-        "displayName": "Object",
+        "displayName": "Object Editor",
         "selector": [
           {
             "filenamePattern": "object*/**/*.{BNDDIR,bnddir}"
