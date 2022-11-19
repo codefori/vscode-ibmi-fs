@@ -1,8 +1,9 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { workerData } from 'worker_threads';
 
-import BasicObjectFs from './ObjectFs';
+import ObjectProvider from './objectProvider';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -17,10 +18,11 @@ export function activate(context: vscode.ExtensionContext) {
 	// The commandId parameter must match the command field in package.json
 	
 	context.subscriptions.push(
-		vscode.workspace.registerTextDocumentContentProvider(
-			`object`, 
-			new BasicObjectFs()
-		)
+		vscode.window.registerCustomEditorProvider(`vscode-ibmi-fs.editor`, new ObjectProvider(), {
+			webviewOptions: {
+				retainContextWhenHidden: true
+			}
+		})
 	);
 }
 

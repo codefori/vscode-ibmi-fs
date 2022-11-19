@@ -8,43 +8,42 @@
   "engines": {
     "vscode": "^1.71.0"
   },
-	"author": {
-		"name": "Halcyon Tech Ltd",
-		"url": "https://github.com/halcyon-tech"
-	},
-	"publisher": "halcyontechltd",
-	"repository": {
-		"url": "https://github.com/halcyon-tech/vscode-ibmi-fs"
-	},
+  "author": {
+    "name": "Halcyon Tech Ltd",
+    "url": "https://github.com/halcyon-tech"
+  },
+  "publisher": "halcyontechltd",
+  "repository": {
+    "url": "https://github.com/halcyon-tech/vscode-ibmi-fs"
+  },
   "categories": [
     "Other"
   ],
   "activationEvents": [
-    "onFileSystem:object"
+    "onFileSystem:object",
+    "onCustomEditor:vscode-ibmi-fs.editor"
   ],
   "extensionDependencies": [
     "HalcyonTechLtd.code-for-ibmi"
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "jsonValidation": [
+    "customEditors": [
       {
-        "fileMatch": [
-          "*.bnddir",
-          "*.BNDDIR"
+        "viewType": "vscode-ibmi-fs.editor",
+        "displayName": "Object",
+        "selector": [
+          {
+            "filenamePattern": "*.{BNDDIR,bnddir}"
+          },
+          {
+            "filenamePattern": "*.{MSGF,msgf}"
+          },
+          {
+            "filenamePattern": "*.{DTAARA,dtaara}"
+          }
         ],
-        "url": "./src/schemas/bindingDirectory.json"
-      }
-    ],
-    "languages": [
-      {
-        "id": "json",
-        "extensions": [
-          ".bnddir",
-          ".BNDDIR",
-          ".msgf",
-          ".MSGF"
-        ]
+        "priority": "default"
       }
     ],
     "commands": [
@@ -66,19 +65,22 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@types/vscode": "^1.71.0",
     "@types/glob": "^7.2.0",
     "@types/mocha": "^9.1.1",
     "@types/node": "16.x",
+    "@types/vscode": "^1.71.0",
     "@typescript-eslint/eslint-plugin": "^5.31.0",
     "@typescript-eslint/parser": "^5.31.0",
+    "@vscode/test-electron": "^2.1.5",
     "eslint": "^8.20.0",
     "glob": "^8.0.3",
     "mocha": "^10.0.0",
-    "typescript": "^4.7.4",
     "ts-loader": "^9.3.1",
+    "typescript": "^4.7.4",
     "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0",
-    "@vscode/test-electron": "^2.1.5"
+    "webpack-cli": "^4.10.0"
+  },
+  "dependencies": {
+    "@vscode/webview-ui-toolkit": "^1.1.0"
   }
 }

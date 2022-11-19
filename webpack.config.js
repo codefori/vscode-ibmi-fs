@@ -37,6 +37,11 @@ const extensionConfig = {
             loader: 'ts-loader'
           }
         ]
+      },
+      {
+        test: /\.js$/,
+        include: path.resolve(__dirname, `node_modules/@vscode/webview-ui-toolkit/dist/toolkit.min.js`),
+        type: `asset/source`
       }
     ]
   },
