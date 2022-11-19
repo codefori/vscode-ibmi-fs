@@ -34,13 +34,13 @@
         "displayName": "Object",
         "selector": [
           {
-            "filenamePattern": "*.{BNDDIR,bnddir}"
+            "filenamePattern": "object*/**/*.{BNDDIR,bnddir}"
           },
           {
-            "filenamePattern": "*.{MSGF,msgf}"
+            "filenamePattern": "object*/**/*.{MSGF,msgf}"
           },
           {
-            "filenamePattern": "*.{DTAARA,dtaara}"
+            "filenamePattern": "object*/**/*.{DTAARA,dtaara}"
           }
         ],
         "priority": "default"
