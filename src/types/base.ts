@@ -10,4 +10,6 @@ export default abstract class Base implements CustomDocument {
     abstract fetch(): Promise<void>;
 
     abstract generateHTML(): string;
+
+    abstract handleAction(data: any): void;
 }

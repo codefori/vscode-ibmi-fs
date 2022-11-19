@@ -46,6 +46,9 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
       enableCommandUris: true,
     };
     webviewPanel.webview.html = generatePage(document.generateHTML());
+    webviewPanel.webview.onDidReceiveMessage(async body => {
+      document.handleAction(body);
+    });
   }
 }
 

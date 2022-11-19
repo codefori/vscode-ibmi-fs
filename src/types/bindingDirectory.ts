@@ -72,7 +72,13 @@ export default class BindingDirectory extends Base {
         <vscode-data-grid-cell grid-column="4">${entry.creation.date}</vscode-data-grid-cell>
       </vscode-data-grid-row>`;
     }).join("")}
-    </vscode-data-grid>`;
+    </vscode-data-grid>
+    
+    <vscode-button href="action://doathing#abcd-sdfnsdf">
+      Do a thing
+      <span slot="start" class="codicon codicon-add"></span>
+    </vscode-button>
+    `;
 
     const exportsTab = /*html*/`<vscode-data-grid>
     <vscode-data-grid-row row-type="header">
@@ -107,9 +113,12 @@ export default class BindingDirectory extends Base {
     return panels;
   }
 
+  handleAction(data: any): void {
+    console.log(data);
+  }
+
   private async getExports(): Promise<ILESymbol[]|undefined> {
     const instance = getBase();
-
 
     const connection = instance.getConnection();
     if (connection) {

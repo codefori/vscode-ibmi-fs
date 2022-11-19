@@ -36,4 +36,8 @@ export class DataArea extends Base {
     generateHTML(): string {
         return "";
     }
+    
+    handleAction(data: any): void {
+        throw new Error("Method not implemented.");
+    }
 }

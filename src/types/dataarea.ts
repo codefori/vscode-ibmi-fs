@@ -46,6 +46,10 @@ export class DataArea extends Base {
         `;
     return html;
   }
+
+  handleAction(data: any): void {
+    throw new Error("Method not implemented.");
+  }
 }
 
 function getValueField(info: DataAreaInfo) {
