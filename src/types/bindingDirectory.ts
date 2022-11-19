@@ -2,6 +2,12 @@ import * as vscode from 'vscode';
 import Base from "./base";
 import { makeid, getTempLibrary, getTable, getBase } from '../tools';
 
+enum EntryStatus {
+  existed,
+  created,
+  deleted,
+}
+
 interface Entry {
   object: string;
   library: string;
@@ -11,6 +17,7 @@ interface Entry {
     time: number;
     date: number;
   };
+  status: EntryStatus,
 }
 
 interface ILESymbol {
@@ -23,10 +30,6 @@ interface ILESymbol {
 export default class BindingDirectory extends Base {
   entries: Entry[] | undefined;
   exports: ILESymbol[]|undefined;
-
-  dispose(): void {
-    throw new Error('Method not implemented.');
-  }
 
   async fetch(): Promise<void> {
     const tempLib = getTempLibrary();
@@ -47,7 +50,8 @@ export default class BindingDirectory extends Base {
         creation: {
           date: row.BNODAT,
           time: row.BNOTIM,
-        }
+        },
+        status: EntryStatus.existed
       }));
 
       this.entries = results;
@@ -62,22 +66,23 @@ export default class BindingDirectory extends Base {
       <vscode-data-grid-cell cell-type="columnheader" grid-column="2">Type</vscode-data-grid-cell>
       <vscode-data-grid-cell cell-type="columnheader" grid-column="3">Activation</vscode-data-grid-cell>
       <vscode-data-grid-cell cell-type="columnheader" grid-column="4">Creation</vscode-data-grid-cell>
+      <vscode-data-grid-cell cell-type="columnheader" grid-column="5">Creation</vscode-data-grid-cell>
     </vscode-data-grid-row>
-    ${this.entries?.map(entry => {
+    ${this.entries?.filter(entry => entry.status !== EntryStatus.deleted).map(entry => {
       return /*html*/`
       <vscode-data-grid-row>
         <vscode-data-grid-cell grid-column="1">${entry.library}/${entry.object}</vscode-data-grid-cell>
         <vscode-data-grid-cell grid-column="2">${entry.type}</vscode-data-grid-cell>
         <vscode-data-grid-cell grid-column="3">${entry.activation}</vscode-data-grid-cell>
         <vscode-data-grid-cell grid-column="4">${entry.creation.date}</vscode-data-grid-cell>
+        <vscode-data-grid-cell grid-column="5">
+        <vscode-link href="action:delete" entrylibrary="${entry.library}" entryobject="${entry.object}">
+          Delete
+        </vscode-button>
+        </vscode-data-grid-cell>
       </vscode-data-grid-row>`;
     }).join("")}
     </vscode-data-grid>
-    
-    <vscode-button href="action://doathing#abcd-sdfnsdf">
-      Do a thing
-      <span slot="start" class="codicon codicon-add"></span>
-    </vscode-button>
     `;
 
     const exportsTab = /*html*/`<vscode-data-grid>
@@ -113,8 +118,26 @@ export default class BindingDirectory extends Base {
     return panels;
   }
 
-  handleAction(data: any): void {
-    console.log(data);
+  handleAction(data: any): boolean {
+    const uri = vscode.Uri.parse(data.href);
+    switch (uri.path) {
+      case `delete`:
+        return this.deleteEntry(data);
+    }
+
+    return false;
+  }
+
+  private deleteEntry(data: {entrylibrary: string, entryobject: string}) {
+    if (this.entries) {
+      const existingIndex = this.entries?.findIndex(entry => entry.library === data.entrylibrary && entry.object === data.entryobject);
+      if (existingIndex !== undefined && existingIndex >= 0) {
+        this.entries[existingIndex].status = EntryStatus.deleted;
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private async getExports(): Promise<ILESymbol[]|undefined> {

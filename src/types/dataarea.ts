@@ -47,7 +47,7 @@ export class DataArea extends Base {
     return html;
   }
 
-  handleAction(data: any): void {
+  handleAction(data: any): boolean {
     throw new Error("Method not implemented.");
   }
 }

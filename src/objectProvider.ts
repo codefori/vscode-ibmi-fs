@@ -47,7 +47,14 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
     };
     webviewPanel.webview.html = generatePage(document.generateHTML());
     webviewPanel.webview.onDidReceiveMessage(async body => {
-      document.handleAction(body);
+      if (document.handleAction(body)) {
+        this._onDidChangeCustomDocument.fire({
+          document,
+          redo: () => {throw new Error("Redo not supported.");},
+          undo: () => {throw new Error("Redo not supported.");}
+        });
+        webviewPanel.webview.html = generatePage(document.generateHTML());
+      }
     });
   }
 }
