@@ -11,8 +11,8 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
   private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<vscode.CustomDocumentEditEvent<Base>>();
 	public readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument.event;
 
-  saveCustomDocument(document: vscode.CustomDocument, cancellation: vscode.CancellationToken): Thenable<void> {
-    throw new Error('Method not implemented.');
+  saveCustomDocument(document: Base, cancellation: vscode.CancellationToken): Thenable<void> {
+    return document.save();
   }
   saveCustomDocumentAs(document: vscode.CustomDocument, destination: vscode.Uri, cancellation: vscode.CancellationToken): Thenable<void> {
     throw new Error('Method not implemented.');

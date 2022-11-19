@@ -174,4 +174,8 @@ export default class BindingDirectory extends Base {
       }));
     }
   }
+
+  save(): Promise<void> {
+    throw new Error("Method not implemented.");
+  }
 }

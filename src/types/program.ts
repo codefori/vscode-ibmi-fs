@@ -40,4 +40,8 @@ export class DataArea extends Base {
     handleAction(data: any): boolean {
         throw new Error("Method not implemented.");
     }
+
+    save(): Promise<void> {
+        throw new Error("Method not implemented.");
+    }
 }

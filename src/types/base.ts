@@ -16,4 +16,6 @@ export default abstract class Base implements CustomDocument {
      * Sets document to dirty and calls generateHTML
      */
     abstract handleAction(data: any): boolean;
+
+    abstract save(): Promise<void>;
 }
