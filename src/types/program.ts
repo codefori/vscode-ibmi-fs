@@ -5,7 +5,12 @@ import Base from "./base";
 export default class Program extends Base {
   columns: Map<string, string> = new Map();
   selectClause: string | undefined;
+
   private info?: any;
+  private type: string = ``;
+  private boundModules?: ILEModule[];
+  private boundServicePrograms?: ILEServiceProgram[];
+  private exportedSymbols?: ILEExport[];
 
   async fetch(): Promise<void> {
     const instance = getBase();
@@ -19,9 +24,18 @@ export default class Program extends Base {
 
       //https://www.ibm.com/docs/en/i/7.4?topic=services-program-info-view
       const [programInfo] = await content.runSQL(`Select ${this.selectClause} From QSYS2.PROGRAM_INFO Where PROGRAM_LIBRARY = '${library}' And PROGRAM_NAME = '${name}'`);
-      reorganizeFields(programInfo);
 
+      this.type = programInfo.OBJECT_TYPE;
+
+      reorganizeFields(programInfo);
       this.info = programInfo;
+
+      [this.boundModules, this.boundServicePrograms, this.exportedSymbols] =
+        await Promise.all([
+          getBoundModules(library, name),
+          getBoundServicePrograms(library, name),
+          getServiceProgramExports(library, name)
+        ]);
     }
   }
 
@@ -64,7 +78,7 @@ export default class Program extends Base {
   }
 
   generateHTML(): string {
-    const programTab = /*html*/`<vscode-data-grid>
+    const detailTab = /*html*/`<vscode-data-grid>
     ${Object.entries(this.info).filter(row => row[1]).map(row => {
       return /*html*/`
       <vscode-data-grid-row>
@@ -74,7 +88,94 @@ export default class Program extends Base {
     }).join("")}
     </vscode-data-grid>`;
 
-    return programTab;
+    const boundTab = /*html*/`
+      <section>
+        <vscode-data-grid>
+          <vscode-data-grid-row row-type="header">
+            <vscode-data-grid-cell cell-type="columnheader" grid-column="1">Module</vscode-data-grid-cell>
+            <vscode-data-grid-cell cell-type="columnheader" grid-column="2">Attribute</vscode-data-grid-cell>
+            <vscode-data-grid-cell cell-type="columnheader" grid-column="3">Created</vscode-data-grid-cell>
+            <vscode-data-grid-cell cell-type="columnheader" grid-column="4">Debug Data Available</vscode-data-grid-cell>
+          </vscode-data-grid-row>
+          ${this.boundModules?.map(entry => {
+            return /*html*/`
+            <vscode-data-grid-row>
+              <vscode-data-grid-cell grid-column="1">${entry.library}/${entry.object}</vscode-data-grid-cell>
+              <vscode-data-grid-cell grid-column="2">${entry.attribute}</vscode-data-grid-cell>
+              <vscode-data-grid-cell grid-column="3">${entry.created}</vscode-data-grid-cell>
+              <vscode-data-grid-cell grid-column="4">${entry.debugData}</vscode-data-grid-cell>
+            </vscode-data-grid-row>`;
+          }).join("")}
+        </vscode-data-grid>
+      <section>
+
+      <section>
+        <br>
+        <vscode-divider role="separator"></vscode-divider>
+        <br>
+      </section>
+
+      <section>
+        <vscode-data-grid>
+          <vscode-data-grid-row row-type="header">
+            <vscode-data-grid-cell cell-type="columnheader" grid-column="1">Service Program</vscode-data-grid-cell>
+            <vscode-data-grid-cell cell-type="columnheader" grid-column="2">Signature</vscode-data-grid-cell>
+          </vscode-data-grid-row>
+          ${this.boundServicePrograms?.map(entry => {
+            return /*html*/`
+            <vscode-data-grid-row>
+              <vscode-data-grid-cell grid-column="1">${entry.library}/${entry.object}</vscode-data-grid-cell>
+              <vscode-data-grid-cell grid-column="2">${entry.signature}</vscode-data-grid-cell>
+            </vscode-data-grid-row>`;
+          }).join("")}
+        </vscode-data-grid>
+      </section>
+    `;
+
+    const exportsAvailable = this.type === `*SRVPGM`;
+
+    const exportsTab = /*html*/`
+      <vscode-data-grid>
+        <vscode-data-grid-row row-type="header">
+          <vscode-data-grid-cell cell-type="columnheader" grid-column="1">Symbol</vscode-data-grid-cell>
+          <vscode-data-grid-cell cell-type="columnheader" grid-column="2">Usage</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        ${this.exportedSymbols?.map(entry => {
+          return /*html*/`
+          <vscode-data-grid-row>
+            <vscode-data-grid-cell grid-column="1">${entry.name}</vscode-data-grid-cell>
+            <vscode-data-grid-cell grid-column="2">${entry.usage}</vscode-data-grid-cell>
+          </vscode-data-grid-row>`;
+        }).join("")}
+      </vscode-data-grid>
+    `;
+    
+    const boundCount = (this.boundModules ? this.boundModules.length : 0) + (this.boundServicePrograms ? this.boundServicePrograms.length : 0);
+
+    const panels = /*html*/`
+      <vscode-panels>
+        <vscode-panel-tab id="tab-1">
+          DETAIL
+        </vscode-panel-tab>
+        <vscode-panel-tab id="tab-2">
+          BOUND
+          <vscode-badge appearance="secondary">${boundCount}</vscode-badge>
+        </vscode-panel-tab>
+        ${exportsAvailable ?
+          /*html*/`
+          <vscode-panel-tab id="tab-3">
+            EXPORTS
+            <vscode-badge appearance="secondary">${this.exportedSymbols?.length}</vscode-badge>
+          </vscode-panel-tab>
+          `
+          : ``
+        }
+        <vscode-panel-view id="view-1">${detailTab}</vscode-panel-view>
+        <vscode-panel-view id="view-2">${boundTab}</vscode-panel-view>
+        ${exportsAvailable ? `<vscode-panel-view id="view-3">${exportsTab}</vscode-panel-view>` : ``}
+      </vscode-panels>`;
+
+    return panels;
   }
 
   handleAction(data: any): boolean {
@@ -158,4 +259,79 @@ function reorganizeFields(programInfo: any) {
     programInfo.SQL_PACKAGE = `${programInfo.SQL_PACKAGE_LIBRARY}/${programInfo.SQL_PACKAGE}`;
     programInfo.SQL_PACKAGE_LIBRARY = null;
   }
+}
+
+interface ILEModule {
+  library: string;
+  object: string;
+  attribute: string;
+  created: string;
+  debugData: "*YES"|"*NO";
+}
+
+async function getBoundModules(library: string, object: string): Promise<ILEModule[]> {
+  const query = [
+    `select `,
+    `  a.BOUND_MODULE_LIBRARY,`,
+    `  a.BOUND_MODULE,`,
+    `  a.MODULE_ATTRIBUTE,`,
+    `  a.MODULE_CREATE_TIMESTAMP,`,
+    `  a.DEBUG_DATA`,
+    `from QSYS2.BOUND_MODULE_INFO as a`,
+    `where a.PROGRAM_LIBRARY = '${library}' and a.PROGRAM_NAME = '${object}'`
+  ].join(` `);
+
+  const rows: any[] = await vscode.commands.executeCommand(`code-for-ibmi.runQuery`, query);
+  return rows.map(row => ({
+    library: row.BOUND_MODULE_LIBRARY,
+    object: row.BOUND_MODULE,
+    attribute: row.MODULE_ATTRIBUTE,
+    created: row.MODULE_CREATE_TIMESTAMP,
+    debugData: row.DEBUG_DATA
+  }));
+}
+
+interface ILEServiceProgram {
+  library: string;
+  object: string;
+  signature: string;
+}
+
+async function getBoundServicePrograms(library: string, object: string): Promise<ILEServiceProgram[]> {
+  const query = [
+    `select `,
+    `  a.BOUND_SERVICE_PROGRAM_LIBRARY,`,
+    `  a.BOUND_SERVICE_PROGRAM,`,
+    `  a.BOUND_SERVICE_PROGRAM_SIGNATURE`,
+    `from QSYS2.BOUND_SRVPGM_INFO as a`,
+    `where a.PROGRAM_LIBRARY = '${library}' and a.PROGRAM_NAME = '${object}'`
+  ].join(` `);
+
+  const rows: any[] = await vscode.commands.executeCommand(`code-for-ibmi.runQuery`, query);
+  return rows.map(row => ({
+    library: row.BOUND_SERVICE_PROGRAM_LIBRARY,
+    object: row.BOUND_SERVICE_PROGRAM,
+    signature: row.BOUND_SERVICE_PROGRAM_SIGNATURE
+  }));
+}
+
+interface ILEExport {
+  name: string;
+  usage: string;
+}
+
+async function getServiceProgramExports(library: string, object: string): Promise<ILEExport[]> {
+  const query = [
+    `select `,
+    `  a.SYMBOL_NAME,`,
+    `  a.SYMBOL_USAGE`,
+    `from QSYS2.PROGRAM_EXPORT_IMPORT_INFO as a`,
+    `where a.PROGRAM_LIBRARY = '${library}' and a.PROGRAM_NAME = '${object}'`
+  ].join(` `);
+
+  const rows: any[] = await vscode.commands.executeCommand(`code-for-ibmi.runQuery`, query);
+  return rows.map(row => ({
+    name: row.SYMBOL_NAME,
+    usage: row.SYMBOL_USAGE,
+  }));
 }

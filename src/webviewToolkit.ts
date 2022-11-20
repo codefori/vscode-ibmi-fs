@@ -6,6 +6,9 @@ const head = `
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script defer type="module">${WebToolkit}</script>
   <style>
+    section {
+      width: 100%;
+    }
   </style>`;
 
 const footer = /*html*/`
