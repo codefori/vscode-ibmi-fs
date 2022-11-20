@@ -39,15 +39,26 @@ const footer = /*html*/`
     }
 
     for (const link of document.querySelectorAll('[change^="action:"]')) {
-      link.addEventListener('input', () => {
-        let data = {
-          change: link.getAttribute('change'),
-          id: link.getAttribute('id'),
-          value: link.getAttribute('current-value')
-        };
-
-        vscode.postMessage(data);
-      });
+      const data = {
+        id: link.id,
+        value: ''
+      }
+      
+      console.log(link)
+      console.log(link.dataset.action)
+      
+      if(link.dataset.action === "checkbox"){
+        link.addEventListener('click', (event) => {
+          data.value = !event.target.currentChecked;
+          vscode.postMessage(data);
+        });
+      }
+      else{        
+        link.addEventListener('input', (event) => {
+          data.value = event.target.currentValue;
+          vscode.postMessage(data);
+        });
+      }
     }
 
     window.addEventListener("message", (event) => {
@@ -73,8 +84,6 @@ export default function generatePage(body: string) {
 export namespace Components {
   interface Component {
     class?: string
-    /** If `true`, a `change` action will be not be triggered when the input changes */
-    preventChangeAction?: boolean
   }
 
   interface TextField extends Component {
@@ -158,13 +167,6 @@ export namespace Components {
     indicator: string
   }
 
-  export function dropDown(id: string, dropDown: Partial<DropDown>) {
-    return /*html*/ `<vscode-dropdown id="${id}" ${renderAttributes(dropDown, "indicator")}>
-      ${dropDown.indicator ? /*html*/ `<span slot="indicator" class="codicon codicon-${dropDown.indicator}"></span>` : ''}
-      ${dropDown.items?.map(item => /*html*/ `<vscode-option>${item}</vscode-option>`).join("")}
-    </vscode-dropdown>`;
-  }
-
   export function dataGrid<T>(grid: DataGrid<T>, content: T[]): string {
     return /*html*/ `<vscode-data-grid ${renderAttributes(grid, "columns", "stickyHeader", "rowClass", "headerClass")} ${gridTemplateColumns(grid)}>
         ${renderHeader(grid)}
@@ -202,16 +204,23 @@ export namespace Components {
     return /* html */`<vscode-divider ${renderAttributes(options)}></vscode-divider>`;
   }
 
-  export function textField(id: string, label?: string, options?: Partial<TextField>) {
-    return /* html */`<vscode-text-field id="${id}" name="${id}" ${renderAttributes(options)}>${label || ''}</vscode-text-field>`;
+  export function dropDown(id: string, dropDown: Partial<DropDown>, noChangeListener?: boolean) {
+    return /*html*/ `<vscode-dropdown id="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(dropDown, "indicator")}>
+      ${dropDown.indicator ? /*html*/ `<span slot="indicator" class="codicon codicon-${dropDown.indicator}"></span>` : ''}
+      ${dropDown.items?.map(item => /*html*/ `<vscode-option>${item}</vscode-option>`).join("")}
+    </vscode-dropdown>`;
   }
 
-  export function textArea(id: string, label?: string, options?: Partial<TextArea>) {
-    return /* html */`<vscode-text-area id="${id}" name="${id}" ${renderAttributes(options)}>${label || ''}</vscode-text-area>`;
+  export function textField(id: string, label?: string, options?: Partial<TextField>, noChangeListener?: boolean) {
+    return /* html */`<vscode-text-field id="${id}" name="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(options)}>${label || ''}</vscode-text-field>`;
   }
 
-  export function checkbox(id: string, label?: string, options?: Partial<Checkbox>) {
-    return /* html */`<vscode-checkbox id="${id}" value="${id}" ${renderAttributes(options)}>${label || ''}</vscode-checkbox>`;
+  export function textArea(id: string, label?: string, options?: Partial<TextArea>, noChangeListener?: boolean) {
+    return /* html */`<vscode-text-area id="${id}" name="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(options)}>${label || ''}</vscode-text-area>`;
+  }
+
+  export function checkbox(id: string, label?: string, options?: Partial<Checkbox>, noChangeListener?: boolean) {
+    return /* html */`<vscode-checkbox id="${id}" value="${id}" ${renderChangeListener("checkbox", noChangeListener)} ${renderAttributes(options)}>${label || ''}</vscode-checkbox>`;
   }
 
   export function button(id: string, label?: string, options?: Partial<Button>) {
@@ -223,10 +232,7 @@ export namespace Components {
 
   function renderAttributes(options?: Object, ...skipped: string[]) {
     if (options) {
-      const changeAction = Object.keys(options).find(k => k === "preventChangeAction") ? '' : 'change="action:change"';
-
-      skipped.push("preventChangeAction");
-      return `${changeAction}${Object.entries(options).filter(e => skipped.indexOf(e[0]) === -1)
+      return `${Object.entries(options).filter(e => skipped.indexOf(e[0]) === -1)
         .map(e => renderAttribute(e[0], e[1]))
         .join(" ")}`.trim();
     }
@@ -235,8 +241,16 @@ export namespace Components {
     }
   }
 
-  function renderAttribute(name: string, value: any) {
+  function renderChangeListener(type: 'input' | 'checkbox', noRender?: boolean) {
+    if (!noRender) {
+      return `change='action:change' data-action='${type}'`;
+    }
+    else {
+      return '';
+    }
+  }
 
+  function renderAttribute(name: string, value: any) {
     const attribute = kebabize(name);
     switch (typeof value) {
       case "boolean": return value ? attribute : '';
