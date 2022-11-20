@@ -173,7 +173,12 @@ export namespace Components {
   }
 
   function gridTemplateColumns<T>(grid: DataGrid<T>) {
-    return `grid-template-columns="${grid.columns.map(col => col.size ? col.size : "auto").join(" ")}"`;
+    const attemptToSize = grid.columns.some(col => col.size);
+    if (attemptToSize) {
+      return `grid-template-columns="${grid.columns.map(col => col.size ? col.size : "auto").join(" ")}"`;
+    } else {
+      return ``;
+    }
   }
 
   function renderHeader<T>(grid: DataGrid<T>) {
