@@ -29,7 +29,7 @@ interface ILESymbol {
 
 export default class BindingDirectory extends Base {
   entries: Entry[] | undefined;
-  exports: ILESymbol[]|undefined;
+  exports: ILESymbol[] | undefined;
 
   async fetch(): Promise<void> {
     const tempLib = getTempLibrary();
@@ -85,6 +85,32 @@ export default class BindingDirectory extends Base {
     </vscode-data-grid>
     `;
 
+    const addTab = /*html*/`
+      <form>
+        <vscode-text-field readonly="false" id="inLibrary" maxlength="10" value="*LIBL">Entry library</vscode-text-field>
+        <br><br>
+        <vscode-text-field readonly="false" id="inObject" maxlength="10" autofocus>Entry library</vscode-text-field>
+        <br>
+        <section>
+          <p>Object Type</p>
+          <vscode-dropdown id="inType" readonly="false">
+            <vscode-option>*SRVPGM</vscode-option>
+            <vscode-option>*MODULE</vscode-option>
+          </vscode-dropdown>
+        </section>
+        <br>
+        <section>
+          <p>Activation</p>
+          <vscode-dropdown id="inActivation" readonly="false">
+            <vscode-option>*IMMED</vscode-option>
+            <vscode-option>*DEFER</vscode-option>
+          </vscode-dropdown>
+        </section>
+        <br><br>
+        <vscode-button type="create" href="action:create" appearance="primary">Create</vscode-button>
+      </form>
+    `;
+
     const exportsTab = /*html*/`<vscode-data-grid>
     <vscode-data-grid-row row-type="header">
       <vscode-data-grid-cell cell-type="columnheader" grid-column="1">Symbol</vscode-data-grid-cell>
@@ -105,17 +131,25 @@ export default class BindingDirectory extends Base {
     <vscode-panels>
       <vscode-panel-tab id="tab-1">
         ENTRIES
-        <vscode-badge appearance="secondary">${this.entries?.length}</vscode-badge>
+        <vscode-badge appearance="secondary">${this.entries?.filter(entry => entry.status !== EntryStatus.deleted).length}</vscode-badge>
       </vscode-panel-tab>
       <vscode-panel-tab id="tab-2">
+        ADD
+      </vscode-panel-tab>
+      <vscode-panel-tab id="tab-3">
         EXPORTS
         <vscode-badge appearance="secondary">${this.exports?.length}</vscode-badge>
       </vscode-panel-tab>
       <vscode-panel-view id="view-1">${entriesTab}</vscode-panel-view>
-      <vscode-panel-view id="view-2">${exportsTab}</vscode-panel-view>
+      <vscode-panel-view id="view-2">${addTab}</vscode-panel-view>
+      <vscode-panel-view id="view-3">${exportsTab}</vscode-panel-view>
     </vscode-panels>`;
 
-    return panels;
+    const content = /*html*/`
+      ${panels}
+    `;
+
+    return content;
   }
 
   async save(): Promise<void> {
@@ -134,7 +168,7 @@ export default class BindingDirectory extends Base {
         }
 
         const existingIndex = this.entries.findIndex(entry => entry.library === currentEntry.library && entry.object === currentEntry.object);
-        if (existingIndex) { 
+        if (existingIndex) {
           this.entries.splice(existingIndex, 1);
         }
       }
@@ -160,12 +194,46 @@ export default class BindingDirectory extends Base {
     switch (uri.path) {
       case `delete`:
         return this.deleteEntry(data);
+      case `create`:
+        return this.createEntry(data.bindings);
     }
 
     return false;
   }
 
-  private deleteEntry(data: {entrylibrary: string, entryobject: string}) {
+  createEntry(data: { inLibrary: string, inObject: string, inType: string, inActivation: string }): boolean {
+    if (this.entries) {
+      if (data.inLibrary && data.inObject) {
+        data.inLibrary = data.inLibrary.toUpperCase();
+        data.inObject = data.inObject.toUpperCase();
+
+        const exists = this.entries.some(entry => entry.library === data.inLibrary && entry.object === data.inObject);
+
+        if (!exists) {
+          this.entries.push({
+            library: data.inLibrary,
+            object: data.inObject,
+            type: data.inType,
+            activation: data.inActivation,
+            status: EntryStatus.created,
+            creation: {
+              date: 0,
+              time: 0
+            }
+          });
+
+          return true;
+        } else {
+          vscode.window.showErrorMessage(`Object already exists on binding directory.`);
+        }
+      } else {
+        vscode.window.showErrorMessage(`Library name or object name not valid.`);
+      }
+    }
+    return false;
+  }
+
+  private deleteEntry(data: { entrylibrary: string, entryobject: string }) {
     if (this.entries) {
       const existingIndex = this.entries?.findIndex(entry => entry.library === data.entrylibrary && entry.object === data.entryobject);
       if (existingIndex !== undefined && existingIndex >= 0) {
@@ -177,7 +245,7 @@ export default class BindingDirectory extends Base {
     return false;
   }
 
-  private async getExports(): Promise<ILESymbol[]|undefined> {
+  private async getExports(): Promise<ILESymbol[] | undefined> {
     const instance = getBase();
 
     const connection = instance.getConnection();

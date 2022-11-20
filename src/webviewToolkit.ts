@@ -10,9 +10,21 @@ const head = `
 
 const footer = /*html*/`
   <script defer>
+  function getBindings() {
+    let bindings = {};
+
+    for (const input of document.querySelectorAll('[readonly="false"]')) {
+      const id = input.getAttribute('id');
+      if (id) {
+        bindings[id] = input.getAttribute('current-value');
+      }
+    }
+
+    return bindings;
+  }
+
   const vscode = acquireVsCodeApi();
 
-  console.log(document.querySelectorAll('[href^="action:"]'));
   for (const link of document.querySelectorAll('[href^="action:"]')) {
     link.addEventListener('click', () => {
       let data = {};
@@ -20,8 +32,7 @@ const footer = /*html*/`
         data[attr] = link.getAttribute(attr);
       });
 
-      console.log(link);
-      console.log(data);
+      data.bindings = getBindings();
 
       vscode.postMessage(data);
     });
