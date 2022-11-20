@@ -66,7 +66,7 @@ export default class BindingDirectory extends Base {
       <vscode-data-grid-cell cell-type="columnheader" grid-column="2">Type</vscode-data-grid-cell>
       <vscode-data-grid-cell cell-type="columnheader" grid-column="3">Activation</vscode-data-grid-cell>
       <vscode-data-grid-cell cell-type="columnheader" grid-column="4">Creation</vscode-data-grid-cell>
-      <vscode-data-grid-cell cell-type="columnheader" grid-column="5">Creation</vscode-data-grid-cell>
+      <vscode-data-grid-cell cell-type="columnheader" grid-column="5"></vscode-data-grid-cell>
     </vscode-data-grid-row>
     ${this.entries?.filter(entry => entry.status !== EntryStatus.deleted).map(entry => {
       return /*html*/`
