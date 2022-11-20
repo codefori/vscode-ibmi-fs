@@ -4,17 +4,15 @@ import Base from "./base";
 import { Components } from "../webviewToolkit";
 
 interface DataAreaInfo {
-  initialValue: string
-  currentValue: string
+  value: string
   type: string
   length: number
   decimalPosition: number
 }
 
 export class DataArea extends Base {
-  private info: DataAreaInfo = {
-    initialValue: "",
-    currentValue: "",
+  private dataArea: DataAreaInfo = {
+    value: "",
     type: "",
     length: 0,
     decimalPosition: 0
@@ -34,16 +32,15 @@ export class DataArea extends Base {
       ));
 
       const [dtaara] = dtaaras;
-      this.info.currentValue = dtaara.DATA_AREA_VALUE?.toString() || "";
-      this.info.initialValue = this.info.currentValue;
-      this.info.type = dtaara.DATA_AREA_TYPE!.toString();
-      this.info.length = Number(dtaara.LENGTH!);
-      this.info.decimalPosition = Number(dtaara.DECIMAL_POSITIONS || 0);
+      this.dataArea.type = dtaara.DATA_AREA_TYPE!.toString();
+      this.dataArea.value = dtaara.DATA_AREA_VALUE?.toString() || "";
+      this.dataArea.length = Number(dtaara.LENGTH!);
+      this.dataArea.decimalPosition = Number(dtaara.DECIMAL_POSITIONS || 0);
     }
   }
 
   generateHTML(): string {
-    const info = this.info!;
+    const info = this.dataArea!;
     return /* html */`
     <p>
       <h3>Type: <code>${info.type}</code></h3>
@@ -51,61 +48,75 @@ export class DataArea extends Base {
       ${info.type === "*DEC" ? /* html */ `<h3>Decimal position: <code>${info.decimalPosition}</code></h3>` : ''}
     </p>
     ${Components.divider()}
-    <p>${getValueField(info)}</p>`;
+    <p>${renderValueField(info)}</p>`;
   }
 
   handleAction(data: any): HandleActionResult {
-    if (data.value !== this.info.initialValue) {
-      this.info.currentValue = data.value;
-      // We don't want to rerender. 
-      return {
-        dirty: true
-      };
+    this.dataArea.value = this.getValue(data.value).toString();
+    // We don't want to rerender. 
+    return {
+      dirty: true
+    };
+  }
+
+  private getValue(value: string | boolean) {
+    switch (this.dataArea.type) {
+      case `*DEC`:
+        return value || "0";
+
+      case `*LGL`:
+        return `${value ? '1' : '0'}`;
+
+      default:
+        return `${value}`.replace(/\s/g, " ");
     }
-    else {
-      return {};
+  }
+
+  private checkDecimal(value: string) {
+    if (value) {
+      const max = (Math.pow(10, this.dataArea.length) - 1) / (this.dataArea.decimalPosition ? Math.pow(10, this.dataArea.decimalPosition) : 1);
+      const min = max * -1;
+      const number = Number(value);
+      if (isNaN(number)) {
+        throw new Error(`Value '${value}' is not a number.`);
+      }
+      else if (number > max || number < min) {
+        throw new Error(`Value must be comprised between ${min} and ${max}.`);
+      }
     }
   }
 
   async save(): Promise<void> {
-    let value: string | number | boolean = this.info.currentValue;
-
-    switch (this.info.type) {
-      case `*DEC`:
-        value = Number(value);
-        break;
-
-      case `*LGL`:
-        value = `'${value ? '1' : '0'}'`;
-        break;
-
-      default:
-        value = `'${value}'`.replace(/\s/g, " ");
+    let value;
+    if (this.dataArea.type === "*DEC") {
+      this.checkDecimal(this.dataArea.value);
+      value = this.dataArea.value;
+    }
+    else {
+      value = `'${this.dataArea.value}'`;;
     }
 
     const command: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
       command: `CHGDTAARA DTAARA(${this.library}/${this.name}) VALUE(${value})`,
       environment: `ile`
     });
-    if (command.code === 0) {
-      this.info.initialValue = this.info.currentValue;
-    }
-    else {
+
+    if (command.code !== 0) {
       throw new Error(command.stderr);
     }
   }
 }
 
-function getValueField(info: DataAreaInfo) {
+function renderValueField(info: DataAreaInfo) {
   switch (info.type) {
     case `*LGL`:
-      return Components.checkbox("value", "Logical value", { checked: info.currentValue === `1`, });
+      return Components.checkbox("value", "Logical value", { checked: info.value === `1`, });
 
     case `*DEC`:
-      const size = info.length + info.decimalPosition ? 1 : 0;
-      return Components.textField("value", "Decimal value", { maxlength: size, value: info.currentValue });
+      const size = info.length + (info.decimalPosition ? 1 : 0);
+      return Components.textField("value", "Decimal value", { maxlength: size, value: info.value });
 
     default:
-      return Components.textArea("value", "Character value", { value: info.currentValue || '', maxlength: info.length, cols: 100, rows: 3 });
+      return Components.textArea("value", "Character value", { value: info.value || '', maxlength: info.length, cols: 100, rows: 3 });
   }
 }
