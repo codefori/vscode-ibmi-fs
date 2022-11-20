@@ -76,9 +76,9 @@ export default class BindingDirectory extends Base {
         <vscode-data-grid-cell grid-column="3">${entry.activation}</vscode-data-grid-cell>
         <vscode-data-grid-cell grid-column="4">${entry.creation.date}</vscode-data-grid-cell>
         <vscode-data-grid-cell grid-column="5">
-        <vscode-button href="action:delete" entrylibrary="${entry.library}" entryobject="${entry.object}">
+        <vscode-link href="action:delete" entrylibrary="${entry.library}" entryobject="${entry.object}">
           Delete
-        </vscode-button>
+        </vscode-link>
         </vscode-data-grid-cell>
       </vscode-data-grid-row>`;
     }).join("")}
@@ -189,7 +189,7 @@ export default class BindingDirectory extends Base {
     }
   }
 
-  handleAction(data: any): boolean {
+  handleAction(data: any): HandleActionResult {
     const uri = vscode.Uri.parse(data.href);
     switch (uri.path) {
       case `delete`:
@@ -198,10 +198,10 @@ export default class BindingDirectory extends Base {
         return this.createEntry(data.bindings);
     }
 
-    return false;
+    return {};
   }
 
-  createEntry(data: { inLibrary: string, inObject: string, inType: string, inActivation: string }): boolean {
+  createEntry(data: { inLibrary: string, inObject: string, inType: string, inActivation: string }): HandleActionResult {
     if (this.entries) {
       if (data.inLibrary && data.inObject) {
         data.inLibrary = data.inLibrary.toUpperCase();
@@ -222,7 +222,10 @@ export default class BindingDirectory extends Base {
             }
           });
 
-          return true;
+          return {
+            dirty: true,
+            rerender: true
+          };
         } else {
           vscode.window.showErrorMessage(`Object already exists on binding directory.`);
         }
@@ -230,19 +233,22 @@ export default class BindingDirectory extends Base {
         vscode.window.showErrorMessage(`Library name or object name not valid.`);
       }
     }
-    return false;
+    return {};
   }
 
-  private deleteEntry(data: { entrylibrary: string, entryobject: string }) {
+  private deleteEntry(data: { entrylibrary: string, entryobject: string }): HandleActionResult {
     if (this.entries) {
       const existingIndex = this.entries?.findIndex(entry => entry.library === data.entrylibrary && entry.object === data.entryobject);
       if (existingIndex !== undefined && existingIndex >= 0) {
         this.entries[existingIndex].status = EntryStatus.deleted;
-        return true;
+        return {
+          dirty: true,
+          rerender: true
+        };
       }
     }
 
-    return false;
+    return {};
   }
 
   private async getExports(): Promise<ILESymbol[] | undefined> {

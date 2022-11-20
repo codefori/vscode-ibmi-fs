@@ -54,13 +54,16 @@ export class DataArea extends Base {
     <p>${getValueField(info)}</p>`;
   }
 
-  handleAction(data: any): boolean {
+  handleAction(data: any): HandleActionResult {
     if (data.value !== this.info.initialValue) {
       this.info.currentValue = data.value;
-      return true;
+      // We don't want to rerender. 
+      return {
+        dirty: true
+      };
     }
     else {
-      return false;
+      return {};
     }
   }
 
