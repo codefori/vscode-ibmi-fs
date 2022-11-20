@@ -50,7 +50,7 @@ export default abstract class Base implements CustomDocument {
      * Note that if you return true, all user inputs are set back
      * to their default values, losing the current state.
      */
-    abstract handleAction(data: any): boolean;
+    abstract handleAction(data: any): HandleActionResult;
 
     /**
      * Use this method to run any remote commands to update the object

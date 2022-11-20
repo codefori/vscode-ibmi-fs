@@ -160,8 +160,8 @@ export default class Program extends Base {
     return panels;
   }
 
-  handleAction(data: any): boolean {
-    return false;
+  handleAction(data: any): HandleActionResult {
+    return {};
   }
 
   save(): Promise<void> {
