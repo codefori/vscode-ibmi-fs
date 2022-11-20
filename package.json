@@ -41,6 +41,9 @@
           },
           {
             "filenamePattern": "object*/**/*.{DTAARA,dtaara}"
+          },
+          {
+            "filenamePattern": "object*/**/*.{PGM,pgm,SRVPGM,srvpgm}"
           }
         ],
         "priority": "default"
