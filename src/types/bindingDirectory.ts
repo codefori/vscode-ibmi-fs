@@ -76,7 +76,7 @@ export default class BindingDirectory extends Base {
         <vscode-data-grid-cell grid-column="3">${entry.activation}</vscode-data-grid-cell>
         <vscode-data-grid-cell grid-column="4">${entry.creation.date}</vscode-data-grid-cell>
         <vscode-data-grid-cell grid-column="5">
-        <vscode-link href="action:delete" entrylibrary="${entry.library}" entryobject="${entry.object}">
+        <vscode-button href="action:delete" entrylibrary="${entry.library}" entryobject="${entry.object}">
           Delete
         </vscode-button>
         </vscode-data-grid-cell>
