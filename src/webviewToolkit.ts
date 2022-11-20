@@ -38,6 +38,19 @@ const footer = /*html*/`
     });
   }
 
+  for (const link of document.querySelectorAll('[change^="action:"]')) {
+    link.addEventListener('input', () => {
+      console.log(link);
+      let data = {
+        change: link.getAttribute('change'),
+        id: link.getAttribute('id'),
+        value: link.getAttribute('current-value')
+      };
+
+      vscode.postMessage(data);
+    });
+  }
+
   window.addEventListener("message", (event) => {
   });
   </script>
