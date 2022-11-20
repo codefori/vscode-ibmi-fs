@@ -19,9 +19,6 @@ export default class Program extends Base {
 
       //https://www.ibm.com/docs/en/i/7.4?topic=services-program-info-view
       const [programInfo] = await content.runSQL(`Select ${this.selectClause} From QSYS2.PROGRAM_INFO Where PROGRAM_LIBRARY = '${library}' And PROGRAM_NAME = '${name}'`);
-      const type = String(programInfo.PROGRAM_TYPE).toUpperCase();
-      const objectType = String(programInfo.OBJECT_TYPE).toUpperCase();
-      const title = `${type} ${objectType === '*PGM' ? "Program" : "Service program"}: ${library}/${name}`;
       reorganizeFields(programInfo);
 
       this.info = programInfo;
@@ -33,16 +30,17 @@ export default class Program extends Base {
       this.selectClause = "";
       const hasFullSQL = content.ibmi.config?.enableSQL;
       //https://www.ibm.com/docs/en/i/7.4?topic=views-syscolumns2
-      (await content.runSQL(`Select COLUMN_NAME, ${this.castIfNeeded("COLUMN_HEADING", 60, hasFullSQL)}, CCSID, LENGTH From QSYS2.SYSCOLUMNS2 Where TABLE_NAME = 'PROGRAM_INFO'`))
-        .forEach((column: any) => {
-          const name = column.COLUMN_NAME!.toString();
-          if (name !== "PROGRAM_NAME" && name !== "PROGRAM_LIBRARY") {
-            const heading = this.parseHeading(column.COLUMN_HEADING!.toString());
-            const length = Number(column.LENGTH);
-            this.columns.set(name, heading);
-            this.selectClause += (this.selectClause ? ',' : '') + this.castIfNeeded(name, length, hasFullSQL || (column.CCSID || 0) !== 1200);
-          }
-        });
+      const columnDetail = await content.runSQL(`Select COLUMN_NAME, ${this.castIfNeeded("COLUMN_HEADING", 60, hasFullSQL)}, CCSID, LENGTH From QSYS2.SYSCOLUMNS2 Where TABLE_NAME = 'PROGRAM_INFO'`);
+
+      columnDetail.forEach((column: any) => {
+        const name = column.COLUMN_NAME!.toString();
+        if (name !== "PROGRAM_NAME" && name !== "PROGRAM_LIBRARY") {
+          const heading = this.parseHeading(column.COLUMN_HEADING!.toString());
+          const length = Number(column.LENGTH);
+          this.columns.set(name, heading);
+          this.selectClause += (this.selectClause ? ',' : '') + this.castIfNeeded(name, length, hasFullSQL || (column.CCSID || 0) !== 1200);
+        }
+      });
     }
   }
 
@@ -75,7 +73,7 @@ export default class Program extends Base {
       </vscode-data-grid-row>`;
     }).join("")}
     </vscode-data-grid>`;
-    
+
     return programTab;
   }
 
