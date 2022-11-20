@@ -118,6 +118,43 @@ export default class BindingDirectory extends Base {
     return panels;
   }
 
+  async save(): Promise<void> {
+    if (this.entries) {
+      const deleted = this.entries?.filter(entry => entry.status === EntryStatus.deleted);
+      const created = this.entries?.filter(entry => entry.status === EntryStatus.created);
+
+      for (const currentEntry of deleted) {
+        const command: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+          command: `RMVBNDDIRE BNDDIR(${this.library}/${this.name}) OBJ(${currentEntry.library}/${currentEntry.object})`,
+          environment: `ile`
+        });
+
+        if (command.code && command.code >= 1) {
+          throw new Error(command.stderr);
+        }
+
+        const existingIndex = this.entries.findIndex(entry => entry.library === currentEntry.library && entry.object === currentEntry.object);
+        if (existingIndex) { 
+          this.entries.splice(existingIndex, 1);
+        }
+      }
+
+      if (created.length > 0) {
+        const command: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+          command: `ADDBNDDIRE BNDDIR(${this.library}/${this.name}) OBJ(${created.map(currentEntry => `(${currentEntry.library}/${currentEntry.object} ${currentEntry.type} ${currentEntry.activation})`)})`,
+          environment: `ile`
+        });
+        if (command.code && command.code >= 1) {
+          throw new Error(command.stderr);
+        }
+
+        created.forEach(currentEntry => {
+          currentEntry.status = EntryStatus.existed;
+        });
+      }
+    }
+  }
+
   handleAction(data: any): boolean {
     const uri = vscode.Uri.parse(data.href);
     switch (uri.path) {
@@ -173,9 +210,5 @@ export default class BindingDirectory extends Base {
         usage: row.SYMBOL_USAGE
       }));
     }
-  }
-
-  save(): Promise<void> {
-    throw new Error("Method not implemented.");
   }
 }
