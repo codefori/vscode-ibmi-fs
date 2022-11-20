@@ -44,7 +44,7 @@ export default class BindingDirectory extends Base {
       const rows = await getTable(tempLib, tempName);
       const results: Entry[] = rows.map(row => ({
         object: row.BNOBNM,
-        library: row.BNDRLB,
+        library: row.BNOLNM,
         type: row.BNOBTP,
         activation: row.BNOACT,
         creation: {
