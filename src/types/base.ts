@@ -36,9 +36,16 @@ export default abstract class Base implements CustomDocument {
      *   Delete
      * </vscode-link> 
      * 
+     * As well as the clicked attributed, any element with 
+     * `readonly="false"` specified will be passed into a `bindings`
+     * property in to the data parameter. This can be used to create
+     * forms for user input.
+     * 
      * This method should also update any private properties
      * and return true if there were any valid changes.
      * Returning true sets document to dirty and calls generateHTML.
+     * Note that if you return true, all user inputs are set back
+     * to their default values, losing the current state.
      */
     abstract handleAction(data: any): boolean;
 
