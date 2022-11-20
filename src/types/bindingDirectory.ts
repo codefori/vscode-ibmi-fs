@@ -158,12 +158,13 @@ export default class BindingDirectory extends Base {
       const created = this.entries?.filter(entry => entry.status === EntryStatus.created);
 
       for (const currentEntry of deleted) {
+        // For some reason, BNDDIR commands always post to standard out...
         const command: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
           command: `RMVBNDDIRE BNDDIR(${this.library}/${this.name}) OBJ(${currentEntry.library}/${currentEntry.object})`,
           environment: `ile`
         });
 
-        if (command.code && command.code >= 1) {
+        if (!command.stderr.startsWith(`CPD5D1B`)) {
           throw new Error(command.stderr);
         }
 
@@ -178,7 +179,8 @@ export default class BindingDirectory extends Base {
           command: `ADDBNDDIRE BNDDIR(${this.library}/${this.name}) OBJ(${created.map(currentEntry => `(${currentEntry.library}/${currentEntry.object} ${currentEntry.type} ${currentEntry.activation})`).join(` `)})`,
           environment: `ile`
         });
-        if (command.code && command.code >= 1) {
+
+        if (!command.stderr.startsWith(`CPD5D0A`)) {
           throw new Error(command.stderr);
         }
 
