@@ -41,6 +41,9 @@ export default abstract class Base implements CustomDocument {
      * property in to the data parameter. This can be used to create
      * forms for user input.
      * 
+     * If you would like handleAction to be called when the value changes,
+     * then you can use `change="action:<someid>"` on any input property.
+     * 
      * This method should also update any private properties
      * and return true if there were any valid changes.
      * Returning true sets document to dirty and calls generateHTML.
