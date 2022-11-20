@@ -107,7 +107,7 @@ export default class Program extends Base {
             </vscode-data-grid-row>`;
           }).join("")}
         </vscode-data-grid>
-      <section>
+      </section>
 
       <section>
         <br>
@@ -183,7 +183,8 @@ export default class Program extends Base {
   }
 
   save(): Promise<void> {
-    throw new Error("Method not implemented.");
+    //throw new Error("Method not implemented.");
+    return Promise.resolve();
   }
 }
 
