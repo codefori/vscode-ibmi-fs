@@ -34,16 +34,19 @@
         "displayName": "Object Editor",
         "selector": [
           {
-            "filenamePattern": "object*/**/*.{BNDDIR,bnddir}"
+            "filenamePattern": "object*/**/*.{BNDDIR}"
           },
           {
-            "filenamePattern": "object*/**/*.{MSGF,msgf}"
+            "filenamePattern": "object*/**/*.{MSGF}"
           },
           {
-            "filenamePattern": "object*/**/*.{DTAARA,dtaara}"
+            "filenamePattern": "object*/**/*.{DTAARA}"
           },
           {
-            "filenamePattern": "object*/**/*.{PGM,pgm,SRVPGM,srvpgm}"
+            "filenamePattern": "object*/**/*.{PGM,SRVPGM}"
+          },
+          {
+            "filenamePattern": "object*/**/*.{CMD}"
           }
         ],
         "priority": "default"

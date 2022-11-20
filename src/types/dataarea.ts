@@ -1,8 +1,10 @@
 import { getBase } from "../tools";
 import * as vscode from 'vscode';
 import Base from "./base";
+import { Components } from "../webviewToolkit";
 
 interface DataAreaInfo {
+  initialValue: string
   currentValue: string
   type: string
   length: number
@@ -10,7 +12,13 @@ interface DataAreaInfo {
 }
 
 export class DataArea extends Base {
-  private info?: DataAreaInfo;
+  private info: DataAreaInfo = {
+    initialValue: "",
+    currentValue: "",
+    type: "",
+    length: 0,
+    decimalPosition: 0
+  };
 
   async fetch(): Promise<void> {
     const instance = getBase();
@@ -26,49 +34,75 @@ export class DataArea extends Base {
       ));
 
       const [dtaara] = dtaaras;
-
-      this.info = {
-        currentValue: dtaara.DATA_AREA_VALUE?.toString() || "",
-        type: dtaara.DATA_AREA_TYPE!.toString(),
-        length: Number(dtaara.LENGTH!),
-        decimalPosition: Number(dtaara.DECIMAL_POSITIONS || 0)
-      };
+      this.info.currentValue = dtaara.DATA_AREA_VALUE?.toString() || "";
+      this.info.initialValue = this.info.currentValue;
+      this.info.type = dtaara.DATA_AREA_TYPE!.toString();
+      this.info.length = Number(dtaara.LENGTH!);
+      this.info.decimalPosition = Number(dtaara.DECIMAL_POSITIONS || 0);
     }
   }
 
   generateHTML(): string {
     const info = this.info!;
-    const html = /* html */`
-            <vscode-text-field readonly="true" value="${info.type}">Type</vscode-text-field>
-            ${info.type !== "*LGL" ? /* html */ `<vscode-text-field readonly="true" value="${info.length}">Length</vscode-text-field>` : ''}
-            ${info.type === "*DEC" ? /* html */ `<vscode-text-field readonly="true" value="${info.decimalPosition}">Decimal position</vscode-text-field>` : ''}
-            ${getValueField(info)}
-        `;
-    return html;
+    return /* html */`
+    <p>
+      <h3>Type: <code>${info.type}</code></h3>
+      ${info.type !== "*LGL" ? /* html */ `<h3>Length: <code>${info.length}</code></h3>` : ''}
+      ${info.type === "*DEC" ? /* html */ `<h3>Decimal position: <code>${info.decimalPosition}</code></h3>` : ''}
+    </p>
+    ${Components.divider()}
+    <p>${getValueField(info)}</p>`;
   }
 
   handleAction(data: any): boolean {
-    throw new Error("Method not implemented.");
+    if (data.value !== this.info.initialValue) {
+      this.info.currentValue = data.value;
+      return true;
+    }
+    else {
+      return false;
+    }
   }
 
-  save(): Promise<void> {
-    throw new Error("Method not implemented.");
+  async save(): Promise<void> {
+    let value: string | number | boolean = this.info.currentValue;
+
+    switch (this.info.type) {
+      case `*DEC`:
+        value = Number(value);
+        break;
+
+      case `*LGL`:
+        value = `'${value ? '1' : '0'}'`;
+        break;
+
+      default:
+        value = `'${value}'`.replace(/\s/g, " ");
+    }
+
+    const command: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+      command: `CHGDTAARA DTAARA(${this.library}/${this.name}) VALUE(${value})`,
+      environment: `ile`
+    });
+    if (command.code === 0) {
+      this.info.initialValue = this.info.currentValue;
+    }
+    else {
+      throw new Error(command.stderr);
+    }
   }
 }
 
 function getValueField(info: DataAreaInfo) {
   switch (info.type) {
     case `*LGL`:
-      return /* html */`<vscode-checkbox name="value" autofocus ${info.currentValue === `1` ? `checked` : ``}>Logical value</vscode-checkbox>`;
+      return Components.checkbox("value", "Logical value", { checked: info.currentValue === `1`, });
 
     case `*DEC`:
-      return /* html */`<vscode-text-field name="value" size="50" value="${info.currentValue}">Decimal value</vscode-text-field>`;
-    //valueField = new Field(`number`, `value`, `Decimal value`);
-    //valueField.max = (Math.pow(10, length) - 1) / (decimalPosition ? Math.pow(10, decimalPosition) : 1);
-    //valueField.min = valueField.max * -1;
-    //valueField.default = currentValue || "0";
+      const size = info.length + info.decimalPosition ? 1 : 0;
+      return Components.textField("value", "Decimal value", { size: size, value: info.currentValue });
 
     default:
-      return /* html */`<vscode-text-area name="value" autofocus value="${info.currentValue || ''}" maxlength="${Number(info.length)}">Character value</vscode-text-area>`;
+      return Components.textArea("value", "Character value", { value: info.currentValue || '', maxlength: info.length, cols: 100, rows: 3 });
   }
 }

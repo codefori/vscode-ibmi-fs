@@ -3,6 +3,7 @@ import path = require('path');
 import * as vscode from 'vscode';
 import Base from './types/base';
 import BindingDirectory from './types/bindingDirectory';
+import { Command } from './types/command';
 import { DataArea } from './types/dataarea';
 import Program from './types/program';
 import generatePage from './webviewToolkit';
@@ -10,7 +11,7 @@ import generatePage from './webviewToolkit';
 export default class ObjectProvider implements vscode.CustomEditorProvider<Base> {
   // https://github.com/microsoft/vscode-extension-samples/blob/main/custom-editor-sample/src/pawDrawEditor.ts#L316
   private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<vscode.CustomDocumentEditEvent<Base>>();
-	public readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument.event;
+  public readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument.event;
 
   saveCustomDocument(document: Base, cancellation: vscode.CancellationToken): Thenable<void> {
     return document.save();
@@ -51,8 +52,8 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
       if (document.handleAction(body)) {
         this._onDidChangeCustomDocument.fire({
           document,
-          redo: () => {throw new Error("Redo not supported.");},
-          undo: () => {throw new Error("Undo not supported.");}
+          redo: () => { throw new Error("Redo not supported."); },
+          undo: () => { throw new Error("Undo not supported."); }
         });
         webviewPanel.webview.html = generatePage(document.generateHTML());
       }
@@ -78,6 +79,9 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
       case `PGM`:
       case `SRVPGM`:
         return new Program(uri, library, objectName);
+        
+      case `CMD`:
+        return new Command(uri, library, objectName);
     }
   } else {
     throw new Error(`Invalid path.`);
