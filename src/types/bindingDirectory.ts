@@ -175,7 +175,7 @@ export default class BindingDirectory extends Base {
 
       if (created.length > 0) {
         const command: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
-          command: `ADDBNDDIRE BNDDIR(${this.library}/${this.name}) OBJ(${created.map(currentEntry => `(${currentEntry.library}/${currentEntry.object} ${currentEntry.type} ${currentEntry.activation})`)})`,
+          command: `ADDBNDDIRE BNDDIR(${this.library}/${this.name}) OBJ(${created.map(currentEntry => `(${currentEntry.library}/${currentEntry.object} ${currentEntry.type} ${currentEntry.activation})`).join(` `)})`,
           environment: `ile`
         });
         if (command.code && command.code >= 1) {
