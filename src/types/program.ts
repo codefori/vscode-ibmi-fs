@@ -1,6 +1,7 @@
 import { getBase } from "../tools";
 import * as vscode from 'vscode';
 import Base from "./base";
+import { Components } from "../webviewToolkit";
 
 export default class Program extends Base {
   columns: Map<string, string> = new Map();
@@ -90,66 +91,47 @@ export default class Program extends Base {
 
     const boundTab = /*html*/`
       <section>
-        <vscode-data-grid>
-          <vscode-data-grid-row row-type="header">
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="1">Module</vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="2">Attribute</vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="3">Created</vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="4">Debug Data Available</vscode-data-grid-cell>
-          </vscode-data-grid-row>
-          ${this.boundModules?.map(entry => {
-            return /*html*/`
-            <vscode-data-grid-row>
-              <vscode-data-grid-cell grid-column="1">${entry.library}/${entry.object}</vscode-data-grid-cell>
-              <vscode-data-grid-cell grid-column="2">${entry.attribute}</vscode-data-grid-cell>
-              <vscode-data-grid-cell grid-column="3">${entry.created}</vscode-data-grid-cell>
-              <vscode-data-grid-cell grid-column="4">${entry.debugData}</vscode-data-grid-cell>
-            </vscode-data-grid-row>`;
-          }).join("")}
-        </vscode-data-grid>
+        ${this.boundModules ? 
+          Components.dataGrid<ILEModule>({
+            columns: [
+              { title: "Module", cellValue: d => `${d.library}/${d.object}` },
+              { title: "Attribute", cellValue: d => d.attribute },
+              { title: "Created", cellValue: d => d.created },
+              { title: "Debug Data Available", cellValue: d => d.debugData }
+            ]
+          }, this.boundModules)
+        : ``}
       </section>
 
       <section>
-        <br>
-        <vscode-divider role="separator"></vscode-divider>
-        <br>
+        ${Components.divider()}
       </section>
 
       <section>
-        <vscode-data-grid>
-          <vscode-data-grid-row row-type="header">
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="1">Service Program</vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="2">Signature</vscode-data-grid-cell>
-          </vscode-data-grid-row>
-          ${this.boundServicePrograms?.map(entry => {
-            return /*html*/`
-            <vscode-data-grid-row>
-              <vscode-data-grid-cell grid-column="1">${entry.library}/${entry.object}</vscode-data-grid-cell>
-              <vscode-data-grid-cell grid-column="2">${entry.signature}</vscode-data-grid-cell>
-            </vscode-data-grid-row>`;
-          }).join("")}
-        </vscode-data-grid>
+        ${this.boundServicePrograms ?
+          Components.dataGrid<ILEServiceProgram>({
+            columns: [
+              { title: "Service Program", cellValue: d => `${d.library}/${d.object}` },
+              { title: "Signature", cellValue: d => d.signature },
+            ]
+          }, this.boundServicePrograms)
+        : ``}
       </section>
     `;
 
     const exportsAvailable = this.type === `*SRVPGM`;
 
-    const exportsTab = /*html*/`
-      <vscode-data-grid>
-        <vscode-data-grid-row row-type="header">
-          <vscode-data-grid-cell cell-type="columnheader" grid-column="1">Symbol</vscode-data-grid-cell>
-          <vscode-data-grid-cell cell-type="columnheader" grid-column="2">Usage</vscode-data-grid-cell>
-        </vscode-data-grid-row>
-        ${this.exportedSymbols?.map(entry => {
-          return /*html*/`
-          <vscode-data-grid-row>
-            <vscode-data-grid-cell grid-column="1">${entry.name}</vscode-data-grid-cell>
-            <vscode-data-grid-cell grid-column="2">${entry.usage}</vscode-data-grid-cell>
-          </vscode-data-grid-row>`;
-        }).join("")}
-      </vscode-data-grid>
-    `;
-    
+    let exportsTab = ``;
+    if (exportsAvailable && this.exportedSymbols) {
+      exportsTab = Components.dataGrid<ILEExport>({
+        stickyHeader: true,
+        columns: [
+          { title: "Symbol", cellValue: d => d.name },
+          { title: "Usage", cellValue: d => d.usage },
+        ]
+      }, this.exportedSymbols);
+    }
+
     const boundCount = (this.boundModules ? this.boundModules.length : 0) + (this.boundServicePrograms ? this.boundServicePrograms.length : 0);
 
     const panels = /*html*/`
@@ -168,8 +150,8 @@ export default class Program extends Base {
             <vscode-badge appearance="secondary">${this.exportedSymbols?.length}</vscode-badge>
           </vscode-panel-tab>
           `
-          : ``
-        }
+        : ``
+      }
         <vscode-panel-view id="view-1">${detailTab}</vscode-panel-view>
         <vscode-panel-view id="view-2">${boundTab}</vscode-panel-view>
         ${exportsAvailable ? `<vscode-panel-view id="view-3">${exportsTab}</vscode-panel-view>` : ``}
@@ -267,7 +249,7 @@ interface ILEModule {
   object: string;
   attribute: string;
   created: string;
-  debugData: "*YES"|"*NO";
+  debugData: "*YES" | "*NO";
 }
 
 async function getBoundModules(library: string, object: string): Promise<ILEModule[]> {
