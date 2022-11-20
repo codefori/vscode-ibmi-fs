@@ -103,7 +103,7 @@ function getValueField(info: DataAreaInfo) {
 
     case `*DEC`:
       const size = info.length + info.decimalPosition ? 1 : 0;
-      return Components.textField("value", "Decimal value", { size: size, value: info.currentValue });
+      return Components.textField("value", "Decimal value", { maxlength: size, value: info.currentValue });
 
     default:
       return Components.textArea("value", "Character value", { value: info.currentValue || '', maxlength: info.length, cols: 100, rows: 3 });
