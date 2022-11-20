@@ -11,7 +11,7 @@ interface CommandDetail {
 }
 
 export class Command extends Base {
-    private commandInfo?: CommandDetail[];
+    private commandInfo: CommandDetail[] = [];
 
     async fetch() {
         const command: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
@@ -32,7 +32,7 @@ export class Command extends Base {
                 { title: "Keyword", size: "200px", cellValue: d => d.keyword },
                 { title: "Value", cellValue: d => d.value }
             ]
-        }, this.commandInfo || []);
+        }, this.commandInfo);
     }
 
     handleAction(data: any): boolean {
