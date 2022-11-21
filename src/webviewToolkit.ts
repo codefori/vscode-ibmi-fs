@@ -6,6 +6,9 @@ const head = /*html*/`
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script defer type="module">${WebToolkit}</script>
   <style>
+    vscode-panel-view {
+      flex-direction: column;
+    }
   </style>`;
 
 const footer = /*html*/`

@@ -43,6 +43,9 @@
             "filenamePattern": "object*/**/*.{DTAARA}"
           },
           {
+            "filenamePattern": "object*/**/*.{PGM,SRVPGM}"
+          },
+          {
             "filenamePattern": "object*/**/*.{CMD}"
           }
         ],

@@ -5,6 +5,7 @@ import Base from './types/base';
 import BindingDirectory from './types/bindingDirectory';
 import { Command } from './types/command';
 import { DataArea } from './types/dataarea';
+import Program from './types/program';
 import generatePage from './webviewToolkit';
 
 export default class ObjectProvider implements vscode.CustomEditorProvider<Base> {
@@ -80,6 +81,10 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
       case `DTAARA`:
         return new DataArea(uri, library, objectName);
 
+      case `PGM`:
+      case `SRVPGM`:
+        return new Program(uri, library, objectName);
+        
       case `CMD`:
         return new Command(uri, library, objectName);
     }

@@ -145,11 +145,7 @@ export default class BindingDirectory extends Base {
       <vscode-panel-view id="view-3">${exportsTab}</vscode-panel-view>
     </vscode-panels>`;
 
-    const content = /*html*/`
-      ${panels}
-    `;
-
-    return content;
+    return panels;
   }
 
   async save(): Promise<void> {
