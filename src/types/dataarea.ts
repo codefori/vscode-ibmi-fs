@@ -23,7 +23,7 @@ export class DataArea extends Base {
     const connection = instance.getConnection();
     const content = instance.getContent();
     if (connection && content) {
-      const [dtaara]: Record<string, string | object | null>[] = await content.runSQL(
+      const [dtaara]: DB2Row[] = await content.runSQL(
         `Select DATA_AREA_TYPE, LENGTH, DECIMAL_POSITIONS, DATA_AREA_VALUE
                 From TABLE(QSYS2.DATA_AREA_INFO(
                     DATA_AREA_NAME => '${this.name}',
