@@ -107,6 +107,7 @@ export function generateError(text: string) {
 `;
 }
 
+//https://github.com/microsoft/vscode-webview-ui-toolkit/blob/main/docs/components.md
 export namespace Components {
   interface Component {
     class?: string
