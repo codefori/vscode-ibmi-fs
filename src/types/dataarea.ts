@@ -23,15 +23,14 @@ export class DataArea extends Base {
     const connection = instance.getConnection();
     const content = instance.getContent();
     if (connection && content) {
-      const dtaaras: Record<string, string | object | null>[] = (await vscode.commands.executeCommand(`code-for-ibmi.runQuery`,
+      const [dtaara]: Record<string, string | object | null>[] = await content.runSQL(
         `Select DATA_AREA_TYPE, LENGTH, DECIMAL_POSITIONS, DATA_AREA_VALUE
                 From TABLE(QSYS2.DATA_AREA_INFO(
                     DATA_AREA_NAME => '${this.name}',
                     DATA_AREA_LIBRARY => '${this.library}'))
                 Fetch first row only`
-      ));
+      );
 
-      const [dtaara] = dtaaras;
       this.dataArea.type = dtaara.DATA_AREA_TYPE!.toString();
       this.dataArea.value = dtaara.DATA_AREA_VALUE?.toString() || "";
       this.dataArea.length = Number(dtaara.LENGTH!);
