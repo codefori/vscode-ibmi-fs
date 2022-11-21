@@ -37,6 +37,8 @@ export default class Program extends Base {
           getBoundServicePrograms(library, name),
           getServiceProgramExports(library, name)
         ]);
+    } else {
+      throw new Error(`No connection`);
     }
   }
 

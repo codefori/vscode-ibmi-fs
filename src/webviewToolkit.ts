@@ -9,6 +9,13 @@ const head = /*html*/`
     vscode-panel-view {
       flex-direction: column;
     }
+    .center-screen {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      min-height: 100vh;
+    }
   </style>`;
 
 const footer = /*html*/`
@@ -69,7 +76,7 @@ const footer = /*html*/`
   </script>
 `;
 
-export default function generatePage(body: string) {
+export function generatePage(body: string) {
   return /*html*/ `
   <!DOCTYPE html>
   <html lang="en">
@@ -80,6 +87,22 @@ export default function generatePage(body: string) {
       ${body}
     </body>
     ${footer}
+  </html>
+`;
+}
+
+export function generateError(text: string) {
+  return /*html*/ `
+  <!DOCTYPE html>
+  <html lang="en">
+    <head>
+      ${head}
+    </head>
+    <body>
+      <div class="center-screen">
+        <p>${text}</p>
+      </div>
+    </body>
   </html>
 `;
 }

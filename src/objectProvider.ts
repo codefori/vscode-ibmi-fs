@@ -6,7 +6,7 @@ import BindingDirectory from './types/bindingDirectory';
 import { Command } from './types/command';
 import { DataArea } from './types/dataarea';
 import Program from './types/program';
-import generatePage from './webviewToolkit';
+import {generatePage, generateError} from './webviewToolkit';
 
 export default class ObjectProvider implements vscode.CustomEditorProvider<Base> {
   // https://github.com/microsoft/vscode-extension-samples/blob/main/custom-editor-sample/src/pawDrawEditor.ts#L316
@@ -14,7 +14,11 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
   public readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument.event;
 
   saveCustomDocument(document: Base, cancellation: vscode.CancellationToken): Thenable<void> {
-    return document.save();
+    if (!document.failedFetch) {
+      return document.save();
+    }
+
+    return Promise.resolve();
   }
   saveCustomDocumentAs(document: vscode.CustomDocument, destination: vscode.Uri, cancellation: vscode.CancellationToken): Thenable<void> {
     throw new Error('Method not implemented.');
@@ -32,7 +36,11 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
   async openCustomDocument(uri: vscode.Uri, openContext: vscode.CustomDocumentOpenContext, token: vscode.CancellationToken): Promise<Base> {
     const object = getTypeFile(uri);
     if (object) {
-      await object.fetch();
+      try {
+        await object.fetch();
+      } catch (e) {
+        object.failedFetch = true;
+      }
       return object;
     }
 
@@ -47,22 +55,28 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
       enableScripts: true,
       enableCommandUris: true,
     };
-    webviewPanel.webview.html = generatePage(document.generateHTML());
-    webviewPanel.webview.onDidReceiveMessage(async body => {
-      const actionResult = document.handleAction(body);
-      
-      if (actionResult.dirty) {
-        this._onDidChangeCustomDocument.fire({
-          document,
-          redo: () => { throw new Error("Redo not supported."); },
-          undo: () => { throw new Error("Undo not supported."); }
-        });
-      }
 
-      if (actionResult.rerender) {
-        webviewPanel.webview.html = generatePage(document.generateHTML());
-      }
-    });
+    if (document.failedFetch) {
+      webviewPanel.webview.html = generateError(`Failed to fetch data. Please close this window.`);
+
+    } else {
+      webviewPanel.webview.html = generatePage(document.generateHTML());
+      webviewPanel.webview.onDidReceiveMessage(async body => {
+        const actionResult = document.handleAction(body);
+
+        if (actionResult.dirty) {
+          this._onDidChangeCustomDocument.fire({
+            document,
+            redo: () => { throw new Error("Redo not supported."); },
+            undo: () => { throw new Error("Undo not supported."); }
+          });
+        }
+
+        if (actionResult.rerender) {
+          webviewPanel.webview.html = generatePage(document.generateHTML());
+        }
+      });
+    }
   }
 }
 
@@ -84,7 +98,7 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
       case `PGM`:
       case `SRVPGM`:
         return new Program(uri, library, objectName);
-        
+
       case `CMD`:
         return new Command(uri, library, objectName);
     }
