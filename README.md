@@ -11,6 +11,7 @@ Has support for:
 * Message Files (MSGF)
 * Binding Directories (BNDDIR)
 * Programs and Service Programs (PGM/SRVPGM)
+* Data Areas (DTAARA)
 
 ## TODO:
 
