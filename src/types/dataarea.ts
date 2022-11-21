@@ -36,6 +36,8 @@ export class DataArea extends Base {
       this.dataArea.value = dtaara.DATA_AREA_VALUE?.toString() || "";
       this.dataArea.length = Number(dtaara.LENGTH!);
       this.dataArea.decimalPosition = Number(dtaara.DECIMAL_POSITIONS || 0);
+    } else {
+      throw new Error("No connection.");
     }
   }
 
