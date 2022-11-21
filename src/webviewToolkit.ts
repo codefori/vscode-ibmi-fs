@@ -164,7 +164,7 @@ export namespace Components {
 
   interface ButtonIcon extends Component {
     name: string
-    left: boolean
+    left?: boolean
   }
 
   interface Divider extends Component {
@@ -233,7 +233,7 @@ export namespace Components {
 
   export function dropDown(id: string, dropDown: Partial<DropDown>, noChangeListener?: boolean) {
     return /*html*/ `<vscode-dropdown id="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(dropDown, "indicator")}>
-      ${dropDown.indicator ? /*html*/ `<span slot="indicator" class="codicon codicon-${dropDown.indicator}"></span>` : ''}
+      ${dropDown.indicator ? /*html*/ _icon(dropDown.indicator, "indicator") : ''}
       ${dropDown.items?.map(item => /*html*/ `<vscode-option>${item}</vscode-option>`).join("")}
     </vscode-dropdown>`;
   }
@@ -253,8 +253,16 @@ export namespace Components {
   export function button(id: string, label?: string, options?: Partial<Button>) {
     return /* html */`<vscode-button id="${id}" name="${id}" ${renderAttributes(options, "icon")}>
       ${label || ''}
-      ${options?.icon ? /* html */ `<span class="codicon codicon-${options.icon.name}"${options.icon.left ? ' slot="start"' : ''}></span>` : ''}
+      ${options?.icon ? /* html */ _icon(options.icon.name, options.icon.left ? "start" : "") : ''}
       </vscode-button>`;
+  }
+
+  export function badge(count: number) {
+    return /* html */`<vscode-badge>${count}</vscode-badge>`;
+  }
+
+  function _icon(icon: string, slot?: string) {
+    return /* html */`<span class="codicon codicon-${icon}" ${slot ? `slot="${slot}"` : ''}></span>`;
   }
 
   function renderAttributes(options?: Object, ...skipped: string[]) {
