@@ -5,8 +5,9 @@ import Base from './types/base';
 import BindingDirectory from './types/bindingDirectory';
 import { Command } from './types/command';
 import { DataArea } from './types/dataarea';
+import { DataQueue } from './types/dataqueue';
 import Program from './types/program';
-import {generatePage, generateError} from './webviewToolkit';
+import { generatePage, generateError } from './webviewToolkit';
 
 export default class ObjectProvider implements vscode.CustomEditorProvider<Base> {
   // https://github.com/microsoft/vscode-extension-samples/blob/main/custom-editor-sample/src/pawDrawEditor.ts#L316
@@ -101,6 +102,9 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
 
       case `CMD`:
         return new Command(uri, library, objectName);
+
+      case `DTAQ`:
+        return new DataQueue(uri, library, objectName);
     }
   } else {
     throw new Error(`Invalid path.`);

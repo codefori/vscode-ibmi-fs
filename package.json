@@ -47,6 +47,9 @@
           },
           {
             "filenamePattern": "object*/**/*.{CMD}"
+          },
+          {
+            "filenamePattern": "object*/**/*.{DTAQ}"
           }
         ],
         "priority": "default"
