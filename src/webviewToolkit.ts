@@ -111,6 +111,7 @@ export function generateError(text: string) {
 export namespace Components {
   interface Component {
     class?: string
+    style?: string
   }
 
   interface TextField extends Component {
@@ -179,7 +180,7 @@ export namespace Components {
     rowClass?: (row: T) => string
   }
 
-  interface Column<T> {
+  export interface Column<T> {
     cellValue: (row: T) => string
     title?: string
     size?: string
@@ -192,6 +193,19 @@ export namespace Components {
     position: 'above' | 'below'
     items: string[]
     indicator: string
+  }
+
+  interface Panel extends Component {
+    title: string
+    badge?: number
+    content: string
+  }
+
+  export function panels(panels: Panel[], attributes?: Component, activeid?: number): string {
+    return /*html*/ `<vscode-panels ${renderAttributes(attributes)} ${activeid ? `activeid="tab-${activeid}"` : ""}>
+      ${panels.map((panel, index) => /*html*/ `<vscode-panel-tab id="tab-${index + 1}">${panel.title}${panel.badge ? badge(panel.badge, true) : ''}</vscode-panel-tab>`).join("")}
+      ${panels.map((panel, index) => /*html*/ `<vscode-panel-view id="view-${index + 1}" ${panel.class ? `class="${panel.class}"` : ''}>${panel.content}</vscode-panel-view>`).join("")}
+    </vscode-panels>`;
   }
 
   export function dataGrid<T>(grid: DataGrid<T>, content: T[]): string {
@@ -222,7 +236,7 @@ export namespace Components {
   }
 
   function renderRow<T>(grid: DataGrid<T>, row: T) {
-    return /*html*/ `<vscode-data-grid-row class="${grid.headerClass}" class="${grid.rowClass?.(row)}"}>
+    return /*html*/ `<vscode-data-grid-row class="${grid.rowClass?.(row)}"}>
         ${grid.columns.map((col, index) => /*html*/ `<vscode-data-grid-cell grid-column="${index + 1}" class="${col.cellClass?.(row) || ''}">${col.cellValue(row)}</vscode-data-grid-cell>`).join("")}        
       </vscode-data-grid-row>`;
   }
@@ -257,8 +271,8 @@ export namespace Components {
       </vscode-button>`;
   }
 
-  export function badge(count: number) {
-    return /* html */`<vscode-badge>${count}</vscode-badge>`;
+  export function badge(count: number, secondary?: boolean) {
+    return /* html */`<vscode-badge ${secondary ? 'appearance="secondary"' : ''}>${count}</vscode-badge>`;
   }
 
   function _icon(icon: string, slot?: string) {
