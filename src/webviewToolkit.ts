@@ -203,7 +203,7 @@ export namespace Components {
 
   export function panels(panels: Panel[], attributes?: Component, activeid?: number): string {
     return /*html*/ `<vscode-panels ${renderAttributes(attributes)} ${activeid ? `activeid="tab-${activeid}"` : ""}>
-      ${panels.map((panel, index) => /*html*/ `<vscode-panel-tab id="tab-${index + 1}">${panel.title}${panel.badge ? badge(panel.badge, true) : ''}</vscode-panel-tab>`).join("")}
+      ${panels.map((panel, index) => /*html*/ `<vscode-panel-tab id="tab-${index + 1}">${panel.title.toUpperCase()}${panel.badge ? badge(panel.badge, true) : ''}</vscode-panel-tab>`).join("")}
       ${panels.map((panel, index) => /*html*/ `<vscode-panel-view id="view-${index + 1}" ${panel.class ? `class="${panel.class}"` : ''}>${panel.content}</vscode-panel-view>`).join("")}
     </vscode-panels>`;
   }
