@@ -160,7 +160,8 @@ export namespace Components {
     formtarget: string
     type: string
     value: string
-    icon: ButtonIcon
+    icon: ButtonIcon,
+    action: string
   }
 
   interface ButtonIcon extends Component {
@@ -264,8 +265,8 @@ export namespace Components {
     return /* html */`<vscode-checkbox id="${id}" value="${id}" ${renderChangeListener("checkbox", noChangeListener)} ${renderAttributes(options)}>${label || ''}</vscode-checkbox>`;
   }
 
-  export function button(id: string, label?: string, options?: Partial<Button>) {
-    return /* html */`<vscode-button id="${id}" name="${id}" ${renderAttributes(options, "icon")}>
+  export function button(label?: string, options?: Partial<Button>) {
+    return /* html */`<vscode-button ${renderAttributes(options, "icon", "action")} ${options?.action ? `href="action:${options.action}"` : ""}>
       ${label || ''}
       ${options?.icon ? /* html */ _icon(options.icon.name, options.icon.left ? "start" : "") : ''}
       </vscode-button>`;
