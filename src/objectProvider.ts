@@ -63,7 +63,7 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
     } else {
       webviewPanel.webview.html = generatePage(document.generateHTML());
       webviewPanel.webview.onDidReceiveMessage(async body => {
-        const actionResult = document.handleAction(body);
+        const actionResult = await document.handleAction(body);
 
         if (actionResult.dirty) {
           this._onDidChangeCustomDocument.fire({

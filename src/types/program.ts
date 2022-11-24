@@ -93,15 +93,15 @@ export default class Program extends Base {
 
     const boundTab = /*html*/`
       <section>
-        ${this.boundModules ? 
-          Components.dataGrid<ILEModule>({
-            columns: [
-              { title: "Module", cellValue: d => `${d.library}/${d.object}` },
-              { title: "Attribute", cellValue: d => d.attribute },
-              { title: "Created", cellValue: d => d.created },
-              { title: "Debug Data Available", cellValue: d => d.debugData }
-            ]
-          }, this.boundModules)
+        ${this.boundModules ?
+        Components.dataGrid<ILEModule>({
+          columns: [
+            { title: "Module", cellValue: d => `${d.library}/${d.object}` },
+            { title: "Attribute", cellValue: d => d.attribute },
+            { title: "Created", cellValue: d => d.created },
+            { title: "Debug Data Available", cellValue: d => d.debugData }
+          ]
+        }, this.boundModules)
         : ``}
       </section>
 
@@ -111,12 +111,12 @@ export default class Program extends Base {
 
       <section>
         ${this.boundServicePrograms ?
-          Components.dataGrid<ILEServiceProgram>({
-            columns: [
-              { title: "Service Program", cellValue: d => `${d.library}/${d.object}` },
-              { title: "Signature", cellValue: d => d.signature },
-            ]
-          }, this.boundServicePrograms)
+        Components.dataGrid<ILEServiceProgram>({
+          columns: [
+            { title: "Service Program", cellValue: d => `${d.library}/${d.object}` },
+            { title: "Signature", cellValue: d => d.signature },
+          ]
+        }, this.boundServicePrograms)
         : ``}
       </section>
     `;
@@ -162,7 +162,7 @@ export default class Program extends Base {
     return panels;
   }
 
-  handleAction(data: any): HandleActionResult {
+  async handleAction(data: any): Promise<HandleActionResult> {
     return {};
   }
 

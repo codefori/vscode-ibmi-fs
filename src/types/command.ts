@@ -35,7 +35,7 @@ export class Command extends Base {
         }, this.commandInfo);
     }
 
-    handleAction(data: any): HandleActionResult {
+    async handleAction(data: any): Promise<HandleActionResult> {
         //Nothing to handle
         return {};
     }

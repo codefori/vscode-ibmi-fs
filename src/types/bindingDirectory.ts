@@ -187,7 +187,7 @@ export default class BindingDirectory extends Base {
     }
   }
 
-  handleAction(data: any): HandleActionResult {
+  async handleAction(data: any): Promise<HandleActionResult> {
     const uri = vscode.Uri.parse(data.href);
     switch (uri.path) {
       case `delete`:

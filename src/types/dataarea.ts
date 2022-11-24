@@ -52,7 +52,7 @@ export class DataArea extends Base {
     <p>${renderValueField(info)}</p>`;
   }
 
-  handleAction(data: any): HandleActionResult {
+  async handleAction(data: any): Promise<HandleActionResult> {
     this.dataArea.value = this.getValue(data.value).toString();
     // We don't want to rerender. 
     return {

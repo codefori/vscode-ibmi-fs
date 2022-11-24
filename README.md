@@ -12,6 +12,7 @@ Has support for:
 * Binding Directories (BNDDIR)
 * Programs and Service Programs (PGM/SRVPGM)
 * Data Areas (DTAARA)
+* Data Queues (DTAQ)
 
 ## TODO:
 
