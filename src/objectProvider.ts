@@ -1,4 +1,5 @@
 
+import { utils } from 'mocha';
 import path = require('path');
 import * as vscode from 'vscode';
 import Base from './types/base';
@@ -7,6 +8,7 @@ import { Command } from './types/command';
 import { DataArea } from './types/dataarea';
 import { DataQueue } from './types/dataqueue';
 import Program from './types/program';
+import { SaveFile } from './types/saveFile';
 import { generatePage, generateError } from './webviewToolkit';
 
 export default class ObjectProvider implements vscode.CustomEditorProvider<Base> {
@@ -105,6 +107,11 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
 
       case `DTAQ`:
         return new DataQueue(uri, library, objectName);
+
+      case `FILE`:
+        if (uri.fragment.toUpperCase() === 'SAVF') {
+          return new SaveFile(uri, library, objectName);
+        }
     }
   } else {
     throw new Error(`Invalid path.`);
