@@ -16,6 +16,27 @@ const head = /*html*/`
       text-align: center;
       min-height: 100vh;
     }
+
+    .keyValueGrid {
+      display: table;
+    }
+
+    .keyValueGrid p {
+      display: table-row;
+    }
+
+    .cellKey {  
+      font-weight: bold;    
+      display: table-cell;
+      padding-bottom: 5px;
+      width: 1%;
+      white-space: nowrap;
+    }
+
+    .cellValue {      
+      display: table-cell;
+      padding-left: 10px;
+    }
   </style>`;
 
 const footer = /*html*/`
@@ -196,7 +217,7 @@ export namespace Components {
     indicator: string
   }
 
-  interface Panel extends Component {
+  export interface Panel extends Component {
     title: string
     badge?: number
     content: string
@@ -275,6 +296,15 @@ export namespace Components {
   export function badge(count: number, secondary?: boolean) {
     return /* html */`<vscode-badge ${secondary ? 'appearance="secondary"' : ''}>${count}</vscode-badge>`;
   }
+
+  export function keyValueTable<T>(getKey: (e: T) => string, getValue: (e: T) => string, entries: T[]) {
+    return /* html */ `<div class="keyValueGrid">
+      ${entries.map(entry => {
+      return /* html */ `<p><span class="cellKey">${getKey(entry)}:</span><code class="cellValue">${getValue(entry)}</code></p>`;
+    }).join(``)}
+    </div>`;
+  }
+
 
   function _icon(icon: string, slot?: string) {
     return /* html */`<span class="codicon codicon-${icon}" ${slot ? `slot="${slot}"` : ''}></span>`;

@@ -41,7 +41,7 @@ export class DataArea extends Base {
   }
 
   generateHTML(): string {
-    const info = this.dataArea!;
+    const info = this.dataArea;
     return /* html */`
     <p>
       <h3>Type: <code>${info.type}</code></h3>

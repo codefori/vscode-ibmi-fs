@@ -97,12 +97,10 @@ export class DataQueue extends Base {
     }
 
     generateHTML(): string {
-        return /*html*/`${Components.panels([
+        return Components.panels([
             { title: "Data Queue", content: this.renderDataQueuePanel() },
             { title: "Messages", badge: this._entries.length, content: renderEntries(this.keyed, this._entries) }
-        ],
-            { style: "height:100vh" })}
-        `;
+        ], { style: "height:100vh" });
     }
 
     async handleAction(data: any): Promise<HandleActionResult> {
@@ -153,7 +151,7 @@ export class DataQueue extends Base {
     }
 
     private renderDataQueuePanel(): string {
-        return /*html*/ `<p>${Object.entries(this._info).map(renderInfoEntry).join("<br/>")}</p>
+        return /*html*/ `<p>${Components.keyValueTable(infoKey, infoValue, Object.entries(this._info))}</p>
         ${Components.divider()}
         ${Components.button("Send data", { action: ACTION_SEND, icon: { name: "arrow-right", left: true } })}
         ${Components.button("Clear", { action: ACTION_CLEAR, appearance: "secondary", icon: { name: "clear-all", left: true } })}
@@ -171,20 +169,24 @@ function toEntry(row: DB2Row): Entry {
     };
 }
 
-function renderInfoEntry(entry: [string, string | number | boolean]) {
-    const label = labelize(entry[0]);
+function infoKey(entry: [string, string | number | boolean]) {
+    return entry[0].split('')
+        .map((letter, index) => (index === 0 || letter.toUpperCase() === letter) ? ` ${letter.toUpperCase()}` : letter)
+        .join('')
+        .trim();
+}
+
+function infoValue(entry: [string, string | number | boolean]) {
     let value = entry[1];
     if (typeof value === "boolean") {
-        value = value ? "✔" : "✖"; //I can't display codicons 😕
+        return value ? "✔" : "✖"; //I can't display codicons 😕
     }
     else if (typeof value === "number") {
-        value = Components.badge(value);
+        return Components.badge(value);
     }
     else {
-        value = /* html */`<code>${value}</code>`;
+        return value;
     }
-
-    return /* html */`<span>${label}:</b> ${value}`;
 }
 
 function renderEntries(keyed: boolean, entries: Entry[]) {
