@@ -21,7 +21,9 @@
   ],
   "activationEvents": [
     "onFileSystem:object",
-    "onCustomEditor:vscode-ibmi-fs.editor"
+    "onCustomEditor:vscode-ibmi-fs.editor",
+    "onCommand:code-for-ibmi.connect",
+    "onView:connectionBrowser"
   ],
   "extensionDependencies": [
     "HalcyonTechLtd.code-for-ibmi"
