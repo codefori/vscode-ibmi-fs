@@ -28,3 +28,7 @@ export async function getTable(library: string, name: string): Promise<any[]> {
     const content = instance.getContent();
     return content.getTable(library, name, name, true);
 }
+
+export function getQSYSObjectPath(library:string, name:string, type:string, member?: string, iasp?:string){
+    return `${iasp? `/${iasp.toUpperCase()}` : ''}/QSYS.LIB/${library.toUpperCase()}.LIB/${name.toUpperCase()}.${type.toUpperCase()}${member? `/${member.toUpperCase()}.MBR` : ''}`;
+}

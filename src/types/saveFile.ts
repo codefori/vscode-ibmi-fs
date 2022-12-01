@@ -1,8 +1,83 @@
 import { download } from '@vscode/test-electron';
 import * as vscode from 'vscode';
-import { getBase } from '../tools';
+import { IBMiObject } from '../import/code-for-ibmi';
+import { getBase, getQSYSObjectPath } from '../tools';
 import { Components } from '../webviewToolkit';
 import Base from "./base";
+
+export namespace SaveFileActions {
+    export const register = (context: vscode.ExtensionContext) => {
+        context.subscriptions.push(vscode.commands.registerCommand("vscode-ibmi-fs.downloadSavf", downloadSavf));
+    };
+
+    export const downloadSavf = async (target: IBMiObject | SaveFile) => {
+        const library = target.library.toUpperCase();
+        const name = target.name.toUpperCase();
+        const qsysPath = getQSYSObjectPath(library, name, 'file');
+
+        const saveLocation = await vscode.window.showSaveDialog({
+            title: "Download Save File",
+            defaultUri: vscode.Uri.file(`${name}.savf`),
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            filters: { 'SaveFile': ["savf"] }
+        });
+
+        if (saveLocation) {
+            const result = await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Downloading ${library}/${name}`,
+            }, async progress => {
+                const result = {
+                    successful: true,
+                    error: ''
+                };
+
+                const connection = getBase().getConnection();
+                if (connection) {
+                    const tempRemotePath = `${getBase().getConfig().tempDir}/${library}_${name}.savf`;
+
+                    progress.report({ message: 'Copying to temporary stream file...' });
+                    const copyToStreamFile: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+                        command: `CPYTOSTMF FROMMBR('${qsysPath}') TOSTMF('${tempRemotePath}') STMFOPT(*REPLACE)`,
+                        environment: `ile`
+                    });
+
+                    if (copyToStreamFile.code === 0) {
+                        try {
+                            progress.report({ message: 'Downloading stream file...' });
+                            await connection.client.getFile(saveLocation.fsPath, tempRemotePath);
+                        } catch (error) {
+                            result.successful = false;
+                            result.error = String(error);
+                        }
+                        finally {
+                            await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+                                command: `rm -f ${tempRemotePath}`,
+                                environment: `pase`
+                            });
+                        }
+                    }
+                    else {
+                        result.successful = false;
+                        result.error = `CPYTOSTMF failed.\n${copyToStreamFile.stderr}`;
+                    }
+                }
+                else {
+                    result.successful = false;
+                    result.error = `No connection`;
+                }
+                return result;
+            });
+
+            if (result.successful) {
+                vscode.window.showInformationMessage(`Save File ${library}/${name} successfully downloaded.`);
+            }
+            else {
+                vscode.window.showErrorMessage(`Failed to download ${library}/${name}: ${result.error}`);
+            }
+        }
+    };
+}
 
 const KILOBYTE = 1024;
 const MEGABYTE = KILOBYTE * KILOBYTE;
@@ -50,7 +125,7 @@ interface SpooledFile {
 }
 
 export class SaveFile extends Base {
-    private readonly qsysPath: string = `/QSYS.LIB/${this.library}.LIB/${this.name}.FILE`;
+    private readonly qsysPath: string = getQSYSObjectPath(this.library, this.name, 'FILE');
     private size: string = '';
 
     private readonly headers: Header[] = [];
@@ -118,7 +193,7 @@ export class SaveFile extends Base {
         let refetch = false;
         switch (uri.path) {
             case ACTION_DOWNLOAD:
-                this.download();
+                SaveFileActions.downloadSavf(this);
                 break;
         }
         return {};
@@ -126,70 +201,6 @@ export class SaveFile extends Base {
 
     async save(): Promise<void> {
         //Nothing to save
-    }
-
-    private async download() {
-        const saveLocation = await vscode.window.showSaveDialog({
-            title: "Download Save File",
-            defaultUri: vscode.Uri.file(`${this.name}.savf`),
-            // eslint-disable-next-line @typescript-eslint/naming-convention
-            filters: { 'SaveFile': ["savf"] }
-        });
-
-        if (saveLocation) {
-            const result = await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: `Downloading ${this.library}/${this.name}`,
-            }, async progress => {
-                const result = {
-                    successful: true,
-                    error: ''
-                };
-
-                const connection = getBase().getConnection();
-                if (connection) {
-                    const tempRemotePath = `${getBase().getConfig().tempDir}/${this.library}_${this.name}.savf`;
-
-                    progress.report({ message: 'Copying to temporary stream file...' });
-                    const copyToStreamFile: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
-                        command: `CPYTOSTMF FROMMBR('${this.qsysPath}') TOSTMF('${tempRemotePath}') STMFOPT(*REPLACE)`,
-                        environment: `ile`
-                    });
-
-                    if (copyToStreamFile.code === 0) {
-                        try {
-                            progress.report({ message: 'Downloading stream file...' });
-                            await connection.client.getFile(saveLocation.fsPath, tempRemotePath);
-                        } catch (error) {
-                            result.successful = false;
-                            result.error = String(error);
-                        }
-                        finally {
-                            await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
-                                command: `rm -f ${tempRemotePath}`,
-                                environment: `pase`
-                            });
-                        }
-                    }
-                    else {
-                        result.successful = false;
-                        result.error = `CPYTOSTMF failed.\n${copyToStreamFile.stderr}`;
-                    }
-                }
-                else {
-                    result.successful = false;
-                    result.error = `No connection`;
-                }
-                return result;
-            });
-
-            if (result.successful) {
-                vscode.window.showInformationMessage(`Save File ${this.library}/${this.name} successfully downloaded.`);
-            }
-            else {
-                vscode.window.showErrorMessage(`Failed to download ${this.library}/${this.name}: ${result.error}`);
-            }
-        }
     }
 
     parseOutput(output: string) {
@@ -268,7 +279,7 @@ function renderHeaders(size: string, headers: Header[]): string {
         headers
     )}
     ${Components.divider()}
-    ${Components.button(`Download${size ? ` (${size})` : ''}`, { action: ACTION_DOWNLOAD })}`;
+    ${Components.button(`Download${size ? ` (${size})` : ''}`, { action: ACTION_DOWNLOAD, icon: { name: "cloud-download" } })}`;
 }
 
 function renderObjects(objects: Object[]): string {
@@ -314,4 +325,3 @@ function renderSpooledFiles(spooledFiles: SpooledFile[]): string {
         ]
     }, spooledFiles);
 }
-

@@ -1,10 +1,73 @@
 import * as vscode from 'vscode';
+import { IBMiObject } from '../import/code-for-ibmi';
 import { getBase } from "../tools";
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 
 const ACTION_CLEAR = "clear";
 const ACTION_SEND = "send";
+
+export namespace DataQueueActions {
+    export const register = (context: vscode.ExtensionContext) => {
+        context.subscriptions.push(
+            vscode.commands.registerCommand("vscode-ibmi-fs.sendToDataQueue", sendToDataQueue),
+            vscode.commands.registerCommand("vscode-ibmi-fs.clearDataQueue", clearDataQueue),
+        );
+    };
+
+    export const clearDataQueue = async (item: IBMiObject | DataQueue): Promise<boolean> => {
+        const library = item.library.toUpperCase();
+        const name = item.name.toUpperCase();
+        if (await vscode.window.showWarningMessage(`Are you sure you want to clear Data Queue ${library}/${name}?`, { modal: true }, "Clear")) {
+            await getBase().getContent().runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
+            vscode.window.showInformationMessage(`Data Queue ${library}/${name} cleared.`);
+            return true;
+        }
+        else {
+            return false;
+        }
+    };
+
+    export const sendToDataQueue = async (item: IBMiObject | DataQueue): Promise<boolean> => {
+        if ("keyed" in item) {
+            return _sendToDataQueue(item);
+        }
+        else {
+            const dataQueue: DataQueue = new DataQueue(vscode.Uri.file(''), item.library.toUpperCase(), item.name.toUpperCase());
+            await dataQueue.fetchInfo();
+            return _sendToDataQueue(dataQueue);
+        }
+    };
+
+    export const _sendToDataQueue = async (dataQueue: DataQueue): Promise<boolean> => {
+        const key = dataQueue.keyed ? await vscode.window.showInputBox({
+            placeHolder: "key data",
+            title: `Enter key data`,
+            validateInput: data => {
+                if (data.length > dataQueue.keyLength) {
+                    return `Key data is too long (maximum ${dataQueue.keyLength} characters)`;
+                }
+            }
+        }) : "";
+        const data = await vscode.window.showInputBox({
+            placeHolder: "data",
+            title: `Enter data`,
+            validateInput: data => {
+                if (data.length > dataQueue.maximumMessageLength) {
+                    return `Data is too long (maximum ${dataQueue.maximumMessageLength} characters)`;
+                }
+            }
+        });
+        if (data) {
+            await dataQueue.content.runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
+              DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
+            vscode.window.showInformationMessage(`Data successfully sent to ${dataQueue.library}/${dataQueue.name}.`);
+            return true;
+        }
+
+        return false;
+    };
+}
 
 interface Entry {
     key?: string
@@ -17,14 +80,26 @@ interface Entry {
 export class DataQueue extends Base {
     private readonly _info: Record<string, string | boolean | number> = {};
     private readonly _entries: Entry[] = [];
-    private keyed = false;
+    private _keyed = false;
+
+    get keyed() {
+        return this._keyed;
+    }
+
+    get keyLength() {
+        return this._info.keyLength;
+    }
+
+    get maximumMessageLength() {
+        return this._info.maximumMessageLength;
+    }
 
     async fetch() {
-        await this._fetchInfo();
+        await this.fetchInfo();
         await this._fetchEntries();
     }
 
-    get _content() {
+    get content() {
         const content = getBase().getContent();
         if (content) {
             return content;
@@ -34,8 +109,8 @@ export class DataQueue extends Base {
         }
     }
 
-    async _fetchInfo() {
-        const [dtaq]: DB2Row[] = await this._content.runSQL(
+    async fetchInfo() {
+        const [dtaq]: DB2Row[] = await this.content.runSQL(
             `Select * From QSYS2.DATA_QUEUE_INFO
             Where DATA_QUEUE_NAME = '${this.name}' And
                   DATA_QUEUE_LIBRARY = '${this.library}'
@@ -49,7 +124,7 @@ export class DataQueue extends Base {
             this._info.sequence = String(dtaq.SEQUENCE);
             if (this._info.sequence === "KEYED") {
                 this._info.keyLength = Number(dtaq.KEY_LENGTH);
-                this.keyed = true;
+                this._keyed = true;
             }
             this._info.includeSenderId = toBoolean(dtaq.INCLUDE_SENDER_ID);
             this._info.currentMessages = Number(dtaq.CURRENT_MESSAGES);
@@ -83,10 +158,10 @@ export class DataQueue extends Base {
         }
     }
 
-    async _fetchEntries() {
+    private async _fetchEntries() {
         this._entries.length = 0;
-        const entryRows: DB2Row[] = await this._content.runSQL(`
-        Select MESSAGE_DATA, MESSAGE_ENQUEUE_TIMESTAMP, SENDER_JOB_NAME, SENDER_CURRENT_USER ${this.keyed ? ",KEY_DATA" : ""}
+        const entryRows: DB2Row[] = await this.content.runSQL(`
+        Select MESSAGE_DATA, MESSAGE_ENQUEUE_TIMESTAMP, SENDER_JOB_NAME, SENDER_CURRENT_USER ${this._keyed ? ",KEY_DATA" : ""}
         From TABLE(QSYS2.DATA_QUEUE_ENTRIES(
             DATA_QUEUE_LIBRARY => '${this.library}',
             DATA_QUEUE => '${this.name}'
@@ -99,7 +174,7 @@ export class DataQueue extends Base {
     generateHTML(): string {
         return Components.panels([
             { title: "Data Queue", content: this.renderDataQueuePanel() },
-            { title: "Messages", badge: this._entries.length, content: renderEntries(this.keyed, this._entries) }
+            { title: "Messages", badge: this._entries.length, content: renderEntries(this._keyed, this._entries) }
         ], { style: "height:100vh" });
     }
 
@@ -108,35 +183,13 @@ export class DataQueue extends Base {
         let refetch = false;
         switch (uri.path) {
             case ACTION_CLEAR:
-                if (await vscode.window.showWarningMessage(`Are you sure you want to clear Data Queue ${this.library}/${this.name}?`, { modal: true }, "Clear")) {
-                    await this._content.runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${this.name}', '${this.library}');`);
-                    await this._fetchEntries();
+                if (await DataQueueActions.clearDataQueue(this)) {
                     refetch = true;
                 }
                 break;
 
             case ACTION_SEND:
-                const key = this.keyed ? await vscode.window.showInputBox({
-                    placeHolder: "key data",
-                    title: `Enter key data`,
-                    validateInput: data => {
-                        if (data.length > this._info.keyLength) {
-                            return `Key data is too long (maximum ${this._info.keyLength} characters)`;
-                        }
-                    }
-                }) : "";
-                const data = await vscode.window.showInputBox({
-                    placeHolder: "data",
-                    title: `Enter data`,
-                    validateInput: data => {
-                        if (data.length > this._info.maximumMessageLength) {
-                            return `Data is too long (maximum ${this._info.maximumMessageLength} characters)`;
-                        }
-                    }
-                });
-                if (data) {
-                    await this._content.runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
-                      DATA_QUEUE => '${this.name}', DATA_QUEUE_LIBRARY => '${this.library}')`);
+                if (await DataQueueActions.sendToDataQueue(this)) {
                     refetch = true;
                 }
         }
@@ -204,8 +257,4 @@ function renderEntries(keyed: boolean, entries: Entry[]) {
 
 function toBoolean(value: any) {
     return value === "YES";
-}
-
-function labelize(name: string) {
-    return name.split('').map((letter, index) => (index === 0 || letter.toUpperCase() === letter) ? ` ${letter.toUpperCase()}` : letter).join('').trim();
 }

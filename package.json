@@ -60,10 +60,57 @@
     ],
     "commands": [
       {
-        "command": "vscode-ibmi-fs.helloWorld",
-        "title": "Hello World"
+        "command": "vscode-ibmi-fs.downloadSavf",
+        "title": "Download Save file",
+        "category": "IBM i FS",
+        "icon": "cloud-download"
+      },
+      {
+        "command": "vscode-ibmi-fs.clearDataQueue",
+        "title": "Clear",
+        "category": "IBM i FS",
+        "icon": "clear-all"      
+      },
+      {
+        "command": "vscode-ibmi-fs.sendToDataQueue",
+        "title": "Send data",
+        "category": "IBM i FS",
+        "icon": "arrow-right"
       }
-    ]
+    ],
+    "commandPalette": [
+      {
+        "command": "vscode-ibmi-fs.downloadSavf",
+        "when": "never"
+      },
+      {
+        "command": "vscode-ibmi-fs.clearDataQueue",
+        "when": "never"
+      },
+      {
+        "command": "vscode-ibmi-fs.sendToDataQueue",
+        "when": "never"
+      }
+    ],
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "vscode-ibmi-fs.downloadSavf",
+          "when": "view == objectBrowser && viewItem == object.file.savf",
+          "group": "5_SavfAction@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.sendToDataQueue",
+          "when": "view == objectBrowser && viewItem == object.dtaq",
+          "group": "5_DtaqAction@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.clearDataQueue",
+          "when": "view == objectBrowser && viewItem == object.dtaq",
+          "group": "5_DtaqAction@2"
+        }
+      ]
+    }    
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
