@@ -49,22 +49,23 @@ export namespace DataQueueActions {
                 }
             }
         }) : "";
-        const data = await vscode.window.showInputBox({
-            placeHolder: "data",
-            title: `Enter data`,
-            validateInput: data => {
-                if (data.length > dataQueue.maximumMessageLength) {
-                    return `Data is too long (maximum ${dataQueue.maximumMessageLength} characters)`;
+        if (!dataQueue.keyed || key) {
+            const data = await vscode.window.showInputBox({
+                placeHolder: "data",
+                title: `Enter data`,
+                validateInput: data => {
+                    if (data.length > dataQueue.maximumMessageLength) {
+                        return `Data is too long (maximum ${dataQueue.maximumMessageLength} characters)`;
+                    }
                 }
-            }
-        });
-        if (data) {
-            await dataQueue.content.runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
+            });
+            if (data) {
+                await dataQueue.content.runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
               DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
-            vscode.window.showInformationMessage(`Data successfully sent to ${dataQueue.library}/${dataQueue.name}.`);
-            return true;
+                vscode.window.showInformationMessage(`Data successfully sent to ${dataQueue.library}/${dataQueue.name}.`);
+                return true;
+            }
         }
-
         return false;
     };
 }
