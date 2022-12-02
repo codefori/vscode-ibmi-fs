@@ -68,6 +68,12 @@
         "icon": "cloud-download"
       },
       {
+        "command": "vscode-ibmi-fs.uploadSavf",
+        "title": "Upload Save file(s)",
+        "category": "IBM i FS",
+        "icon": "cloud-upload"
+      },
+      {
         "command": "vscode-ibmi-fs.clearDataQueue",
         "title": "Clear",
         "category": "IBM i FS",
@@ -79,27 +85,18 @@
         "category": "IBM i FS",
         "icon": "arrow-right"
       }
-    ],
-    "commandPalette": [
-      {
-        "command": "vscode-ibmi-fs.downloadSavf",
-        "when": "never"
-      },
-      {
-        "command": "vscode-ibmi-fs.clearDataQueue",
-        "when": "never"
-      },
-      {
-        "command": "vscode-ibmi-fs.sendToDataQueue",
-        "when": "never"
-      }
-    ],
+    ],    
     "menus": {
       "view/item/context": [
         {
           "command": "vscode-ibmi-fs.downloadSavf",
           "when": "view == objectBrowser && viewItem == object.file.savf",
           "group": "5_SavfAction@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.uploadSavf",
+          "when": "view == objectBrowser && viewItem == filter",
+          "group": "5_SavfAction@2"
         },
         {
           "command": "vscode-ibmi-fs.sendToDataQueue",
@@ -110,6 +107,24 @@
           "command": "vscode-ibmi-fs.clearDataQueue",
           "when": "view == objectBrowser && viewItem == object.dtaq",
           "group": "5_DtaqAction@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "vscode-ibmi-fs.downloadSavf",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.uploadSavf",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.clearDataQueue",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.sendToDataQueue",
+          "when": "never"
         }
       ]
     }    

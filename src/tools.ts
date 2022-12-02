@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 
+export const IBMI_OBJECT_NAME = /^([\w$#@][\w\d$#@_.]{0,9})$/i;
+
 export function getBase() {
     const baseExtension = (vscode.extensions ? vscode.extensions.getExtension(`halcyontechltd.code-for-ibmi`) : undefined);
     return (baseExtension && baseExtension.isActive && baseExtension.exports ? baseExtension.exports.instance : null);

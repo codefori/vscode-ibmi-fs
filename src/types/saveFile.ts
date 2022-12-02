@@ -1,13 +1,16 @@
-import { download } from '@vscode/test-electron';
+import { basename, extname } from 'path';
 import * as vscode from 'vscode';
-import { IBMiObject } from '../import/code-for-ibmi';
-import { getBase, getQSYSObjectPath } from '../tools';
+import { Filter, IBMiObject } from '../import/code-for-ibmi';
+import { getBase, getQSYSObjectPath, IBMI_OBJECT_NAME, makeid } from '../tools';
 import { Components } from '../webviewToolkit';
 import Base from "./base";
 
 export namespace SaveFileActions {
     export const register = (context: vscode.ExtensionContext) => {
-        context.subscriptions.push(vscode.commands.registerCommand("vscode-ibmi-fs.downloadSavf", downloadSavf));
+        context.subscriptions.push(
+            vscode.commands.registerCommand("vscode-ibmi-fs.downloadSavf", downloadSavf),
+            vscode.commands.registerCommand("vscode-ibmi-fs.uploadSavf", uploadSavf)
+        );
     };
 
     export const downloadSavf = async (target: IBMiObject | SaveFile) => {
@@ -25,7 +28,7 @@ export namespace SaveFileActions {
         if (saveLocation) {
             const result = await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: `Downloading ${library}/${name}`,
+                title: `Downloading ${library}/${name}`
             }, async progress => {
                 const result = {
                     successful: true,
@@ -44,7 +47,7 @@ export namespace SaveFileActions {
 
                     if (copyToStreamFile.code === 0) {
                         try {
-                            progress.report({ message: 'Downloading stream file...' });
+                            progress.report({ message: 'downloading stream file...' });
                             await connection.client.getFile(saveLocation.fsPath, tempRemotePath);
                         } catch (error) {
                             result.successful = false;
@@ -74,6 +77,95 @@ export namespace SaveFileActions {
             }
             else {
                 vscode.window.showErrorMessage(`Failed to download ${library}/${name}: ${result.error}`);
+            }
+        }
+    };
+
+    export const uploadSavf = async (filter: Filter) => {
+        const saveFiles = await vscode.window.showOpenDialog({
+            canSelectFiles: true,
+            canSelectFolders: false,
+            canSelectMany: true,
+            title: "Upload Save File(s)",
+            // eslint-disable-next-line @typescript-eslint/naming-convention
+            filters: { 'SaveFile': ["savf"], 'All files': ["*"] }
+        });
+
+        if (saveFiles) {
+            let uploaded = 0;
+            const result = await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Uploading Save file`
+            }, async progress => {
+                const result = {
+                    successful: true,
+                    error: ''
+                };
+
+                const increment = (100 / saveFiles.length) / 2;
+                for await (const saveFile of saveFiles) {
+                    if (result.successful) {
+                        const localPath = saveFile.fsPath;
+                        const fileName = basename(localPath);
+                        let name = fileName.substring(0, fileName.indexOf('.')).toUpperCase();
+                        progress.report({ message: fileName });
+                        while (name && !IBMI_OBJECT_NAME.test(name)) {
+                            name = (await vscode.window.showInputBox({
+                                ignoreFocusOut: true,
+                                value: name,
+                                title: `Save file ${name} object name`,
+                                prompt: 'Enter a valid IBM i object name',
+                                placeHolder: 'Leave blank to skip upload',
+                                validateInput: input => {
+                                    if (name && !IBMI_OBJECT_NAME.test(input)) {
+                                        return 'invalid name';
+                                    }
+                                }
+                            }) || '').toUpperCase();
+                        }
+                        if (name) {
+                            const remotePath = `${getBase().getConfig().tempDir}/${name}_${makeid()}.savf`;
+                            try {
+                                progress.report({ message: `uploading ${fileName} to IFS` });
+                                await getBase().getConnection().client.putFile(localPath, remotePath);
+
+                                progress.report({ message: `restoring ${fileName} as SAVF`, increment });
+
+                                const copyFromStreamFile: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+                                    command: `CPYFRMSTMF FROMSTMF('${remotePath}') TOMBR('${getQSYSObjectPath(filter.library, name, 'FILE')}') MBROPT(*REPLACE)`,
+                                    environment: `ile`
+                                });
+                                if (copyFromStreamFile.code !== 0) {
+                                    result.successful = false;
+                                    result.error = copyFromStreamFile.stderr;
+                                }
+                                else{
+                                    uploaded++;
+                                }
+                                progress.report({ increment });
+                            }
+                            finally {
+                                await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+                                    command: `rm -f ${remotePath}`,
+                                    environment: `pase`
+                                });
+                            }
+                        }
+                        else{
+                            //Skipped
+                            progress.report({ increment: increment * 2 });
+                        }
+                    }
+                }
+
+                return result;
+            });
+
+            if (result.successful) {
+                vscode.window.showInformationMessage(`Successfully uploaded ${uploaded}/${saveFiles.length} Save file${saveFiles.length > 1 ? 's' : ''} to ${filter.library}.`);
+            }
+            else {
+                vscode.window.showErrorMessage(`Failed to upload Save file${saveFiles.length > 1 ? 's' : ''}: ${result.error}`);
             }
         }
     };
@@ -190,7 +282,6 @@ export class SaveFile extends Base {
 
     async handleAction(data: any): Promise<HandleActionResult> {
         const uri = vscode.Uri.parse(data.href);
-        let refetch = false;
         switch (uri.path) {
             case ACTION_DOWNLOAD:
                 SaveFileActions.downloadSavf(this);
@@ -277,7 +368,7 @@ function renderHeaders(size: string, headers: Header[]): string {
         h => h.label,
         h => h.value,
         headers
-    )}
+        )}
     ${Components.divider()}
     ${Components.button(`Download${size ? ` (${size})` : ''}`, { action: ACTION_DOWNLOAD, icon: { name: "cloud-download" } })}`;
 }

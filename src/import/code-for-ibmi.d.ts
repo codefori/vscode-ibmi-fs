@@ -5,3 +5,8 @@ export interface IBMiObject {
     text: string,
     attribute?: string
 }
+
+export interface Filter {
+    library: string,
+    filter: string
+}
