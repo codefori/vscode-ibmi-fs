@@ -11,8 +11,9 @@ Has support for:
 * Message Files (MSGF)
 * Binding Directories (BNDDIR)
 * Programs and Service Programs (PGM/SRVPGM)
-* Data Areas (DTAARA)
-* Data Queues (DTAQ)
+* Data Areas (DTAARA) - display and edit
+* Data Queues (DTAQ) - display, send data, clear
+* Save Files (SAVF) - display, download and upload
 
 ## TODO:
 
