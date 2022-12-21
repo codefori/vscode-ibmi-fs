@@ -1,7 +1,8 @@
-import { getBase } from "../tools";
 import * as vscode from 'vscode';
 import Base from "./base";
 import { Components } from "../webviewToolkit";
+import { Code4i } from '../tools';
+import { CommandResult } from '@halcyontech/vscode-ibmi-types';
 
 interface DataAreaInfo {
   value: string
@@ -19,11 +20,10 @@ export class DataArea extends Base {
   };
 
   async fetch(): Promise<void> {
-    const instance = getBase();
-    const connection = instance.getConnection();
-    const content = instance.getContent();
+    const connection = Code4i.getConnection();
+    const content = Code4i.getContent();
     if (connection && content) {
-      const [dtaara]: DB2Row[] = await content.runSQL(
+      const [dtaara] = await content.runSQL(
         `Select DATA_AREA_TYPE, LENGTH, DECIMAL_POSITIONS, DATA_AREA_VALUE
                 From TABLE(QSYS2.DATA_AREA_INFO(
                     DATA_AREA_NAME => '${this.name}',
@@ -97,7 +97,7 @@ export class DataArea extends Base {
       value = `'${this.dataArea.value}'`;;
     }
 
-    const command: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+    const command: CommandResult = await Code4i.runCommand({
       command: `CHGDTAARA DTAARA(${this.library}/${this.name}) VALUE(${value})`,
       environment: `ile`
     });

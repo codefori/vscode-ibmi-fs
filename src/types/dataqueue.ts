@@ -1,6 +1,7 @@
+import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
+import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
-import { IBMiObject } from '../import/code-for-ibmi';
-import { getBase } from "../tools";
+import { Code4i } from '../tools';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 
@@ -19,7 +20,7 @@ export namespace DataQueueActions {
         const library = item.library.toUpperCase();
         const name = item.name.toUpperCase();
         if (await vscode.window.showWarningMessage(`Are you sure you want to clear Data Queue ${library}/${name}?`, { modal: true }, "Clear")) {
-            await getBase().getContent().runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
+            await Code4i.getContent().runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
             vscode.window.showInformationMessage(`Data Queue ${library}/${name} cleared.`);
             return true;
         }
@@ -101,7 +102,7 @@ export class DataQueue extends Base {
     }
 
     get content() {
-        const content = getBase().getContent();
+        const content = Code4i.getContent();
         if (content) {
             return content;
         }
@@ -111,7 +112,7 @@ export class DataQueue extends Base {
     }
 
     async fetchInfo() {
-        const [dtaq]: DB2Row[] = await this.content.runSQL(
+        const [dtaq] = await this.content.runSQL(
             `Select * From QSYS2.DATA_QUEUE_INFO
             Where DATA_QUEUE_NAME = '${this.name}' And
                   DATA_QUEUE_LIBRARY = '${this.library}'
@@ -161,7 +162,7 @@ export class DataQueue extends Base {
 
     private async _fetchEntries() {
         this._entries.length = 0;
-        const entryRows: DB2Row[] = await this.content.runSQL(`
+        const entryRows = await this.content.runSQL(`
         Select MESSAGE_DATA, MESSAGE_ENQUEUE_TIMESTAMP, SENDER_JOB_NAME, SENDER_CURRENT_USER ${this._keyed ? ",KEY_DATA" : ""}
         From TABLE(QSYS2.DATA_QUEUE_ENTRIES(
             DATA_QUEUE_LIBRARY => '${this.library}',
@@ -213,7 +214,7 @@ export class DataQueue extends Base {
     }
 }
 
-function toEntry(row: DB2Row): Entry {
+function toEntry(row: Tools.DB2Row): Entry {
     return {
         data: String(row.MESSAGE_DATA),
         timestamp: String(row.MESSAGE_ENQUEUE_TIMESTAMP),

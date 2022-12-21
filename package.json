@@ -77,7 +77,7 @@
         "command": "vscode-ibmi-fs.clearDataQueue",
         "title": "Clear",
         "category": "IBM i FS",
-        "icon": "clear-all"      
+        "icon": "clear-all"
       },
       {
         "command": "vscode-ibmi-fs.sendToDataQueue",
@@ -85,7 +85,7 @@
         "category": "IBM i FS",
         "icon": "arrow-right"
       }
-    ],    
+    ],
     "menus": {
       "view/item/context": [
         {
@@ -127,7 +127,7 @@
           "when": "never"
         }
       ]
-    }    
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
@@ -157,6 +157,7 @@
     "webpack-cli": "^4.10.0"
   },
   "dependencies": {
+    "@halcyontech/vscode-ibmi-types": "^1.6.8",
     "@vscode/webview-ui-toolkit": "^1.1.0"
   }
 }

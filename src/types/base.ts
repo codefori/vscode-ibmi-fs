@@ -1,5 +1,4 @@
 import { CustomDocument, Uri } from "vscode";
-import { getBase } from "../tools";
 
 export default abstract class Base implements CustomDocument {
   public failedFetch: boolean = false;

@@ -1,7 +1,8 @@
+import { CommandResult, IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { basename, extname } from 'path';
 import * as vscode from 'vscode';
-import { Filter, IBMiObject } from '../import/code-for-ibmi';
-import { getBase, getQSYSObjectPath, IBMI_OBJECT_NAME, makeid } from '../tools';
+import { Filter } from '../import/code-for-ibmi';
+import { Code4i, getQSYSObjectPath, IBMI_OBJECT_NAME, makeid } from '../tools';
 import { Components } from '../webviewToolkit';
 import Base from "./base";
 
@@ -35,12 +36,12 @@ export namespace SaveFileActions {
                     error: ''
                 };
 
-                const connection = getBase().getConnection();
+                const connection = Code4i.getConnection();
                 if (connection) {
-                    const tempRemotePath = `${getBase().getConfig().tempDir}/${library}_${name}.savf`;
+                    const tempRemotePath = `${Code4i.getConfig().tempDir}/${library}_${name}.savf`;
 
                     progress.report({ message: 'Copying to temporary stream file...' });
-                    const copyToStreamFile: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+                    const copyToStreamFile: CommandResult = await Code4i.runCommand({
                         command: `CPYTOSTMF FROMMBR('${qsysPath}') TOSTMF('${tempRemotePath}') STMFOPT(*REPLACE)`,
                         environment: `ile`
                     });
@@ -54,7 +55,7 @@ export namespace SaveFileActions {
                             result.error = String(error);
                         }
                         finally {
-                            await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+                            await Code4i.runCommand({
                                 command: `rm -f ${tempRemotePath}`,
                                 environment: `pase`
                             });
@@ -124,16 +125,15 @@ export namespace SaveFileActions {
                             }) || '').toUpperCase();
                         }
                         if (name) {
-                            const remotePath = `${getBase().getConfig().tempDir}/${name}_${makeid()}.savf`;
+                            const remotePath = `${Code4i.getConfig().tempDir}/${name}_${makeid()}.savf`;
                             try {
                                 progress.report({ message: `uploading ${fileName} to IFS` });
-                                await getBase().getConnection().client.putFile(localPath, remotePath);
+                                await Code4i.getConnection().uploadFiles([{local: localPath, remote: remotePath}]);
 
                                 progress.report({ message: `restoring ${fileName} as SAVF`, increment });
 
-                                const copyFromStreamFile: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
-                                    command: `CPYFRMSTMF FROMSTMF('${remotePath}') TOMBR('${getQSYSObjectPath(filter.library, name, 'FILE')}') MBROPT(*REPLACE)`,
-                                    environment: `ile`
+                                const copyFromStreamFile = await Code4i.runCommand({
+                                    command: `CPYFRMSTMF FROMSTMF('${remotePath}') TOMBR('${getQSYSObjectPath(filter.library, name, 'FILE')}') MBROPT(*REPLACE)`
                                 });
                                 if (copyFromStreamFile.code !== 0) {
                                     result.successful = false;
@@ -145,7 +145,7 @@ export namespace SaveFileActions {
                                 progress.report({ increment });
                             }
                             finally {
-                                await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+                                await Code4i.runCommand({
                                     command: `rm -f ${remotePath}`,
                                     environment: `pase`
                                 });
@@ -226,7 +226,7 @@ export class SaveFile extends Base {
     private readonly spooledFiles: SpooledFile[] = [];
 
     async fetch() {
-        const savf: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+        const savf: CommandResult = await Code4i.runCommand({
             command: `DSPSAVF FILE(${this.library}/${this.name})`,
             environment: `ile`
         });
@@ -238,7 +238,7 @@ export class SaveFile extends Base {
             this.headers.shift();
         }
 
-        const stat: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+        const stat: CommandResult = await Code4i.runCommand({
             command: `ls -l ${this.qsysPath} | awk '{print $5}'`,
             environment: `pase`
         });
