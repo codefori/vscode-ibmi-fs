@@ -5,17 +5,28 @@ import { Components } from "../webviewToolkit";
 
 interface JobPropertie {
   jobName: string
-  jobNameShort: string
-  jobUser: string
-  jobNumber: string
   jobStatus: string
-  currentUser: string
-  typeEnhanced: string
   enteredSystemTime: string
-  activeTime: string
+  jobActiveTime: string
+  jobSubsystem: string
+  jobTypeEnhanced: string
   jobDescription: string
-  submitterJobName: string
-  outputQueue: string
+  jobDescriptionLibrary: string
+  jobQueueLibrary: string
+  jobQueueName: string
+  jobQueueStatus: string
+  jobQueuePriority: number
+  outputQueuePriority: number
+  jobEndSeverity: number
+  messageLoggingLevel: number
+  messageLoggingSeverity: number
+  messageLoggingText: string
+  logClProgramCommands: string
+  jobLogOutput: string
+  printerDeviceName: string
+  outputQueueName: string
+  outputQueueLibrary: string
+  jobDate: string
   dateFormat: string
   dateSeparator: string
   timeSeparator: string
@@ -23,7 +34,7 @@ interface JobPropertie {
   languageID: string
   countryID: string
   sortSequence: string
-  ccsid: string
+  ccsid: number
 }
 
 interface JobHistory {
@@ -43,7 +54,7 @@ interface JobObjectLockInfo {
   asp: string
 }
 
-interface JobOpenFiles {
+interface JobOpenFile {
   libraryName: string
   fileName: string
   fileType: string
@@ -57,34 +68,40 @@ interface JobOpenFiles {
   objectText: string
 }
 
+interface ProgramStack {
+  requestLevel: number
+  programName: string
+  programLibraryName: string
+  statementIdentifiers: string
+  controlBoundary: string
+  programAspName: string
+  moduleName: string
+  moduleLibraryName: string
+  procedureName: string
+  activationGroupNumber: number
+  activationGroupName: string
+}
+
+interface CommitmentControlStatus {
+  commitmentDefinition: string
+  commitmentDefinitionDescription: string
+  logicalUnitOfWorkId: string
+  lockSpaceId: string
+  logicalUnitOfWorkState: string
+  stateTimestamp: string
+  resourceLocation: string
+  defaultLockLevel: string
+  localChangesPending: string
+}
+
 export class JobProperties extends Base {
-  private jobPropertie: JobPropertie = {
-    jobName: "",
-    jobNameShort: "",
-    jobUser: "",
-    jobNumber: "",
-    jobStatus: "",
-    currentUser: "",
-    typeEnhanced: "",
-    enteredSystemTime: "",
-    activeTime: "",
-    jobDescription: "",
-    submitterJobName: "",
-    outputQueue: "",
-    dateFormat: "",
-    dateSeparator: "",
-    timeSeparator: "",
-    decimalFormat: "",
-    languageID: "",
-    countryID: "",
-    sortSequence: "",
-    ccsid: ""
-  };
-
+  private jobProperties: JobPropertie[] | undefined;
+  private jobPropertie: JobPropertie | undefined;
   private jobHistory: JobHistory[] | undefined;
-
   private jobObjectLockInfo: JobObjectLockInfo[] | undefined;
-  private jobOpenFiles: JobOpenFiles[] | undefined;
+  private jobOpenFiles: JobOpenFile[] | undefined;
+  private programsStack: ProgramStack[] | undefined;
+  private commitmentsControlStatus: CommitmentControlStatus[] | undefined;
 
   async fetch(): Promise<void> {
 
@@ -94,86 +111,106 @@ export class JobProperties extends Base {
     if (connection && content) {
 
       // Job Properties
-      const properties: Record<string, string | object | null>[] = (await vscode.commands.executeCommand(`code-for-ibmi.runQuery`, `SELECT IFNULL(x.job_name, '') "jobName", `
-        + ` IFNULL(x.JOB_NAME_SHORT, '') "jobNameShort",`
-        + ` IFNULL(x.JOB_USER, '') "jobUser",`
-        + ` IFNULL(x.JOB_NUMBER, '') "jobNumber",`
-        + ` IFNULL(x.job_status, '') "jobStatus",`
-        + ` IFNULL(x.job_user, '') "currentUser",`
-        + ` IFNULL(x.job_type_enhanced, '') "typeEnhanced",`
-        + ` IFNULL(x.job_entered_system_time, '0001-01-01 00:00:00') "enteredSystemTime",`
-        + ` IFNULL(x.job_active_time, '0001-01-01 00:00:00') "activeTime",`
-        + ` x.job_description_library CONCAT '/' CONCAT x.job_description "jobDescription",`
-        + ` IFNULL(x.submitter_job_name, '') "submitterJobName",`
-        + ` x.output_queue_library concat '/' concat x.output_queue_name "outputQueue",`
-        + ` ifnull(x.date_format, '') "dateFormat",`
-        + ` ifnull(x.date_separator, '') "dateSeparator",`
-        + ` ifnull(x.time_separator, '') "timeSeparator",`
-        + ` ifnull(x.decimal_format, '') "decimalFormat",`
-        + ` ifnull(x.language_id, '') "languageID",`
-        + ` ifnull(x.country_id, '') "countryID",`
-        + ` ifnull(x.sort_sequence_name, '') "sortSequence",`
-        + ` x.ccsid "ccsid"`
-        + ` FROM TABLE (QSYS2.JOB_INFO()) X`
-        + ` where x.job_name = '${this.name}' LIMIT 1`));
-
-      if (properties.length > 0) {
-        const [propertie] = properties;
-        this.jobPropertie.jobName = propertie.jobName!.toString();
-        this.jobPropertie.jobNameShort = propertie.jobNameShort!.toString();
-        this.jobPropertie.jobUser = propertie.jobUser!.toString();
-        this.jobPropertie.jobNumber = propertie.jobNumber!.toString();
-        this.jobPropertie.jobStatus = propertie.jobStatus!.toString();
-        this.jobPropertie.currentUser = propertie.currentUser!.toString();
-        this.jobPropertie.typeEnhanced = propertie.typeEnhanced!.toString();
-        this.jobPropertie.enteredSystemTime = propertie.enteredSystemTime!.toString();
-        this.jobPropertie.activeTime = propertie.activeTime!.toString();
-        this.jobPropertie.jobDescription = propertie.jobDescription!.toString();
-        this.jobPropertie.submitterJobName = propertie.submitterJobName!.toString();
-        this.jobPropertie.outputQueue = propertie.outputQueue!.toString();
-        this.jobPropertie.dateFormat = propertie.dateFormat!.toString();
-        this.jobPropertie.dateSeparator = propertie.dateSeparator!.toString();
-        this.jobPropertie.timeSeparator = propertie.timeSeparator!.toString();
-        this.jobPropertie.decimalFormat = propertie.decimalFormat!.toString();
-        this.jobPropertie.languageID = propertie.languageID!.toString();
-        this.jobPropertie.countryID = propertie.countryID!.toString();
-        this.jobPropertie.sortSequence = propertie.sortSequence!.toString();
-        this.jobPropertie.ccsid = propertie.ccsid!.toString();
+      this.jobProperties = await <JobPropertie[]>content.runSQL([`SELECT X.JOB_NAME "jobName",
+         X.JOB_STATUS "jobStatus",
+         X.JOB_ENTERED_SYSTEM_TIME "enteredSystemTime",
+         X.JOB_ACTIVE_TIME "jobActiveTime",
+         X.JOB_SUBSYSTEM "jobSubsystem",
+         X.JOB_TYPE_ENHANCED "jobTypeEnhanced",
+         X.JOB_DESCRIPTION "jobDescription",
+         X.JOB_DESCRIPTION_LIBRARY "jobDescriptionLibrary",
+         IFNULL(X.JOB_QUEUE_LIBRARY, '') "jobQueueLibrary",
+         IFNULL(X.JOB_QUEUE_NAME, '') "jobQueueName",
+         IFNULL(X.JOB_QUEUE_STATUS, '') "jobQueueStatus",
+         IFNULL(X.JOB_QUEUE_PRIORITY, 0) "jobQueuePriority",
+         X.OUTPUT_QUEUE_PRIORITY "outputQueuePriority",
+         X.JOB_END_SEVERITY "jobEndSeverity",
+         X.MESSAGE_LOGGING_LEVEL "messageLoggingLevel",
+         X.MESSAGE_LOGGING_SEVERITY "messageLoggingSeverity",
+         X.MESSAGE_LOGGING_TEXT "messageLoggingText",
+         X.LOG_CL_PROGRAM_COMMANDS "logClProgramCommands",
+         X.JOB_LOG_OUTPUT "jobLogOutput",
+         X.PRINTER_DEVICE_NAME "printerDeviceName",
+         X.OUTPUT_QUEUE_NAME "outputQueueName",
+         X.OUTPUT_QUEUE_LIBRARY "outputQueueLibrary",
+         X.JOB_DATE "jobDate",
+         X.DATE_FORMAT "dateFormat",
+         X.DATE_SEPARATOR "dateSeparator",
+         X.TIME_SEPARATOR "timeSeparator",
+         X.DECIMAL_FORMAT "decimalFormat",
+         ifnull(x.language_id, '') "languageID",
+         ifnull(x.country_id, '') "countryID",
+         ifnull(x.sort_sequence_name, '') "sortSequence",
+         x.ccsid "ccsid"
+         FROM TABLE (QSYS2.JOB_INFO()) X
+         where x.job_name = '${this.name}' LIMIT 1`].join(` `));
+         
+      if (this.jobProperties.length > 0) {
+        this.jobPropertie = this.jobProperties[0];
       }
 
       // History Job
-      this.jobHistory = await <JobHistory[]>content.runSQL([`select message_timestamp "timestamp", ifnull(message_id, '') "messageId", severity "severity", trim(message_text) "texte" from table(qsys2.joblog_info('${this.name}')) a order by ordinal_position desc`].join(` `));
+      this.jobHistory = await <JobHistory[]>content.runSQL([`select message_timestamp "timestamp", ifnull(message_id, '') "messageId", severity "severity", trim(message_text) "texte" 
+        from table(qsys2.joblog_info('${this.name}')) a order by ordinal_position desc`].join(` `));
 
       // Lock info
       this.jobObjectLockInfo = await <JobObjectLockInfo[]>content.runSQL([`SELECT DISTINCT object_name "object",
-            object_library "library",
-            object_type "objectType",
-            lock_state "lockState",
-            lock_status "lockStatus",
-            case when (IFNULL(MEMBER_LOCKS, 0) > 0) then 'YES' else 'NO' end "memberLocks",
-            asp_name "asp"
-      FROM TABLE (qsys2.job_lock_info(job_name => '${this.name}'))
-      ORDER BY object_name, object_library, object_type`].join(` `));
+        object_library "library",
+        object_type "objectType",
+        lock_state "lockState",
+        lock_status "lockStatus",
+        case when (IFNULL(MEMBER_LOCKS, 0) > 0) then 'YES' else 'NO' end "memberLocks",
+        asp_name "asp"
+        FROM TABLE (qsys2.job_lock_info(job_name => '${this.name}'))
+        ORDER BY object_name, object_library, object_type`].join(` `));
 
-      this.jobOpenFiles = await <JobOpenFiles[]>content.runSQL([`SELECT LIBRARY_NAME "libraryName",
-      FILE_NAME "fileName",
-      FILE_TYPE "fileType",
-      IFNULL(MEMBER_NAME, '') "memberName",
-      IFNULL(DEVICE_NAME, '') "deviceName",
-      IFNULL(RECORD_FORMAT, '') "recordFormat",
-      ACTIVATION_GROUP_NAME "activationGroupName",
-      ACTIVATION_GROUP_NUMBER "activationGroupNumber",
-      OPEN_OPTION "openOption",
-      IASP_NAME "iaspName",
-      (SELECT objtext
-          FROM TABLE (
-              QSYS2.OBJECT_STATISTICS(
-                LIBRARY_NAME, '*ALL', OBJECT_NAME => FILE_NAME)
-            ) A) "objectText"
-      FROM TABLE (
-          QSYS2.OPEN_FILES('${this.name}')
-        ) a`].join(` `));
+      // Open files
+      this.jobOpenFiles = await <JobOpenFile[]>content.runSQL([`SELECT LIBRARY_NAME "libraryName",
+        FILE_NAME "fileName",
+        FILE_TYPE "fileType",
+        IFNULL(MEMBER_NAME, '') "memberName",
+        IFNULL(DEVICE_NAME, '') "deviceName",
+        IFNULL(RECORD_FORMAT, '') "recordFormat",
+        ACTIVATION_GROUP_NAME "activationGroupName",
+        ACTIVATION_GROUP_NUMBER "activationGroupNumber",
+        OPEN_OPTION "openOption",
+        IASP_NAME "iaspName",
+        (SELECT objtext
+            FROM TABLE (
+                QSYS2.OBJECT_STATISTICS(
+                  LIBRARY_NAME, '*ALL', OBJECT_NAME => FILE_NAME)
+              ) A) "objectText"
+        FROM TABLE (
+            QSYS2.OPEN_FILES('${this.name}')
+          ) a`].join(` `));
 
+      // Call stack
+      this.programsStack = await <ProgramStack[]>content.runSQL([`SELECT IFNULL(A.REQUEST_LEVEL, 0) "requestLevel",
+        A.PROGRAM_NAME "programName",
+        A.PROGRAM_LIBRARY_NAME "programLibraryName",
+        IFNULL(A.STATEMENT_IDENTIFIERS, '') "statementIdentifiers",
+        A.CONTROL_BOUNDARY "controlBoundary",
+        A.PROGRAM_ASP_NAME "programAspName",
+        ifnull(A.MODULE_NAME, '') "moduleName",
+        ifnull(A.MODULE_LIBRARY_NAME, '') "moduleLibraryName",
+        ifnull(A.PROCEDURE_NAME, '') "procedureName",
+        ifnull(A.ACTIVATION_GROUP_NUMBER, 0) "activationGroupNumber",
+        ifnull(A.ACTIVATION_GROUP_NAME, '') "activationGroupName"
+        FROM TABLE ( QSYS2.STACK_INFO('${this.name}', 'ALL') ) A
+        ORDER BY A.ORDINAL_POSITION`].join(` `));
+
+      // Commitment control
+      this.commitmentsControlStatus = await <CommitmentControlStatus[]>content.runSQL([`SELECT COMMITMENT_DEFINITION "commitmentDefinition",
+        COMMITMENT_DEFINITION_DESCRIPTION "commitmentDefinitionDescription",
+        LOGICAL_UNIT_OF_WORK_ID "logicalUnitOfWorkId",
+        LOCK_SPACE_ID "lockSpaceId",
+        LOGICAL_UNIT_OF_WORK_STATE "logicalUnitOfWorkState",
+        STATE_TIMESTAMP "stateTimestamp",
+        RESOURCE_LOCATION "resourceLocation",
+        DEFAULT_LOCK_LEVEL "defaultLockLevel",
+        LOCAL_CHANGES_PENDING "localChangesPending"
+        FROM QSYS2.DB_TRANSACTION_INFO
+        WHERE JOB_NAME = '${this.name}'`].join(` `));
 
     } else {
       throw new Error("No connection.");
@@ -181,8 +218,6 @@ export class JobProperties extends Base {
   }
 
   generateHTML(): string {
-    const info = this.jobPropertie!;
-
     const propertieTab = `<h1>Job properties</h1><h2><i>${this.name}</i></h2>
       <vscode-data-grid>
         <vscode-data-grid-row row-type="header">
@@ -190,68 +225,124 @@ export class JobProperties extends Base {
           <vscode-data-grid-cell cell-type="columnheader" grid-column="2"></vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
-          <vscode-data-grid-cell grid-column="1">Status</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.jobStatus}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="1">Status of job</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.jobStatus}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
-          <vscode-data-grid-cell grid-column="1">Job name</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.jobNameShort}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="1">Entered system</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.enteredSystemTime}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
-          <vscode-data-grid-cell grid-column="1">Type enhanced</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.typeEnhanced}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="1">Started</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.jobActiveTime}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
-          <vscode-data-grid-cell grid-column="1">Entered in the system</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.enteredSystemTime}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="1">Subsystem</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.jobSubsystem}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
-          <vscode-data-grid-cell grid-column="1">Active time</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.activeTime}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="1">Type of job</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.jobTypeEnhanced}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
           <vscode-data-grid-cell grid-column="1">Job description</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.jobDescription}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.jobDescription}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
-          <vscode-data-grid-cell grid-column="1">Submitter job name</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.submitterJobName}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="1">Job description library</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.jobDescriptionLibrary}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
-          <vscode-data-grid-cell grid-column="1">Output queue</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.outputQueue}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="1">Job queue</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.jobQueueName}</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">Job queue library</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.jobQueueLibrary}</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">Job queue status</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.jobQueueStatus}</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">Job priority (on job queue)</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.jobQueuePriority}</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">Output priority (on output queue)</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.outputQueuePriority}</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">End severity</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.jobEndSeverity}</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">Message logging level</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.messageLoggingLevel}</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">Message logging severity</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.messageLoggingSeverity}</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">Message logging text</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.messageLoggingText}</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">Log CL program commands</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.logClProgramCommands}</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">Job log output</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.jobLogOutput}</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">Printer device</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.printerDeviceName}</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">Default output queue</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.outputQueueName}</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">Default output queue library</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.outputQueueLibrary}</vscode-data-grid-cell>
+        </vscode-data-grid-row>
+        <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">Job date</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.jobDate}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
           <vscode-data-grid-cell grid-column="1">Date format</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.dateFormat}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.dateFormat}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
           <vscode-data-grid-cell grid-column="1">Date separator</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.dateSeparator}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.dateSeparator}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
           <vscode-data-grid-cell grid-column="1">Time separator</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.timeSeparator}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.timeSeparator}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
           <vscode-data-grid-cell grid-column="1">Decimal format</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.decimalFormat}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.decimalFormat}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
           <vscode-data-grid-cell grid-column="1">Language ID</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.languageID}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.languageID}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
           <vscode-data-grid-cell grid-column="1">Country ID</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.countryID}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.countryID}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
           <vscode-data-grid-cell grid-column="1">Sort sequence</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.sortSequence}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.sortSequence}</vscode-data-grid-cell>
         </vscode-data-grid-row>
         <vscode-data-grid-row>
           <vscode-data-grid-cell grid-column="1">CCSID</vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2">${info?.ccsid}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${this.jobPropertie?.ccsid}</vscode-data-grid-cell>
         </vscode-data-grid-row>
       </vscode-data-grid>
       `;
@@ -302,7 +393,7 @@ export class JobProperties extends Base {
       </vscode-data-grid>
       `;
 
-    const openFilesTab = `<h1>Objects lock</h1><h2><i>${this.name}</i></h2>
+    const openFilesTab = `<h1>Open files</h1><h2><i>${this.name}</i></h2>
       <vscode-data-grid>
       <vscode-data-grid-row row-type="header">
         <vscode-data-grid-cell cell-type="columnheader" grid-column="1"><b>Library</b></vscode-data-grid-cell>
@@ -336,7 +427,74 @@ export class JobProperties extends Base {
       </vscode-data-grid>
       `;
 
-      const panels = /*html*/`
+    const programStackTab = `<h1>Call stack</h1><h2><i>${this.name}</i></h2>
+      <vscode-data-grid>
+      <vscode-data-grid-row row-type="header">
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="1"><b>Type</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="2"><b>Program</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="3"><b>Library</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="4"><b>Statement</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="5"><b>Control Boundary</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="6"><b>ASP</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="7"><b>Module</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="8"><b>Library</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="9"><b>Procedure</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="10"><b>ACTGRP n°</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="11"><b>ACTGRP name</b></vscode-data-grid-cell>
+      </vscode-data-grid-row>
+      ${this.programsStack?.map(programStack => {
+        if (programStack.programName !== `SELECTED.`) {
+          
+          return /*html*/`
+          <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">${programStack.requestLevel}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${programStack.programName}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="3">${programStack.programLibraryName}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="4">${programStack.statementIdentifiers}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="5">${programStack.controlBoundary}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="6">${programStack.programAspName}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="7">${programStack.moduleName}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="8">${programStack.moduleLibraryName}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="9">${programStack.procedureName}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="10">${programStack.activationGroupNumber}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="11">${programStack.activationGroupName}</vscode-data-grid-cell>
+          </vscode-data-grid-row>`;
+        }
+      }).join("")}
+      </vscode-data-grid>
+      `;
+
+    const commitmentControlTab = `<h1>Commitment control status</h1><h2><i>${this.name}</i></h2>
+      <vscode-data-grid>
+      <vscode-data-grid-row row-type="header">
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="1"><b>Commitment definition</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="2"><b>Text</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="3"><b>Logical unit work ID</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="4"><b>Lock space ID</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="5"><b>Logical unit work state</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="6"><b>State timestamp</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="7"><b>Resource location</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="8"><b>Default lock level</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell cell-type="columnheader" grid-column="9"><b>Changes pending</b></vscode-data-grid-cell>
+      </vscode-data-grid-row>
+      ${this.commitmentsControlStatus?.map(commitmentControlStatus => {
+          return /*html*/`
+          <vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1">${commitmentControlStatus.commitmentDefinition}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2">${commitmentControlStatus.commitmentDefinitionDescription}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="3">${commitmentControlStatus.logicalUnitOfWorkId}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="4">${commitmentControlStatus.lockSpaceId}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="5">${commitmentControlStatus.logicalUnitOfWorkState}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="6">${commitmentControlStatus.stateTimestamp}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="7">${commitmentControlStatus.resourceLocation}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="8">${commitmentControlStatus.defaultLockLevel}</vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="9">${commitmentControlStatus.localChangesPending}</vscode-data-grid-cell>
+          </vscode-data-grid-row>`;
+      }).join("")}
+      </vscode-data-grid>
+      `;
+
+    const panels = /*html*/`
       <vscode-panels>
         <vscode-panel-tab id="tab-1">
           PROPERTIES
@@ -353,10 +511,20 @@ export class JobProperties extends Base {
           OPEN FILES
           <vscode-badge appearance="secondary">${this.jobOpenFiles?.length}</vscode-badge>
         </vscode-panel-tab>
+        <vscode-panel-tab id="tab-5">
+          PROGRAM STACK
+          <vscode-badge appearance="secondary">${this.programsStack?.length}</vscode-badge>
+        </vscode-panel-tab>
+        <vscode-panel-tab id="tab-6">
+          COMMITMENT CONTROL STATUS
+          <vscode-badge appearance="secondary">${this.commitmentsControlStatus?.length}</vscode-badge>
+        </vscode-panel-tab>
         <vscode-panel-view id="view-1">${propertieTab}</vscode-panel-view>
         <vscode-panel-view id="view-2">${historyTab}</vscode-panel-view>
         <vscode-panel-view id="view-3">${objectsLockTab}</vscode-panel-view>
         <vscode-panel-view id="view-4">${openFilesTab}</vscode-panel-view>
+        <vscode-panel-view id="view-5">${programStackTab}</vscode-panel-view>
+        <vscode-panel-view id="view-6">${commitmentControlTab}</vscode-panel-view>
       </vscode-panels>`; 
 
     return panels;

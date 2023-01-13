@@ -160,10 +160,10 @@ export class JobBrowserView implements vscode.TreeDataProvider<any> {
 
           if (connection) {
             try {
-              const subSystems: SubSystemInfo[] = await content.runSQL([`SELECT a.SUBSYSTEM "subsystemName", A.SUBSYSTEM_LIBRARY_NAME "subsystemLibrary", IFNULL(s.TEXT_DESCRIPTION, '') "subsystemDescription" 
+              const subSystems: SubSystemInfo[] = await content.runSQL([`SELECT distinct a.SUBSYSTEM "subsystemName", A.SUBSYSTEM_LIBRARY_NAME "subsystemLibrary", IFNULL(s.TEXT_DESCRIPTION, '') "subsystemDescription" 
               FROM TABLE (QSYS2.ACTIVE_JOB_INFO(DETAILED_INFO => 'NONE' ${filterClause} )) A
               LEFT JOIN QSYS2.SUBSYSTEM_INFO s ON s.SUBSYSTEM_DESCRIPTION = A.SUBSYSTEM AND s.SUBSYSTEM_DESCRIPTION_LIBRARY = A.SUBSYSTEM_LIBRARY_NAME
-              WHERE JOB_TYPE NOT IN ('SBS', 'SYS', 'RDR', 'WTR') ${whereClause} group by a.SUBSYSTEM, A.SUBSYSTEM_LIBRARY_NAME, s.TEXT_DESCRIPTION order by a.SUBSYSTEM, A.SUBSYSTEM_LIBRARY_NAME, s.TEXT_DESCRIPTION`].join(` `));
+              WHERE JOB_TYPE NOT IN ('SBS', 'SYS', 'RDR', 'WTR') ${whereClause} order by 1, 2, 3`].join(` `));
               return subSystems.map(subSystem => new SubSystem(subSystem.subsystemName, subSystem.subsystemLibrary, subSystem.subsystemDescription, jobFilter.nameFilter, jobFilter.jobNameFilter, jobFilter.jobUserFilter, jobFilter.jobNumberFilter, jobFilter.profileFilter, jobFilter.subsystemFilter));
 
             } catch (e) {

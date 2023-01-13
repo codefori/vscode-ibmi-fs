@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { Components, generatePage, generateError } from '../../webviewToolkit';
-import { JobInfo, JobChange } from '../../typings';
+import { JobInfo } from '../../typings';
 import { getBase } from "../../tools";
 
 const instance = getBase();

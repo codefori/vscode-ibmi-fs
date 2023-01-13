@@ -98,18 +98,24 @@ export class JobFilterUI {
                     }
                     if (message.data.jobUserFilter === ``) {
                         message.data.jobUserFilter === `*`;
+                    } else {
+                        message.data.jobUserFilter = message.data.jobUserFilter.toUpperCase();
                     }
                     if (message.data.jobNumberFilter === ``) {
                         message.data.jobNumberFilter === `*`;
                     }
                     if (message.data.profileFilter === ``) {
                         message.data.profileFilter === `*`;
+                    } else {
+                        message.data.profileFilter = message.data.profileFilter.toUpperCase();
                     }
                     if (message.data.subsystemFilter === ``) {
                         message.data.subsystemFilter === `*`;
+                    } else {
+                        message.data.subsystemFilter = message.data.subsystemFilter.toUpperCase();
                     }
 
-                    if (jobFilters.length > 0) {
+                    if (jobFilters && jobFilters.length > 0) {
                         
                         // Find an existing filter with that name
                         existingConfigIndex = jobFilters.findIndex((filter: { nameFilter: any; }) => filter.nameFilter === message.data.nameFilter);
