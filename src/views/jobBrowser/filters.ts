@@ -87,8 +87,6 @@ export class JobFilterUI {
         webview.onDidReceiveMessage(
             async (message) => {
 
-                console.log(JSON.stringify(message.data));
-
                 if (message.data) {
                     let existingConfigIndex;
                     const config = instance.getConfig();
