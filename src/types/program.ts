@@ -1,8 +1,7 @@
+import { getBase } from "../tools";
 import * as vscode from 'vscode';
 import Base from "./base";
 import { Components } from "../webviewToolkit";
-import { Code4i } from '../tools';
-import IBMiContent from '@halcyontech/vscode-ibmi-types/api/IBMiContent';
 
 export default class Program extends Base {
   columns: Map<string, string> = new Map();
@@ -15,8 +14,9 @@ export default class Program extends Base {
   private exportedSymbols?: ILEExport[];
 
   async fetch(): Promise<void> {
-    const connection = Code4i.getConnection();
-    const content = Code4i.getContent();
+    const instance = getBase();
+    const connection = instance.getConnection();
+    const content = instance.getContent();
     if (connection && content) {
       await this.loadProgramInfoColumns(content);
 
@@ -26,7 +26,7 @@ export default class Program extends Base {
       //https://www.ibm.com/docs/en/i/7.4?topic=services-program-info-view
       const [programInfo] = await content.runSQL(`Select ${this.selectClause} From QSYS2.PROGRAM_INFO Where PROGRAM_LIBRARY = '${library}' And PROGRAM_NAME = '${name}'`);
 
-      this.type = String(programInfo.OBJECT_TYPE);
+      this.type = programInfo.OBJECT_TYPE;
 
       reorganizeFields(programInfo);
       this.info = programInfo;
@@ -42,14 +42,14 @@ export default class Program extends Base {
     }
   }
 
-  private async loadProgramInfoColumns(content: IBMiContent) {
+  private async loadProgramInfoColumns(content: any) {
     if (!this.selectClause) {
       this.selectClause = "";
       const hasFullSQL = content.ibmi.config?.enableSQL;
       //https://www.ibm.com/docs/en/i/7.4?topic=views-syscolumns2
       const columnDetail = await content.runSQL(`Select COLUMN_NAME, ${this.castIfNeeded("COLUMN_HEADING", 60, hasFullSQL)}, CCSID, LENGTH From QSYS2.SYSCOLUMNS2 Where TABLE_NAME = 'PROGRAM_INFO'`);
 
-      columnDetail.forEach((column) => {
+      columnDetail.forEach((column: any) => {
         const name = column.COLUMN_NAME!.toString();
         if (name !== "PROGRAM_NAME" && name !== "PROGRAM_LIBRARY") {
           const heading = this.parseHeading(column.COLUMN_HEADING!.toString());
@@ -93,15 +93,15 @@ export default class Program extends Base {
 
     const boundTab = /*html*/`
       <section>
-        ${this.boundModules ?
-        Components.dataGrid<ILEModule>({
-          columns: [
-            { title: "Module", cellValue: d => `${d.library}/${d.object}` },
-            { title: "Attribute", cellValue: d => d.attribute },
-            { title: "Created", cellValue: d => d.created },
-            { title: "Debug Data Available", cellValue: d => d.debugData }
-          ]
-        }, this.boundModules)
+        ${this.boundModules ? 
+          Components.dataGrid<ILEModule>({
+            columns: [
+              { title: "Module", cellValue: d => `${d.library}/${d.object}` },
+              { title: "Attribute", cellValue: d => d.attribute },
+              { title: "Created", cellValue: d => d.created },
+              { title: "Debug Data Available", cellValue: d => d.debugData }
+            ]
+          }, this.boundModules)
         : ``}
       </section>
 
@@ -111,12 +111,12 @@ export default class Program extends Base {
 
       <section>
         ${this.boundServicePrograms ?
-        Components.dataGrid<ILEServiceProgram>({
-          columns: [
-            { title: "Service Program", cellValue: d => `${d.library}/${d.object}` },
-            { title: "Signature", cellValue: d => d.signature },
-          ]
-        }, this.boundServicePrograms)
+          Components.dataGrid<ILEServiceProgram>({
+            columns: [
+              { title: "Service Program", cellValue: d => `${d.library}/${d.object}` },
+              { title: "Signature", cellValue: d => d.signature },
+            ]
+          }, this.boundServicePrograms)
         : ``}
       </section>
     `;
@@ -162,7 +162,7 @@ export default class Program extends Base {
     return panels;
   }
 
-  async handleAction(data: any): Promise<HandleActionResult> {
+  handleAction(data: any): HandleActionResult {
     return {};
   }
 
@@ -266,13 +266,13 @@ async function getBoundModules(library: string, object: string): Promise<ILEModu
     `where a.PROGRAM_LIBRARY = '${library}' and a.PROGRAM_NAME = '${object}'`
   ].join(` `);
 
-  const rows = await Code4i.getContent().runSQL(query);
+  const rows: any[] = await vscode.commands.executeCommand(`code-for-ibmi.runQuery`, query);
   return rows.map(row => ({
-    library: String(row.BOUND_MODULE_LIBRARY),
-    object: String(row.BOUND_MODULE),
-    attribute: String(row.MODULE_ATTRIBUTE),
-    created: String(row.MODULE_CREATE_TIMESTAMP),
-    debugData: String(row.DEBUG_DATA) === '*YES' ? '*YES' : '*NO'
+    library: row.BOUND_MODULE_LIBRARY,
+    object: row.BOUND_MODULE,
+    attribute: row.MODULE_ATTRIBUTE,
+    created: row.MODULE_CREATE_TIMESTAMP,
+    debugData: row.DEBUG_DATA
   }));
 }
 
@@ -292,11 +292,11 @@ async function getBoundServicePrograms(library: string, object: string): Promise
     `where a.PROGRAM_LIBRARY = '${library}' and a.PROGRAM_NAME = '${object}'`
   ].join(` `);
 
-  const rows = await Code4i.getContent().runSQL(query);
+  const rows: any[] = await vscode.commands.executeCommand(`code-for-ibmi.runQuery`, query);
   return rows.map(row => ({
-    library: String(row.BOUND_SERVICE_PROGRAM_LIBRARY),
-    object: String(row.BOUND_SERVICE_PROGRAM),
-    signature: String(row.BOUND_SERVICE_PROGRAM_SIGNATURE)
+    library: row.BOUND_SERVICE_PROGRAM_LIBRARY,
+    object: row.BOUND_SERVICE_PROGRAM,
+    signature: row.BOUND_SERVICE_PROGRAM_SIGNATURE
   }));
 }
 
@@ -314,9 +314,9 @@ async function getServiceProgramExports(library: string, object: string): Promis
     `where a.PROGRAM_LIBRARY = '${library}' and a.PROGRAM_NAME = '${object}'`
   ].join(` `);
 
-  const rows = await Code4i.getContent().runSQL(query);
+  const rows: any[] = await vscode.commands.executeCommand(`code-for-ibmi.runQuery`, query);
   return rows.map(row => ({
-    name: String(row.SYMBOL_NAME),
-    usage: String(row.SYMBOL_USAGE),
+    name: row.SYMBOL_NAME,
+    usage: row.SYMBOL_USAGE,
   }));
 }

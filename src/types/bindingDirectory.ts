@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import Base from "./base";
-import { makeid, Code4i } from '../tools';
+import { makeid, getTempLibrary, getTable, getBase } from '../tools';
 
 enum EntryStatus {
   existed,
@@ -32,24 +32,24 @@ export default class BindingDirectory extends Base {
   exports: ILESymbol[] | undefined;
 
   async fetch(): Promise<void> {
-    const tempLib = Code4i.getTempLibrary();
+    const tempLib = getTempLibrary();
     const tempName = makeid();
-    
-    const command = await Code4i.runCommand({
+
+    const command: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
       command: `DSPBNDDIR BNDDIR(${this.library}/${this.name}) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${tempName})`,
       environment: `ile`
     });
 
     if (command.code === 0) {
-      const rows = await Code4i.getTable(tempLib, tempName);
+      const rows = await getTable(tempLib, tempName);
       const results: Entry[] = rows.map(row => ({
-        object: String(row.BNOBNM),
-        library: String(row.BNOLNM),
-        type: String(row.BNOBTP),
-        activation: String(row.BNOACT),
+        object: row.BNOBNM,
+        library: row.BNOLNM,
+        type: row.BNOBTP,
+        activation: row.BNOACT,
         creation: {
-          date: Number(row.BNODAT),
-          time: Number(row.BNOTIM),
+          date: row.BNODAT,
+          time: row.BNOTIM,
         },
         status: EntryStatus.existed
       }));
@@ -155,7 +155,7 @@ export default class BindingDirectory extends Base {
 
       for (const currentEntry of deleted) {
         // For some reason, BNDDIR commands always post to standard out...
-        const command = await Code4i.runCommand({
+        const command: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
           command: `RMVBNDDIRE BNDDIR(${this.library}/${this.name}) OBJ(${currentEntry.library}/${currentEntry.object})`,
           environment: `ile`
         });
@@ -171,7 +171,7 @@ export default class BindingDirectory extends Base {
       }
 
       if (created.length > 0) {
-        const command = await Code4i.runCommand({
+        const command: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
           command: `ADDBNDDIRE BNDDIR(${this.library}/${this.name}) OBJ(${created.map(currentEntry => `(${currentEntry.library}/${currentEntry.object} ${currentEntry.type} ${currentEntry.activation})`).join(` `)})`,
           environment: `ile`
         });
@@ -187,7 +187,7 @@ export default class BindingDirectory extends Base {
     }
   }
 
-  async handleAction(data: any): Promise<HandleActionResult> {
+  handleAction(data: any): HandleActionResult {
     const uri = vscode.Uri.parse(data.href);
     switch (uri.path) {
       case `delete`:
@@ -250,10 +250,11 @@ export default class BindingDirectory extends Base {
   }
 
   private async getExports(): Promise<ILESymbol[] | undefined> {
+    const instance = getBase();
 
-    const connection = Code4i.getConnection();
+    const connection = instance.getConnection();
     if (connection) {
-      const config = Code4i.getConfig();
+      const config = instance.getConfig();
       const libraryList = [config.currentLibrary, ...config.libraryList];
       const libraryInList = libraryList.map(lib => `'${lib.toUpperCase()}'`).join(`, `);
 
@@ -272,12 +273,13 @@ export default class BindingDirectory extends Base {
         `  (c.ENTRY_LIBRARY = b.PROGRAM_LIBRARY or (c.ENTRY_LIBRARY = '*LIBL' and b.PROGRAM_LIBRARY in (${libraryInList})))`,
       ].join(` `);
 
-      const rows = await Code4i.getContent().runSQL(query);
+      const rows: any[] = await vscode.commands.executeCommand(`code-for-ibmi.runQuery`, query);
+
       return rows.map(row => ({
-        library: String(row.PROGRAM_LIBRARY),
-        object: String(row.PROGRAM_NAME),
-        symbol: String(row.SYMBOL_NAME),
-        usage: String(row.SYMBOL_USAGE)
+        library: row.PROGRAM_LIBRARY,
+        object: row.PROGRAM_NAME,
+        symbol: row.SYMBOL_NAME,
+        usage: row.SYMBOL_USAGE
       }));
     }
   }

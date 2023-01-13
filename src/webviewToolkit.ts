@@ -1,6 +1,8 @@
 /** @ts-ignore */
 import * as WebToolkit from "@vscode/webview-ui-toolkit/dist/toolkit.min.js";
 
+//@TODO: Badge
+
 const head = /*html*/`
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,27 +17,6 @@ const head = /*html*/`
       align-items: center;
       text-align: center;
       min-height: 100vh;
-    }
-
-    .keyValueGrid {
-      display: table;
-    }
-
-    .keyValueGrid p {
-      display: table-row;
-    }
-
-    .cellKey {  
-      font-weight: bold;    
-      display: table-cell;
-      padding-bottom: 5px;
-      width: 1%;
-      white-space: nowrap;
-    }
-
-    .cellValue {      
-      display: table-cell;
-      padding-left: 10px;
     }
   </style>`;
 
@@ -52,6 +33,38 @@ const footer = /*html*/`
       }
 
       return bindings;
+    }
+
+    function getInputs() {
+      let data = {};
+      // Text filed
+      for (const input of document.querySelectorAll('vscode-text-field')) {
+        data[input.id] = input.value;
+      }
+
+      // Checkbox
+      for (const input of document.querySelectorAll('vscode-checkbox')) {
+        data[input.id] = input.checked;
+      }
+
+      // Dropdown
+      for (const input of document.querySelectorAll('vscode-dropdown')) {
+        const selectElement = document.querySelector('#' + input.id);
+        data[input.id] = selectElement.options[selectElement.selectedIndex].value;
+      }
+      
+      // Radio
+      for (const input of document.querySelectorAll('vscode-radio-group')) {
+        const radioElement = document.getElementsByName(input.name);
+        for(i = 0; i < radioElement.length; i++) {
+          if(radioElement[i].checked) {
+            data[input.name] = radioElement[i].textContent;
+            break;
+          }
+        }
+      }
+
+      return data;
     }
 
     const vscode = acquireVsCodeApi();
@@ -75,9 +88,6 @@ const footer = /*html*/`
         value: ''
       }
       
-      console.log(link)
-      console.log(link.dataset.action)
-      
       if(link.dataset.action === "checkbox"){
         link.addEventListener('click', (event) => {
           data.value = !event.target.currentChecked;
@@ -90,6 +100,15 @@ const footer = /*html*/`
           vscode.postMessage(data);
         });
       }
+    }
+
+    const saveButton = document.getElementById("saveData");
+    if (saveButton) {
+      saveButton.addEventListener("click", () => {
+          const data = getInputs();
+          vscode.postMessage({data})
+      }
+      );
     }
 
     window.addEventListener("message", (event) => {
@@ -128,11 +147,9 @@ export function generateError(text: string) {
 `;
 }
 
-//https://github.com/microsoft/vscode-webview-ui-toolkit/blob/main/docs/components.md
 export namespace Components {
   interface Component {
     class?: string
-    style?: string
   }
 
   interface TextField extends Component {
@@ -142,7 +159,7 @@ export namespace Components {
     placeholder: string
     readonly: boolean
     size: number
-    type: 'Text' | 'Email' | 'Password' | 'Tel' | 'Text' | 'Url'
+    type: 'Text' | 'Email' | 'Password' | 'Tel' | 'Url'
     value: string
   }
 
@@ -181,13 +198,12 @@ export namespace Components {
     formtarget: string
     type: string
     value: string
-    icon: ButtonIcon,
-    action: string
+    icon: ButtonIcon
   }
 
   interface ButtonIcon extends Component {
     name: string
-    left?: boolean
+    left: boolean
   }
 
   interface Divider extends Component {
@@ -202,7 +218,7 @@ export namespace Components {
     rowClass?: (row: T) => string
   }
 
-  export interface Column<T> {
+  interface Column<T> {
     cellValue: (row: T) => string
     title?: string
     size?: string
@@ -217,17 +233,13 @@ export namespace Components {
     indicator: string
   }
 
-  export interface Panel extends Component {
-    title: string
-    badge?: number
-    content: string
-  }
-
-  export function panels(panels: Panel[], attributes?: Component, activeid?: number): string {
-    return /*html*/ `<vscode-panels ${renderAttributes(attributes)} ${activeid ? `activeid="tab-${activeid}"` : ""}>
-      ${panels.map((panel, index) => /*html*/ `<vscode-panel-tab id="tab-${index + 1}">${panel.title.toUpperCase()}${panel.badge ? badge(panel.badge, true) : ''}</vscode-panel-tab>`).join("")}
-      ${panels.map((panel, index) => /*html*/ `<vscode-panel-view id="view-${index + 1}" ${panel.class ? `class="${panel.class}"` : ''}>${panel.content}</vscode-panel-view>`).join("")}
-    </vscode-panels>`;
+  interface RadioGroup extends Component {
+    disabled: boolean
+    name: string
+    orientation: 'horiztonal' | 'vertical'
+    items: string[]
+    readonly: boolean
+    label: string
   }
 
   export function dataGrid<T>(grid: DataGrid<T>, content: T[]): string {
@@ -258,7 +270,7 @@ export namespace Components {
   }
 
   function renderRow<T>(grid: DataGrid<T>, row: T) {
-    return /*html*/ `<vscode-data-grid-row class="${grid.rowClass?.(row)}"}>
+    return /*html*/ `<vscode-data-grid-row class="${grid.headerClass}" class="${grid.rowClass?.(row)}"}>
         ${grid.columns.map((col, index) => /*html*/ `<vscode-data-grid-cell grid-column="${index + 1}" class="${col.cellClass?.(row) || ''}">${col.cellValue(row)}</vscode-data-grid-cell>`).join("")}        
       </vscode-data-grid-row>`;
   }
@@ -267,10 +279,18 @@ export namespace Components {
     return /* html */`<vscode-divider ${renderAttributes(options)}></vscode-divider>`;
   }
 
-  export function dropDown(id: string, dropDown: Partial<DropDown>, noChangeListener?: boolean) {
-    return /*html*/ `<vscode-dropdown id="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(dropDown, "indicator")}>
-      ${dropDown.indicator ? /*html*/ _icon(dropDown.indicator, "indicator") : ''}
+  export function dropDown(id: string, dropDown: Partial<DropDown>, label?: string, noChangeListener?: boolean) {
+    return /*html*/ `${label ? /*html*/ `<label for="${id}">${label}:</label><br>`: ''}
+    <vscode-dropdown id="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(dropDown, "indicator")}>
+      ${dropDown.indicator ? /*html*/ `<span slot="indicator" class="codicon codicon-${dropDown.indicator}"></span>` : ''}
       ${dropDown.items?.map(item => /*html*/ `<vscode-option>${item}</vscode-option>`).join("")}
+    </vscode-dropdown>`;
+  }
+
+  export function radioGroup(name: string, radioGroup: Partial<RadioGroup>, noChangeListener?: boolean) {
+    return /*html*/ `<vscode-radio-group name="${name}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(radioGroup, "indicator")}>
+      <label slot="label">${radioGroup.label || ""}</label>
+      ${radioGroup.items?.map(item => /*html*/ `<vscode-radio>${item}</vscode-radio>`).join("")}
     </vscode-dropdown>`;
   }
 
@@ -286,28 +306,11 @@ export namespace Components {
     return /* html */`<vscode-checkbox id="${id}" value="${id}" ${renderChangeListener("checkbox", noChangeListener)} ${renderAttributes(options)}>${label || ''}</vscode-checkbox>`;
   }
 
-  export function button(label?: string, options?: Partial<Button>) {
-    return /* html */`<vscode-button ${renderAttributes(options, "icon", "action")} ${options?.action ? `href="action:${options.action}"` : ""}>
+  export function button(id: string, label?: string, options?: Partial<Button>) {
+    return /* html */`<vscode-button id="${id}" name="${id}" ${renderAttributes(options, "icon")}>
       ${label || ''}
-      ${options?.icon ? /* html */ _icon(options.icon.name, options.icon.left ? "start" : "") : ''}
+      ${options?.icon ? /* html */ `<span class="codicon codicon-${options.icon.name}"${options.icon.left ? ' slot="start"' : ''}></span>` : ''}
       </vscode-button>`;
-  }
-
-  export function badge(count: number, secondary?: boolean) {
-    return /* html */`<vscode-badge ${secondary ? 'appearance="secondary"' : ''}>${count}</vscode-badge>`;
-  }
-
-  export function keyValueTable<T>(getKey: (e: T) => string, getValue: (e: T) => string, entries: T[]) {
-    return /* html */ `<div class="keyValueGrid">
-      ${entries.map(entry => {
-      return /* html */ `<p><span class="cellKey">${getKey(entry)}:</span><code class="cellValue">${getValue(entry)}</code></p>`;
-    }).join(``)}
-    </div>`;
-  }
-
-
-  function _icon(icon: string, slot?: string) {
-    return /* html */`<span class="codicon codicon-${icon}" ${slot ? `slot="${slot}"` : ''}></span>`;
   }
 
   function renderAttributes(options?: Object, ...skipped: string[]) {

@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { Code4i } from '../tools';
 import { Components } from '../webviewToolkit';
 import Base from "./base";
 
@@ -15,7 +14,7 @@ export class Command extends Base {
     private commandInfo: CommandDetail[] = [];
 
     async fetch() {
-        const command = await Code4i.runCommand({
+        const command: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
             command: `DSPCMD CMD(${this.library}/${this.name})`,
             environment: `ile`
         });
@@ -36,7 +35,7 @@ export class Command extends Base {
         }, this.commandInfo);
     }
 
-    async handleAction(data: any): Promise<HandleActionResult> {
+    handleAction(data: any): HandleActionResult {
         //Nothing to handle
         return {};
     }

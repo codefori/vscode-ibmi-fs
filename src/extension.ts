@@ -4,14 +4,20 @@ import * as vscode from 'vscode';
 import { workerData } from 'worker_threads';
 
 import ObjectProvider from './objectProvider';
-import { Code4i } from './tools';
-import { DataQueueActions } from './types/dataqueue';
-import { SaveFileActions } from './types/saveFile';
+
+import { JobBrowserView } from './views/jobBrowser';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
-export async function activate(context: vscode.ExtensionContext) {
-	await Code4i.initialize();
+export function activate(context: vscode.ExtensionContext) {
+
+	// Use the console to output diagnostic information (console.log) and errors (console.error)
+	// This line of code will only be executed once when your extension is activated
+	console.log('Congratulations, your extension "vscode-ibmi-fs" is now active!');
+
+	// The command has been defined in the package.json file
+	// Now provide the implementation of the command with registerCommand
+	// The commandId parameter must match the command field in package.json
 
 	context.subscriptions.push(
 		vscode.window.registerCustomEditorProvider(`vscode-ibmi-fs.editor`, new ObjectProvider(), {
@@ -21,10 +27,12 @@ export async function activate(context: vscode.ExtensionContext) {
 		})
 	);
 
-	SaveFileActions.register(context);
-	DataQueueActions.register(context);
-
-	console.log('Congratulations, your extension "vscode-ibmi-fs" is now active!');
+	context.subscriptions.push(
+		vscode.window.registerTreeDataProvider(
+			`jobBrowser`,
+			new JobBrowserView(context)
+		)
+	);
 }
 
 // this method is called when your extension is deactivated
