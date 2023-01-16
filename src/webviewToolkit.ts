@@ -1,8 +1,6 @@
 /** @ts-ignore */
 import * as WebToolkit from "@vscode/webview-ui-toolkit/dist/toolkit.min.js";
 
-//@TODO: Badge
-
 const head = /*html*/`
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,6 +15,27 @@ const head = /*html*/`
       align-items: center;
       text-align: center;
       min-height: 100vh;
+    }
+
+    .keyValueGrid {
+      display: table;
+    }
+
+    .keyValueGrid p {
+      display: table-row;
+    }
+
+    .cellKey {  
+      font-weight: bold;    
+      display: table-cell;
+      padding-bottom: 5px;
+      width: 1%;
+      white-space: nowrap;
+    }
+
+    .cellValue {      
+      display: table-cell;
+      padding-left: 10px;
     }
   </style>`;
 
@@ -88,6 +107,9 @@ const footer = /*html*/`
         value: ''
       }
       
+      console.log(link)
+      console.log(link.dataset.action)
+      
       if(link.dataset.action === "checkbox"){
         link.addEventListener('click', (event) => {
           data.value = !event.target.currentChecked;
@@ -147,9 +169,11 @@ export function generateError(text: string) {
 `;
 }
 
+//https://github.com/microsoft/vscode-webview-ui-toolkit/blob/main/docs/components.md
 export namespace Components {
   interface Component {
     class?: string
+    style?: string
   }
 
   interface TextField extends Component {
@@ -198,12 +222,13 @@ export namespace Components {
     formtarget: string
     type: string
     value: string
-    icon: ButtonIcon
+    icon: ButtonIcon,
+    action: string
   }
 
   interface ButtonIcon extends Component {
     name: string
-    left: boolean
+    left?: boolean
   }
 
   interface Divider extends Component {
@@ -218,7 +243,7 @@ export namespace Components {
     rowClass?: (row: T) => string
   }
 
-  interface Column<T> {
+  export interface Column<T> {
     cellValue: (row: T) => string
     title?: string
     size?: string
@@ -233,6 +258,12 @@ export namespace Components {
     indicator: string
   }
 
+  export interface Panel extends Component {
+    title: string
+    badge?: number
+    content: string
+  }
+
   interface RadioGroup extends Component {
     disabled: boolean
     name: string
@@ -240,6 +271,13 @@ export namespace Components {
     items: string[]
     readonly: boolean
     label: string
+  }
+
+  export function panels(panels: Panel[], attributes?: Component, activeid?: number): string {
+    return /*html*/ `<vscode-panels ${renderAttributes(attributes)} ${activeid ? `activeid="tab-${activeid}"` : ""}>
+      ${panels.map((panel, index) => /*html*/ `<vscode-panel-tab id="tab-${index + 1}">${panel.title.toUpperCase()}${panel.badge ? badge(panel.badge, true) : ''}</vscode-panel-tab>`).join("")}
+      ${panels.map((panel, index) => /*html*/ `<vscode-panel-view id="view-${index + 1}" ${panel.class ? `class="${panel.class}"` : ''}>${panel.content}</vscode-panel-view>`).join("")}
+    </vscode-panels>`;
   }
 
   export function dataGrid<T>(grid: DataGrid<T>, content: T[]): string {
@@ -270,7 +308,7 @@ export namespace Components {
   }
 
   function renderRow<T>(grid: DataGrid<T>, row: T) {
-    return /*html*/ `<vscode-data-grid-row class="${grid.headerClass}" class="${grid.rowClass?.(row)}"}>
+    return /*html*/ `<vscode-data-grid-row class="${grid.rowClass?.(row)}"}>
         ${grid.columns.map((col, index) => /*html*/ `<vscode-data-grid-cell grid-column="${index + 1}" class="${col.cellClass?.(row) || ''}">${col.cellValue(row)}</vscode-data-grid-cell>`).join("")}        
       </vscode-data-grid-row>`;
   }
@@ -282,7 +320,7 @@ export namespace Components {
   export function dropDown(id: string, dropDown: Partial<DropDown>, label?: string, noChangeListener?: boolean) {
     return /*html*/ `${label ? /*html*/ `<label for="${id}">${label}:</label><br>`: ''}
     <vscode-dropdown id="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(dropDown, "indicator")}>
-      ${dropDown.indicator ? /*html*/ `<span slot="indicator" class="codicon codicon-${dropDown.indicator}"></span>` : ''}
+      ${dropDown.indicator ? /*html*/ _icon(dropDown.indicator, "indicator") : ''}
       ${dropDown.items?.map(item => /*html*/ `<vscode-option>${item}</vscode-option>`).join("")}
     </vscode-dropdown>`;
   }
@@ -307,10 +345,27 @@ export namespace Components {
   }
 
   export function button(id: string, label?: string, options?: Partial<Button>) {
-    return /* html */`<vscode-button id="${id}" name="${id}" ${renderAttributes(options, "icon")}>
+    return /* html */`<vscode-button id="${id}" name="${id}" ${renderAttributes(options, "icon", "action")} ${options?.action ? `href="action:${options.action}"` : ""}>
       ${label || ''}
-      ${options?.icon ? /* html */ `<span class="codicon codicon-${options.icon.name}"${options.icon.left ? ' slot="start"' : ''}></span>` : ''}
+      ${options?.icon ? /* html */ _icon(options.icon.name, options.icon.left ? "start" : "") : ''}
       </vscode-button>`;
+  }
+
+  export function badge(count: number, secondary?: boolean) {
+    return /* html */`<vscode-badge ${secondary ? 'appearance="secondary"' : ''}>${count}</vscode-badge>`;
+  }
+
+  export function keyValueTable<T>(getKey: (e: T) => string, getValue: (e: T) => string, entries: T[]) {
+    return /* html */ `<div class="keyValueGrid">
+      ${entries.map(entry => {
+      return /* html */ `<p><span class="cellKey">${getKey(entry)}:</span><code class="cellValue">${getValue(entry)}</code></p>`;
+    }).join(``)}
+    </div>`;
+  }
+
+
+  function _icon(icon: string, slot?: string) {
+    return /* html */`<span class="codicon codicon-${icon}" ${slot ? `slot="${slot}"` : ''}></span>`;
   }
 
   function renderAttributes(options?: Object, ...skipped: string[]) {

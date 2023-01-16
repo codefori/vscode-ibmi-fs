@@ -1,7 +1,8 @@
-import { getBase } from "../tools";
 import * as vscode from 'vscode';
 import Base from "./base";
 import { Components } from "../webviewToolkit";
+import { Code4i } from '../tools';
+import { CommandResult } from '@halcyontech/vscode-ibmi-types';
 
 interface DataAreaInfo {
   value: string
@@ -19,19 +20,17 @@ export class DataArea extends Base {
   };
 
   async fetch(): Promise<void> {
-    const instance = getBase();
-    const connection = instance.getConnection();
-    const content = instance.getContent();
+    const connection = Code4i.getConnection();
+    const content = Code4i.getContent();
     if (connection && content) {
-      const dtaaras: Record<string, string | object | null>[] = (await vscode.commands.executeCommand(`code-for-ibmi.runQuery`,
+      const [dtaara] = await content.runSQL(
         `Select DATA_AREA_TYPE, LENGTH, DECIMAL_POSITIONS, DATA_AREA_VALUE
                 From TABLE(QSYS2.DATA_AREA_INFO(
                     DATA_AREA_NAME => '${this.name}',
                     DATA_AREA_LIBRARY => '${this.library}'))
                 Fetch first row only`
-      ));
+      );
 
-      const [dtaara] = dtaaras;
       this.dataArea.type = dtaara.DATA_AREA_TYPE!.toString();
       this.dataArea.value = dtaara.DATA_AREA_VALUE?.toString() || "";
       this.dataArea.length = Number(dtaara.LENGTH!);
@@ -42,7 +41,7 @@ export class DataArea extends Base {
   }
 
   generateHTML(): string {
-    const info = this.dataArea!;
+    const info = this.dataArea;
     return /* html */`
     <p>
       <h3>Type: <code>${info.type}</code></h3>
@@ -53,7 +52,7 @@ export class DataArea extends Base {
     <p>${renderValueField(info)}</p>`;
   }
 
-  handleAction(data: any): HandleActionResult {
+  async handleAction(data: any): Promise<HandleActionResult> {
     this.dataArea.value = this.getValue(data.value).toString();
     // We don't want to rerender. 
     return {
@@ -98,7 +97,7 @@ export class DataArea extends Base {
       value = `'${this.dataArea.value}'`;;
     }
 
-    const command: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+    const command: CommandResult = await Code4i.runCommand({
       command: `CHGDTAARA DTAARA(${this.library}/${this.name}) VALUE(${value})`,
       environment: `ile`
     });

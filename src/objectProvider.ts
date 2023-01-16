@@ -1,13 +1,16 @@
 
+import { utils } from 'mocha';
 import path = require('path');
 import * as vscode from 'vscode';
 import Base from './types/base';
 import BindingDirectory from './types/bindingDirectory';
 import { Command } from './types/command';
 import { DataArea } from './types/dataarea';
+import { DataQueue } from './types/dataqueue';
 import { JobProperties } from './types/job';
 import Program from './types/program';
-import {generatePage, generateError} from './webviewToolkit';
+import { SaveFile } from './types/saveFile';
+import { generatePage, generateError } from './webviewToolkit';
 
 export default class ObjectProvider implements vscode.CustomEditorProvider<Base> {
   // https://github.com/microsoft/vscode-extension-samples/blob/main/custom-editor-sample/src/pawDrawEditor.ts#L316
@@ -63,7 +66,7 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
     } else {
       webviewPanel.webview.html = generatePage(document.generateHTML());
       webviewPanel.webview.onDidReceiveMessage(async body => {
-        const actionResult = document.handleAction(body);
+        const actionResult = await document.handleAction(body);
 
         if (actionResult.dirty) {
           this._onDidChangeCustomDocument.fire({
@@ -102,6 +105,14 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
 
       case `CMD`:
         return new Command(uri, library, objectName);
+
+      case `DTAQ`:
+        return new DataQueue(uri, library, objectName);
+
+      case `FILE`:
+        if (uri.fragment.toUpperCase() === 'SAVF') {
+          return new SaveFile(uri, library, objectName);
+        }
     }
   } if (pieces.length === 4) {
     const nameInfo = path.parse(pieces[3]);
@@ -109,11 +120,9 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
     const objectName = uri.path.substring(1, uri.path.indexOf(type)-1);
     switch (type.toUpperCase()) {
       case `JOB`:
-        case `JOB`:
-          return new JobProperties(uri, "", objectName);
+        return new JobProperties(uri, "", objectName);
     }
-  }
-  else {
+  }else {
     throw new Error(`Invalid path.`);
   }
   return;

@@ -22,7 +22,9 @@
   "activationEvents": [
     "onFileSystem:object",
     "onFileSystem:job",
-    "onCustomEditor:vscode-ibmi-fs.editor"
+    "onCustomEditor:vscode-ibmi-fs.editor",
+    "onCommand:code-for-ibmi.connect",
+    "onView:connectionBrowser"
   ],
   "extensionDependencies": [
     "HalcyonTechLtd.code-for-ibmi"
@@ -35,28 +37,58 @@
         "displayName": "Object Editor",
         "selector": [
           {
-            "filenamePattern": "object*/**/*.{BNDDIR}"
+            "filenamePattern": "object*/**/*.BNDDIR"
           },
           {
-            "filenamePattern": "object*/**/*.{MSGF}"
+            "filenamePattern": "object*/**/*.MSGF"
           },
           {
-            "filenamePattern": "object*/**/*.{DTAARA}"
+            "filenamePattern": "object*/**/*.DTAARA"
           },
           {
             "filenamePattern": "object*/**/*.{PGM,SRVPGM}"
           },
           {
-            "filenamePattern": "object*/**/*.{CMD}"
+            "filenamePattern": "object*/**/*.CMD"
           },
           {
-            "filenamePattern": "job*/**/**/*.{JOB}"
+            "filenamePattern": "object*/**/*.DTAQ"
+          },
+          {
+            "filenamePattern": "object*/**/*.FILE"
+          },
+          {
+            "filenamePattern": "job*/**/**/*.JOB"
           }
         ],
         "priority": "default"
       }
     ],
     "commands": [
+      {
+        "command": "vscode-ibmi-fs.downloadSavf",
+        "title": "Download Save file",
+        "category": "IBM i FS",
+        "icon": "cloud-download"
+      },
+      {
+        "command": "vscode-ibmi-fs.uploadSavf",
+        "title": "Upload Save file(s)",
+        "category": "IBM i FS",
+        "icon": "cloud-upload"
+      },
+      {
+        "command": "vscode-ibmi-fs.clearDataQueue",
+        "title": "Clear",
+        "category": "IBM i FS",
+        "icon": "clear-all"
+      },
+      {
+        "command": "vscode-ibmi-fs.sendToDataQueue",
+        "title": "Send data",
+        "category": "IBM i FS",
+        "icon": "arrow-right"
+      },
       {
         "command": "vscode-ibmi-fs.createJobFilter",
         "enablement": "code-for-ibmi:connected == true",
@@ -152,6 +184,26 @@
       ],
       "view/item/context": [
         {
+          "command": "vscode-ibmi-fs.downloadSavf",
+          "when": "view == objectBrowser && viewItem == object.file.savf",
+          "group": "5_SavfAction@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.uploadSavf",
+          "when": "view == objectBrowser && viewItem == filter",
+          "group": "5_SavfAction@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.sendToDataQueue",
+          "when": "view == objectBrowser && viewItem == object.dtaq",
+          "group": "5_DtaqAction@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.clearDataQueue",
+          "when": "view == objectBrowser && viewItem == object.dtaq",
+          "group": "5_DtaqAction@2"
+        },
+        {
           "command": "vscode-ibmi-fs.maintainJobFilter",
           "when": "view == jobBrowser"
         },
@@ -189,6 +241,24 @@
           "when": "viewItem == activeJob || viewItem == myActiveJob",
           "group": "1_activeJobList@1"
         }
+      ],
+      "commandPalette": [
+        {
+          "command": "vscode-ibmi-fs.downloadSavf",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.uploadSavf",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.clearDataQueue",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.sendToDataQueue",
+          "when": "never"
+        }
       ]
     }
   },
@@ -220,6 +290,7 @@
     "webpack-cli": "^4.10.0"
   },
   "dependencies": {
+    "@halcyontech/vscode-ibmi-types": "^1.6.8",
     "@vscode/webview-ui-toolkit": "^1.1.0"
   }
 }

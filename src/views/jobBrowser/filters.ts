@@ -1,10 +1,8 @@
 import * as vscode from 'vscode';
 import { Components, generatePage, generateError } from '../../webviewToolkit';
 import { JobFilter } from '../../typings';
-import { getBase } from "../../tools";
+import { Code4i } from "../../tools";
 import { ConnectionConfiguration } from "../../api/Configuration";
-
-const instance = getBase();
 
 export class JobFilterUI {
     public static currentPanel: JobFilterUI | undefined;
@@ -89,7 +87,7 @@ export class JobFilterUI {
 
                 if (message.data) {
                     let existingConfigIndex;
-                    const config = instance.getConfig();
+                    const config = Code4i.getConfig();
 
                     const jobFilters: JobFilter[] = config.jobFilters || undefined;
 

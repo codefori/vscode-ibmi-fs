@@ -1,5 +1,4 @@
 import { CustomDocument, Uri } from "vscode";
-import { getBase } from "../tools";
 
 export default abstract class Base implements CustomDocument {
   public failedFetch: boolean = false;
@@ -52,7 +51,7 @@ export default abstract class Base implements CustomDocument {
    * Note that if you return true, all user inputs are set back
    * to their default values, losing the current state.
    */
-  abstract handleAction(data: any): HandleActionResult;
+  abstract handleAction(data: any): Promise<HandleActionResult>;
 
   /**
    * Use this method to run any remote commands to update the object

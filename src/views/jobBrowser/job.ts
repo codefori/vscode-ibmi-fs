@@ -1,9 +1,7 @@
 import * as vscode from 'vscode';
 import { Components, generatePage, generateError } from '../../webviewToolkit';
 import { JobInfo } from '../../typings';
-import { getBase } from "../../tools";
-
-const instance = getBase();
+import { Code4i } from '../../tools';
 
 export class EndJobUi {
     public static currentPanel: EndJobUi | undefined;
@@ -78,7 +76,7 @@ export class EndJobUi {
         webview.onDidReceiveMessage(
             async (message) => {
                 if (message.data) {
-                    const connection = instance.getConnection();
+                    const connection = Code4i.getConnection();
 
                     if (connection) {
 
@@ -179,7 +177,7 @@ export class HoldJobUi {
         webview.onDidReceiveMessage(
             async (message) => {
                 if (message.data) {
-                    const connection = instance.getConnection();
+                    const connection = Code4i.getConnection();
 
                     if (connection) {
 
@@ -273,7 +271,7 @@ export class ReleaseJobUi {
         webview.onDidReceiveMessage(
             async (message) => {
                 if (message.data) {
-                    const connection = instance.getConnection();
+                    const connection = Code4i.getConnection();
 
                     if (connection) {
                         try {
@@ -394,7 +392,7 @@ export class ChangeJobUi {
         webview.onDidReceiveMessage(
             async (message) => {
                 if (message.data) {
-                    const connection = instance.getConnection();
+                    const connection = Code4i.getConnection();
 
                     if (connection) {
 

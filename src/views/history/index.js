@@ -20,7 +20,7 @@ module.exports = class HistoryJobUI {
 
   }
   
-}
+};
 
 function getWebviewContent(historyLog) {
   return `<!DOCTYPE html>
@@ -83,7 +83,7 @@ function getWebviewContent(historyLog) {
         <div class="divTableCell">${log.messageId}</div>
         <div class="divTableCell">${log.severity}</div>
         <div class="divTableCell">${log.texte}</div>
-        </div>`}).join(``)}
+        </div>`;}).join(``)}
       </div>
     </div>
     </body>

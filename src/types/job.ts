@@ -1,7 +1,6 @@
-import { getBase } from "../tools";
 import * as vscode from 'vscode';
 import Base from "./base";
-import { Components } from "../webviewToolkit";
+import { Code4i } from '../tools';
 
 interface JobPropertie {
   jobName: string
@@ -95,7 +94,6 @@ interface CommitmentControlStatus {
 }
 
 export class JobProperties extends Base {
-  private jobProperties: JobPropertie[] | undefined;
   private jobPropertie: JobPropertie | undefined;
   private jobHistory: JobHistory[] | undefined;
   private jobObjectLockInfo: JobObjectLockInfo[] | undefined;
@@ -104,14 +102,12 @@ export class JobProperties extends Base {
   private commitmentsControlStatus: CommitmentControlStatus[] | undefined;
 
   async fetch(): Promise<void> {
-
-    const instance = getBase();
-    const connection = instance.getConnection();
-    const content = instance.getContent();
+    const connection = Code4i.getConnection();
+    const content = Code4i.getContent();
     if (connection && content) {
 
       // Job Properties
-      this.jobProperties = await <JobPropertie[]>content.runSQL([`SELECT X.JOB_NAME "jobName",
+      const jobProperties = await Code4i.getContent().runSQL([`SELECT X.JOB_NAME "jobName",
          X.JOB_STATUS "jobStatus",
          X.JOB_ENTERED_SYSTEM_TIME "enteredSystemTime",
          X.JOB_ACTIVE_TIME "jobActiveTime",
@@ -145,16 +141,58 @@ export class JobProperties extends Base {
          FROM TABLE (QSYS2.JOB_INFO()) X
          where x.job_name = '${this.name}' LIMIT 1`].join(` `));
          
-      if (this.jobProperties.length > 0) {
-        this.jobPropertie = this.jobProperties[0];
+      if (jobProperties && jobProperties.length > 0) {
+        const resultsJobPropertie: JobPropertie[] = jobProperties.map(row => ({
+          jobName: String(row.jobName),
+          jobStatus: String(row.jobStatus),
+          enteredSystemTime: String(row.enteredSystemTime),
+          jobActiveTime: String(row.jobActiveTime),
+          jobSubsystem: String(row.jobSubsystem),
+          jobTypeEnhanced: String(row.jobTypeEnhanced),
+          jobDescription: String(row.jobDescription),
+          jobDescriptionLibrary: String(row.jobDescriptionLibrary),
+          jobQueueLibrary: String(row.jobQueueLibrary),
+          jobQueueName: String(row.jobQueueName),
+          jobQueueStatus: String(row.jobQueueStatus),
+          jobQueuePriority: Number(row.jobQueuePriority),
+          outputQueuePriority: Number(row.outputQueuePriority),
+          jobEndSeverity: Number(row.jobEndSeverity),
+          messageLoggingLevel: Number(row.messageLoggingLevel),
+          messageLoggingSeverity: Number(row.messageLoggingSeverity),
+          messageLoggingText: String(row.messageLoggingText),
+          logClProgramCommands: String(row.logClProgramCommands),
+          jobLogOutput: String(row.jobLogOutput),
+          printerDeviceName: String(row.printerDeviceName),
+          outputQueueName: String(row.outputQueueName),
+          outputQueueLibrary: String(row.outputQueueLibrary),
+          jobDate: String(row.jobDate),
+          dateFormat: String(row.dateFormat),
+          dateSeparator: String(row.dateSeparator),
+          timeSeparator: String(row.timeSeparator),
+          decimalFormat: String(row.decimalFormat),
+          languageID: String(row.languageID),
+          countryID: String(row.countryID),
+          sortSequence: String(row.sortSequence),
+          ccsid: Number(row.ccsid),
+        }));
+        this.jobPropertie = resultsJobPropertie[0];
       }
 
       // History Job
-      this.jobHistory = await <JobHistory[]>content.runSQL([`select message_timestamp "timestamp", ifnull(message_id, '') "messageId", severity "severity", trim(message_text) "texte" 
+      const jobHistories = await Code4i.getContent().runSQL([`select message_timestamp "timestamp", ifnull(message_id, '') "messageId", severity "severity", trim(message_text) "texte" 
         from table(qsys2.joblog_info('${this.name}')) a order by ordinal_position desc`].join(` `));
+      if (jobHistories && jobHistories.length > 0){
+        const resultsJobHistory: JobHistory[] = jobHistories.map(row => ({
+          timestamp: String(row.timestamp),
+          messageId: String(row.messageId),
+          severity: String(row.severity),
+          texte: String(row.texte),
+        }));
+        this.jobHistory = resultsJobHistory;
+      }
 
       // Lock info
-      this.jobObjectLockInfo = await <JobObjectLockInfo[]>content.runSQL([`SELECT DISTINCT object_name "object",
+      const jobObjectsLockInfo = await Code4i.getContent().runSQL([`SELECT DISTINCT object_name "object",
         object_library "library",
         object_type "objectType",
         lock_state "lockState",
@@ -163,9 +201,21 @@ export class JobProperties extends Base {
         asp_name "asp"
         FROM TABLE (qsys2.job_lock_info(job_name => '${this.name}'))
         ORDER BY object_name, object_library, object_type`].join(` `));
+      if (jobObjectsLockInfo && jobObjectsLockInfo.length > 0){
+        const resultsJobObjectsLockInfo: JobObjectLockInfo[] = jobObjectsLockInfo.map(row => ({
+          object: String(row.object),
+          library: String(row.library),
+          objectType: String(row.objectType),
+          lockState: String(row.lockState),
+          lockStatus: String(row.lockStatus),
+          memberLocks: String(row.memberLocks),
+          asp: String(row.asp),
+        }));
+        this.jobObjectLockInfo = resultsJobObjectsLockInfo;
+      }
 
       // Open files
-      this.jobOpenFiles = await <JobOpenFile[]>content.runSQL([`SELECT LIBRARY_NAME "libraryName",
+      const jobOpenFiles = await Code4i.getContent().runSQL([`SELECT LIBRARY_NAME "libraryName",
         FILE_NAME "fileName",
         FILE_TYPE "fileType",
         IFNULL(MEMBER_NAME, '') "memberName",
@@ -183,9 +233,25 @@ export class JobProperties extends Base {
         FROM TABLE (
             QSYS2.OPEN_FILES('${this.name}')
           ) a`].join(` `));
+      if (jobOpenFiles && jobOpenFiles.length > 0){
+        const resultsJobOpenFiles: JobOpenFile[] = jobOpenFiles.map(row => ({
+          libraryName: String(row.libraryName),
+          fileName: String(row.fileName),
+          fileType: String(row.fileType),
+          memberName: String(row.memberName),
+          deviceName: String(row.deviceName),
+          recordFormat: String(row.recordFormat),
+          activationGroupName: String(row.activationGroupName),
+          activationGroupNumber: String(row.activationGroupNumber),
+          openOption: String(row.openOption),
+          iaspName: String(row.iaspName),
+          objectText: String(row.objectText),
+        }));
+        this.jobOpenFiles = resultsJobOpenFiles;
+      }
 
       // Call stack
-      this.programsStack = await <ProgramStack[]>content.runSQL([`SELECT IFNULL(A.REQUEST_LEVEL, 0) "requestLevel",
+      const programsStack = await Code4i.getContent().runSQL([`SELECT IFNULL(A.REQUEST_LEVEL, 0) "requestLevel",
         A.PROGRAM_NAME "programName",
         A.PROGRAM_LIBRARY_NAME "programLibraryName",
         IFNULL(A.STATEMENT_IDENTIFIERS, '') "statementIdentifiers",
@@ -198,9 +264,25 @@ export class JobProperties extends Base {
         ifnull(A.ACTIVATION_GROUP_NAME, '') "activationGroupName"
         FROM TABLE ( QSYS2.STACK_INFO('${this.name}', 'ALL') ) A
         ORDER BY A.ORDINAL_POSITION`].join(` `));
+      if (programsStack && programsStack.length > 0){
+        const resultsProgramsStack: ProgramStack[] = programsStack.map(row => ({
+          requestLevel: Number(row.requestLevel),
+          programName: String(row.programName),
+          programLibraryName: String(row.programLibraryName),
+          statementIdentifiers: String(row.statementIdentifiers),
+          controlBoundary: String(row.controlBoundary),
+          programAspName: String(row.programAspName),
+          moduleName: String(row.moduleName),
+          moduleLibraryName: String(row.moduleLibraryName),
+          procedureName: String(row.procedureName),
+          activationGroupNumber: Number(row.activationGroupNumber),
+          activationGroupName: String(row.activationGroupName),
+        }));
+        this.programsStack = resultsProgramsStack;
+      }
 
       // Commitment control
-      this.commitmentsControlStatus = await <CommitmentControlStatus[]>content.runSQL([`SELECT COMMITMENT_DEFINITION "commitmentDefinition",
+      const commitmentsControlStatus = await Code4i.getContent().runSQL([`SELECT COMMITMENT_DEFINITION "commitmentDefinition",
         COMMITMENT_DEFINITION_DESCRIPTION "commitmentDefinitionDescription",
         LOGICAL_UNIT_OF_WORK_ID "logicalUnitOfWorkId",
         LOCK_SPACE_ID "lockSpaceId",
@@ -211,6 +293,20 @@ export class JobProperties extends Base {
         LOCAL_CHANGES_PENDING "localChangesPending"
         FROM QSYS2.DB_TRANSACTION_INFO
         WHERE JOB_NAME = '${this.name}'`].join(` `));
+      if (commitmentsControlStatus && commitmentsControlStatus.length > 0){
+        const resultsCommitmentsControlStatus: CommitmentControlStatus[] = commitmentsControlStatus.map(row => ({
+          commitmentDefinition: String(row.commitmentDefinition),
+          commitmentDefinitionDescription: String(row.commitmentDefinitionDescription),
+          logicalUnitOfWorkId: String(row.logicalUnitOfWorkId),
+          lockSpaceId: String(row.lockSpaceId),
+          logicalUnitOfWorkState: String(row.logicalUnitOfWorkState),
+          stateTimestamp: String(row.stateTimestamp),
+          resourceLocation: String(row.resourceLocation),
+          defaultLockLevel: String(row.defaultLockLevel),
+          localChangesPending: String(row.localChangesPending),
+        }));
+        this.commitmentsControlStatus = resultsCommitmentsControlStatus;
+      }
 
     } else {
       throw new Error("No connection.");
@@ -501,23 +597,23 @@ export class JobProperties extends Base {
         </vscode-panel-tab>
         <vscode-panel-tab id="tab-2">
           HISTORY
-          <vscode-badge appearance="secondary">${this.jobHistory?.length}</vscode-badge>
+          <vscode-badge appearance="secondary">${this.jobHistory?.length ? this.jobHistory?.length : 0}</vscode-badge>
         </vscode-panel-tab>
         <vscode-panel-tab id="tab-3">
           LOCK INFO
-          <vscode-badge appearance="secondary">${this.jobObjectLockInfo?.length}</vscode-badge>
+          <vscode-badge appearance="secondary">${this.jobObjectLockInfo?.length ? this.jobObjectLockInfo?.length : 0}</vscode-badge>
         </vscode-panel-tab>
         <vscode-panel-tab id="tab-4">
           OPEN FILES
-          <vscode-badge appearance="secondary">${this.jobOpenFiles?.length}</vscode-badge>
+          <vscode-badge appearance="secondary">${this.jobOpenFiles?.length ? this.jobOpenFiles?.length : 0}</vscode-badge>
         </vscode-panel-tab>
         <vscode-panel-tab id="tab-5">
           PROGRAM STACK
-          <vscode-badge appearance="secondary">${this.programsStack?.length}</vscode-badge>
+          <vscode-badge appearance="secondary">${this.programsStack?.length ? this.programsStack?.length : 0}</vscode-badge>
         </vscode-panel-tab>
         <vscode-panel-tab id="tab-6">
           COMMITMENT CONTROL STATUS
-          <vscode-badge appearance="secondary">${this.commitmentsControlStatus?.length}</vscode-badge>
+          <vscode-badge appearance="secondary">${this.commitmentsControlStatus?.length ? this.commitmentsControlStatus?.length: 0}</vscode-badge>
         </vscode-panel-tab>
         <vscode-panel-view id="view-1">${propertieTab}</vscode-panel-view>
         <vscode-panel-view id="view-2">${historyTab}</vscode-panel-view>
@@ -531,7 +627,7 @@ export class JobProperties extends Base {
   }
 
   // We do the same action when use the button or Save document
-  handleAction(data: any): HandleActionResult {
+  async handleAction(data: any): Promise<HandleActionResult> {
     // Nothing to do
     return {
       dirty: true

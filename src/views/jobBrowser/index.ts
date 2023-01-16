@@ -1,13 +1,11 @@
 import * as vscode from 'vscode';
 import { JobLog, JobFilter, ActiveJobInfo, SubSystemInfo, JobInfo, JobChange } from '../../typings';
-import { ConnectionConfiguration } from '../../api/Configuration';
-import { getBase } from "../../tools";
 import { JobFilterUI } from "./filters";
 import { EndJobUi, HoldJobUi, ReleaseJobUi, ChangeJobUi } from "./job";
+import { Code4i } from '../../tools';
+import { ConnectionConfiguration } from "../../api/Configuration";
 
 const historyJobUI = require(`../history`);
-
-const instance = getBase();
 
 export class JobBrowserView implements vscode.TreeDataProvider<any> {
   private readonly _emitter: vscode.EventEmitter<JobFilterItem | undefined | null | void> = new vscode.EventEmitter<JobFilterItem | undefined | null | void>();
@@ -29,7 +27,7 @@ export class JobBrowserView implements vscode.TreeDataProvider<any> {
       vscode.commands.registerCommand(`vscode-ibmi-fs.deleteJobFilter`, async (node: JobFilter) => {
         if (node) {
 
-          const config = instance.getConfig();
+          const config = Code4i.getConfig();
           const filterName = node.nameFilter;
 
           vscode.window.showInformationMessage(`Delete job filter ${filterName}?`, `Yes`, `No`).then(async (value) => {
@@ -81,16 +79,16 @@ export class JobBrowserView implements vscode.TreeDataProvider<any> {
         // @TODO: No effect for this time
         this.refresh();
       }),
-
       vscode.commands.registerCommand(`vscode-ibmi-fs.historyJob`, async (node) => {
-        const content = instance.getContent();
+        const content = Code4i.getContent();
         let items = [];
 
-        const histories = await <JobLog[]>content.runSQL([`select message_timestamp "timestamp", ifnull(message_id, '') "messageId", severity "severity", trim(message_text) "texte" from table(qsys2.joblog_info('${node.jobName}')) a order by ordinal_position desc`].join(` `));
+        // const histories = await <JobLog[]>content.runSQL([`select message_timestamp "timestamp", ifnull(message_id, '') "messageId", severity "severity", trim(message_text) "texte" from table(qsys2.joblog_info('${node.jobName}')) a order by ordinal_position desc`].join(` `));
+        const histories = await Code4i.getContent().runSQL([`select message_timestamp "timestamp", ifnull(message_id, '') "messageId", severity "severity", trim(message_text) "texte" from table(qsys2.joblog_info('${node.jobName}')) a order by ordinal_position desc`].join(` `));
 
-        items = histories.map(history => new JobLogItem(history));
+        // items = histories.map(history => new JobLogItem(history.timestamp));
 
-        await historyJobUI.init(items);
+        // await historyJobUI.init(items);
       })
     );
 
@@ -105,9 +103,9 @@ export class JobBrowserView implements vscode.TreeDataProvider<any> {
   }
 
   async getChildren(element?: any): Promise<vscode.TreeItem[]> {
-    const content = instance.getContent();
-    const connection = instance.getConnection();
-    const config = instance.getConfig();
+    const content = Code4i.getContent();
+    const connection = Code4i.getConnection();
+    const config = Code4i.getConfig();
 
     let item, whereClause = ``, filterClause = ``;;
 
@@ -160,11 +158,18 @@ export class JobBrowserView implements vscode.TreeDataProvider<any> {
 
           if (connection) {
             try {
-              const subSystems: SubSystemInfo[] = await content.runSQL([`SELECT distinct a.SUBSYSTEM "subsystemName", A.SUBSYSTEM_LIBRARY_NAME "subsystemLibrary", IFNULL(s.TEXT_DESCRIPTION, '') "subsystemDescription" 
+              const subSystems = await Code4i.getContent().runSQL([`SELECT distinct a.SUBSYSTEM "subsystemName", A.SUBSYSTEM_LIBRARY_NAME "subsystemLibrary", IFNULL(s.TEXT_DESCRIPTION, '') "subsystemDescription" 
               FROM TABLE (QSYS2.ACTIVE_JOB_INFO(DETAILED_INFO => 'NONE' ${filterClause} )) A
               LEFT JOIN QSYS2.SUBSYSTEM_INFO s ON s.SUBSYSTEM_DESCRIPTION = A.SUBSYSTEM AND s.SUBSYSTEM_DESCRIPTION_LIBRARY = A.SUBSYSTEM_LIBRARY_NAME
               WHERE JOB_TYPE NOT IN ('SBS', 'SYS', 'RDR', 'WTR') ${whereClause} order by 1, 2, 3`].join(` `));
-              return subSystems.map(subSystem => new SubSystem(subSystem.subsystemName, subSystem.subsystemLibrary, subSystem.subsystemDescription, jobFilter.nameFilter, jobFilter.jobNameFilter, jobFilter.jobUserFilter, jobFilter.jobNumberFilter, jobFilter.profileFilter, jobFilter.subsystemFilter));
+
+              if (subSystems && subSystems.length > 0) {
+                return subSystems.map(subSystem => new SubSystem(String(subSystem.subsystemName), String(subSystem.subsystemLibrary), String(subSystem.subsystemDescription), jobFilter.nameFilter, jobFilter.jobNameFilter, jobFilter.jobUserFilter, jobFilter.jobNumberFilter, jobFilter.profileFilter, jobFilter.subsystemFilter));
+              } else {
+                item = new vscode.TreeItem(`No active job`);
+                return [item];
+              }
+
 
             } catch (e) {
               console.log(e);
@@ -212,9 +217,16 @@ export class JobBrowserView implements vscode.TreeDataProvider<any> {
 
           if (connection) {
             try {
-              const activeJobs: ActiveJobInfo[] = await content.runSQL([`SELECT JOB_NAME "jobName", JOB_NAME_SHORT "jobNameShort", JOB_USER "jobUser", JOB_NUMBER "jobNumber", JOB_STATUS "jobStatus" FROM TABLE (QSYS2.ACTIVE_JOB_INFO(DETAILED_INFO => 'NONE' ${filterClause} )) A
+              const activeJobs = await Code4i.getContent().runSQL([`SELECT JOB_NAME "jobName", JOB_NAME_SHORT "jobNameShort", JOB_USER "jobUser", JOB_NUMBER "jobNumber", JOB_STATUS "jobStatus" FROM TABLE (QSYS2.ACTIVE_JOB_INFO(DETAILED_INFO => 'NONE' ${filterClause} )) A
               WHERE JOB_TYPE NOT IN ('SBS', 'SYS', 'RDR', 'WTR') ${whereClause} order by SUBSYSTEM, JOB_NAME_SHORT`].join(` `));
-              return activeJobs.map(activeJob => new ActiveJob(activeJob.jobName, activeJob.jobNameShort, activeJob.jobUser, activeJob.jobNumber, activeJob.jobStatus));
+
+              if (activeJobs && activeJobs.length > 0) {
+                return activeJobs.map(activeJob => new ActiveJob(String(activeJob.jobName), String(activeJob.jobNameShort), String(activeJob.jobUser), String(activeJob.jobNumber), String(activeJob.jobStatus)));
+              } else {
+                item = new vscode.TreeItem(`No active job`);
+                return [item];
+              }
+
 
             } catch (e) {
               console.log(e);
