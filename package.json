@@ -55,6 +55,9 @@
           },
           {
             "filenamePattern": "object*/**/*.FILE"
+          },
+          {
+            "filenamePattern": "object*/**/*.JOBD"
           }
         ],
         "priority": "default"
