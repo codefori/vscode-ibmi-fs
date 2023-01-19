@@ -3,7 +3,7 @@ const vscode = require(`vscode`);
 module.exports = class HistoryJobUI {
 
   /**
-   * @param {{timestamp: string, texte: string}[]} historyLog
+   * @param {{timestamp: string, messageId: string, severity: string, texte: string}[]} historyLog
    */
   static async init(historyLog) {
 

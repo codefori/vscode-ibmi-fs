@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { Components, generatePage, generateError } from '../../webviewToolkit';
+import { Components, generatePage } from '../../webviewToolkit';
 import { JobFilter } from '../../typings';
 import { Code4i } from "../../tools";
 import { ConnectionConfiguration } from "../../api/Configuration";

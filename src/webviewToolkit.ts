@@ -106,10 +106,7 @@ const footer = /*html*/`
         id: link.id,
         value: ''
       }
-      
-      console.log(link)
-      console.log(link.dataset.action)
-      
+
       if(link.dataset.action === "checkbox"){
         link.addEventListener('click', (event) => {
           data.value = !event.target.currentChecked;

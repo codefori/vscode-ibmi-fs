@@ -4,7 +4,6 @@ import { JobFilterUI } from "./filters";
 import { EndJobUi, HoldJobUi, ReleaseJobUi, ChangeJobUi } from "./job";
 import { Code4i } from '../../tools';
 import { ConnectionConfiguration } from "../../api/Configuration";
-
 const historyJobUI = require(`../history`);
 
 export class JobBrowserView implements vscode.TreeDataProvider<any> {
@@ -81,17 +80,16 @@ export class JobBrowserView implements vscode.TreeDataProvider<any> {
       }),
       vscode.commands.registerCommand(`vscode-ibmi-fs.historyJob`, async (node) => {
         const content = Code4i.getContent();
-        let items = [];
-
-        // const histories = await <JobLog[]>content.runSQL([`select message_timestamp "timestamp", ifnull(message_id, '') "messageId", severity "severity", trim(message_text) "texte" from table(qsys2.joblog_info('${node.jobName}')) a order by ordinal_position desc`].join(` `));
+        // let items = [];
         const histories = await Code4i.getContent().runSQL([`select message_timestamp "timestamp", ifnull(message_id, '') "messageId", severity "severity", trim(message_text) "texte" from table(qsys2.joblog_info('${node.jobName}')) a order by ordinal_position desc`].join(` `));
+        if (histories && histories.length > 0) {
+          const items: JobLog[] = histories.map(history => ({timestamp: String(history.timestamp), messageId: String(history.messageId), severity: Number(history.severity), texte: String(history.texte)}));
+          await historyJobUI.init(items);
+        } else {
+          vscode.window.showInformationMessage(`No history`);
+        }
 
-        // items = histories.map(history => new JobLogItem(history.timestamp));
-
-        // await historyJobUI.init(items);
-      })
-    );
-
+      }));
   }
 
   refresh(): void {
@@ -169,10 +167,7 @@ export class JobBrowserView implements vscode.TreeDataProvider<any> {
                 item = new vscode.TreeItem(`No active job`);
                 return [item];
               }
-
-
             } catch (e) {
-              console.log(e);
               item = new vscode.TreeItem(`Error loading subsystems.`);
               return [item];
             }
@@ -226,10 +221,7 @@ export class JobBrowserView implements vscode.TreeDataProvider<any> {
                 item = new vscode.TreeItem(`No active job`);
                 return [item];
               }
-
-
             } catch (e) {
-              console.log(e);
               item = new vscode.TreeItem(`Error loading jobs.`);
               return [item];
             }
@@ -285,22 +277,6 @@ class JobFilterItem extends vscode.TreeItem implements JobFilter {
 
   }
 }
-
-class JobLogItem implements JobLog {
-  constructor(jobLog: JobLog) {
-
-    this.timestamp = jobLog.timestamp;
-    this.messageId = jobLog.messageId;
-    this.severity = jobLog.severity;
-    this.texte = jobLog.texte;
-
-  }
-  timestamp: string;
-  messageId: string;
-  severity: number;
-  texte: string;
-}
-
 
 class SubSystem extends vscode.TreeItem implements SubSystemInfo {
   constructor(
