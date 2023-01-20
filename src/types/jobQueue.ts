@@ -33,9 +33,19 @@ interface ScheduledJob {
     description: string
 }
 
+interface QueueJob {
+    jobName: string
+    jobUser: string
+    jobNumber: string
+    jobDescriptionLibrary: string
+    jobDescription: string
+    jobScheduledTime: string
+}
+
 export class JobQueue extends Base {
     private jobQueueInfo: JobQueueInfo | undefined;
     private scheduledJobs: ScheduledJob[] | undefined;
+    private queueJobs: QueueJob[] | undefined;
 
     async fetch(): Promise<void> {
         const connection = Code4i.getConnection();
@@ -106,9 +116,32 @@ export class JobQueue extends Base {
                   relativeDaysOfMonth: String(row.relativeDaysOfMonth),
                   nextSubmissionDate: String(row.nextSubmissionDate),
                   status: String(row.status),
-                  description: String(row.description),
+                  description: String(row.description)
                 }));
                 this.scheduledJobs = resultsScheduledJobs;
+            }
+
+            // Jobs in queue
+            const queueJobs = await Code4i.getContent().runSQL([`SELECT 
+              x.JOB_NAME_SHORT "jobName",
+              x.JOB_USER "jobUser",
+              x.JOB_NUMBER "jobNumber",
+              x.JOB_DESCRIPTION_LIBRARY "jobDescriptionLibrary",
+              x.JOB_DESCRIPTION "jobDescription",
+              x.JOB_SCHEDULED_TIME "jobScheduledTime"
+            FROM TABLE ( QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*JOBQ', JOB_USER_FILTER => '*ALL') ) x
+            WHERE JOB_QUEUE_NAME = '${this.name}'
+                AND JOB_QUEUE_LIBRARY = '${this.library}' ORDER BY JOB_NAME_SHORT;`].join(` `));
+            if (queueJobs && queueJobs.length > 0){
+                const resultsQueueJobs: QueueJob[] = queueJobs.map(row => ({
+                  jobName: String(row.jobName),
+                  jobUser: String(row.jobUser),
+                  jobNumber: String(row.jobNumber),
+                  jobDescriptionLibrary: String(row.jobDescriptionLibrary),
+                  jobDescription: String(row.jobDescription),
+                  jobScheduledTime: String(row.jobScheduledTime)
+                }));
+                this.queueJobs = resultsQueueJobs;
             }
 
         } else {
@@ -184,7 +217,7 @@ export class JobQueue extends Base {
                 <vscode-data-grid-cell grid-column="2">${this.jobQueueInfo?.authorityToCheck}</vscode-data-grid-cell>
               </vscode-data-grid-row>
             </vscode-data-grid>
-            `;
+        `;
 
         const scheduledTab = `<h1>Library list</h1>
             <vscode-data-grid>
@@ -216,7 +249,31 @@ export class JobQueue extends Base {
                   </vscode-data-grid-row>`;
                 }).join("")}
             </vscode-data-grid>
-            `;
+        `;
+
+        const queueJobsTab = `<h1>Library list</h1>
+            <vscode-data-grid>
+              <vscode-data-grid-row row-type="header">
+                <vscode-data-grid-cell cell-type="columnheader" grid-column="1"><b>Job name</b></vscode-data-grid-cell>
+                <vscode-data-grid-cell cell-type="columnheader" grid-column="2"><b>Job user</b></vscode-data-grid-cell>
+                <vscode-data-grid-cell cell-type="columnheader" grid-column="3"><b>Job number</b></vscode-data-grid-cell>
+                <vscode-data-grid-cell cell-type="columnheader" grid-column="4"><b>JOBD Library</b></vscode-data-grid-cell>
+                <vscode-data-grid-cell cell-type="columnheader" grid-column="5"><b>JOBD</b></vscode-data-grid-cell>
+                <vscode-data-grid-cell cell-type="columnheader" grid-column="6"><b>Scheduled time</b></vscode-data-grid-cell>
+              </vscode-data-grid-row>
+              ${this.queueJobs?.map(queueJob => {
+                  return /*html*/`
+                  <vscode-data-grid-row>
+                    <vscode-data-grid-cell grid-column="1">${queueJob.jobName}</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="2">${queueJob.jobUser}</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="3">${queueJob.jobNumber}</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="4">${queueJob.jobDescriptionLibrary}</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="5">${queueJob.jobDescription}</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="6">${queueJob.jobScheduledTime}</vscode-data-grid-cell>
+                  </vscode-data-grid-row>`;
+                }).join("")}
+            </vscode-data-grid>
+        `;
 
         const panels = /*html*/`
             <vscode-panels>
@@ -227,9 +284,15 @@ export class JobQueue extends Base {
                   SCHEDULED
                   <vscode-badge appearance="secondary">${this.scheduledJobs?.length ? this.scheduledJobs?.length: 0}</vscode-badge>
                 </vscode-panel-tab>
+                <vscode-panel-tab id="tab-3">
+                  QUEUE JOB
+                  <vscode-badge appearance="secondary">${this.queueJobs?.length ? this.queueJobs?.length: 0}</vscode-badge>
+                </vscode-panel-tab>
                 <vscode-panel-view id="view-1">${descriptionTab}</vscode-panel-view>
                 <vscode-panel-view id="view-2">${scheduledTab}</vscode-panel-view>
-            </vscode-panels>`;
+                <vscode-panel-view id="view-3">${queueJobsTab}</vscode-panel-view>
+            </vscode-panels>
+        `;
 
         return panels;
     }
