@@ -1,5 +1,6 @@
-import { CommandResult, IBMiObject } from '@halcyontech/vscode-ibmi-types';
-import { basename, extname } from 'path';
+declare type CommandResult = import('@halcyontech/vscode-ibmi-types').CommandResult;
+declare type IBMiObject = import('@halcyontech/vscode-ibmi-types').IBMiObject;
+import { basename } from 'path';
 import * as vscode from 'vscode';
 import { Filter } from '../import/code-for-ibmi';
 import { Code4i, getQSYSObjectPath, IBMI_OBJECT_NAME, makeid } from '../tools';

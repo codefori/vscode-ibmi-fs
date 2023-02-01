@@ -1,7 +1,10 @@
-import { CodeForIBMi, CommandResult, DeploymentMethod, RemoteCommand } from '@halcyontech/vscode-ibmi-types';
-import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
-import * as vscode from 'vscode';
 
+// import { CodeForIBMi, CommandResult, DeploymentMethod, RemoteCommand } from '@halcyontech/vscode-ibmi-types';
+declare type CodeForIBMi = import('@halcyontech/vscode-ibmi-types').CodeForIBMi;
+declare type CommandResult = import('@halcyontech/vscode-ibmi-types').CommandResult;
+declare type RemoteCommand = import('@halcyontech/vscode-ibmi-types').RemoteCommand;
+declare type DB2Row = import('@halcyontech/vscode-ibmi-types/api/Tools').Tools.DB2Row;
+import * as vscode from 'vscode';
 
 export namespace Code4i {
     let codeForIBMi : CodeForIBMi;
@@ -9,6 +12,8 @@ export namespace Code4i {
         const baseExtension = vscode.extensions.getExtension<CodeForIBMi>(`halcyontechltd.code-for-ibmi`);
         if (baseExtension) {
             codeForIBMi = (baseExtension.isActive ? baseExtension.exports : await baseExtension.activate());
+
+            // Uncomment this line to get the build working.
             codeForIBMi.deploy({localFolder: vscode.Uri.parse(""), remotePath: "", method: DeploymentMethod.compare});
         }
         else{
@@ -32,7 +37,7 @@ export namespace Code4i {
         return getConfig().tempLibrary;
     }
 
-    export async function getTable(library: string, name: string): Promise<Tools.DB2Row[]> {
+    export async function getTable(library: string, name: string): Promise<DB2Row[]> {
         return getContent().getTable(library, name, name, true);
     }
 

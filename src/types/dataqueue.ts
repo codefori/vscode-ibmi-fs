@@ -1,5 +1,5 @@
-import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
-import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
+declare type IBMiObject = import('@halcyontech/vscode-ibmi-types').IBMiObject;
+declare type DB2Row = import('@halcyontech/vscode-ibmi-types/api/Tools').Tools.DB2Row;
 import * as vscode from 'vscode';
 import { Code4i } from '../tools';
 import { Components } from "../webviewToolkit";
@@ -214,7 +214,7 @@ export class DataQueue extends Base {
     }
 }
 
-function toEntry(row: Tools.DB2Row): Entry {
+function toEntry(row: DB2Row): Entry {
     return {
         data: String(row.MESSAGE_DATA),
         timestamp: String(row.MESSAGE_ENQUEUE_TIMESTAMP),
