@@ -1,6 +1,7 @@
-import { CodeForIBMi, CommandResult, RemoteCommand } from '@halcyontech/vscode-ibmi-types';
+import { CodeForIBMi, CommandResult, DeploymentMethod, RemoteCommand } from '@halcyontech/vscode-ibmi-types';
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
+
 
 export namespace Code4i {
     let codeForIBMi : CodeForIBMi;
@@ -8,6 +9,7 @@ export namespace Code4i {
         const baseExtension = vscode.extensions.getExtension<CodeForIBMi>(`halcyontechltd.code-for-ibmi`);
         if (baseExtension) {
             codeForIBMi = (baseExtension.isActive ? baseExtension.exports : await baseExtension.activate());
+            codeForIBMi.deploy({localFolder: vscode.Uri.parse(""), remotePath: "", method: DeploymentMethod.compare});
         }
         else{
             throw new Error("halcyontechltd.code-for-ibmi not found or cannot be activated");

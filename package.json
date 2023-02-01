@@ -157,7 +157,7 @@
     "webpack-cli": "^4.10.0"
   },
   "dependencies": {
-    "@halcyontech/vscode-ibmi-types": "^1.6.8",
+    "@halcyontech/vscode-ibmi-types": "^1.6.14",
     "@vscode/webview-ui-toolkit": "^1.1.0"
   }
 }
