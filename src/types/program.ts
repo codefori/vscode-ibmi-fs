@@ -1,8 +1,7 @@
-import * as vscode from 'vscode';
 import Base from "./base";
 import { Components } from "../webviewToolkit";
 import { Code4i } from '../tools';
-declare type IBMiContent = import('@halcyontech/vscode-ibmi-types/api/IBMiContent').default;
+import type IBMiContent from '@halcyontech/vscode-ibmi-types/api/IBMiContent';
 
 export default class Program extends Base {
   columns: Map<string, string> = new Map();

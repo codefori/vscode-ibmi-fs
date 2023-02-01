@@ -1,5 +1,4 @@
-declare type CommandResult = import('@halcyontech/vscode-ibmi-types').CommandResult;
-declare type IBMiObject = import('@halcyontech/vscode-ibmi-types').IBMiObject;
+import type { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { basename } from 'path';
 import * as vscode from 'vscode';
 import { Filter } from '../import/code-for-ibmi';

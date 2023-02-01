@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import Base from "./base";
 import { Components } from "../webviewToolkit";
 import { Code4i } from '../tools';
-declare type CommandResult = import('@halcyontech/vscode-ibmi-types').CommandResult;
+import type { CommandResult } from '@halcyontech/vscode-ibmi-types';
 
 interface DataAreaInfo {
   value: string
