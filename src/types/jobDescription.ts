@@ -3,53 +3,12 @@ import Base from "./base";
 import { Code4i } from '../tools';
 import { Components } from "../webviewToolkit";
 
-interface JobDescriptionInfo {
-  jobDescriptionLibrary: string
-  jobDescription: string
-  authorizationName: string
-  jobDate: string
-  accountingCode: string
-  routingData: string
-  requestData: string
-  libraryListCount: number
-  libraryList: string
-  jobSwitches: string
-  textDescription: string
-  jobQueueLibrary: string
-  jobQueue: string
-  jobQueuePriority: number
-  holdOnJobQueue: string
-  outputQueueLibrary: string
-  outputQueue: string
-  outputQueuePriority: number
-  spooledFileAction: string
-  printerDevice: string
-  printText: string
-  jobMessageQueueMaximumSize: number
-  jobMessageQueueFullAction: string
-  syntaxCheckSeverity: string
-  jobEndSeverity: number
-  joblogOutput: string
-  inquiryMessageReply: string
-  messageLoggingLevel: number
-  messageLoggingSeverity: number
-  messageLoggingText: string
-  logClProgramCommands: string
-  deviceRecoveryAction: string
-  timeSliceEndPool: string
-  allowMultipleThreads: string
-  workloadGroup: string
-  aspgrp: string
-  ddmConversation: string
-}
-
 interface JobDescriptionLibrary {
   sequence: number
   library: string
 }
 
 export class JobDescription extends Base {
-  // private jobDescriptionInfo: JobDescriptionInfo | undefined;
   private jobDescriptionInfo: Record<string, string> = {};
   private jobDescriptionLibraries: JobDescriptionLibrary[] | undefined;
 
@@ -61,7 +20,7 @@ export class JobDescription extends Base {
       const [jobDescriptionInfo] = await Code4i.getContent().runSQL([`SELECT JOB_DESCRIPTION_LIBRARY "jobDescriptionLibrary",
                     JOB_DESCRIPTION "jobDescription",
                     AUTHORIZATION_NAME "authorizationName",
-                    ifnull(JOB_DATE, '0001-01-01') jobDate,
+                    ifnull(JOB_DATE, '0001-01-01') "jobDate",
                     ACCOUNTING_CODE "accountingCode",
                     ROUTING_DATA "routingData",
                     ifnull(REQUEST_DATA,'') "requestData",
@@ -99,44 +58,43 @@ export class JobDescription extends Base {
                 where JOB_DESCRIPTION_LIBRARY = '${this.library}' AND JOB_DESCRIPTION = '${this.name}' LIMIT 1`].join(` `));
 
       if (jobDescriptionInfo) {
-        this.jobDescriptionInfo["Job Description Library"] = String(jobDescriptionInfo.jobDescriptionLibrary);
-        this.jobDescriptionInfo["Job Description"] = String(jobDescriptionInfo.jobDescription);
-        this.jobDescriptionInfo["authorizationName"] = String(jobDescriptionInfo.authorizationName);
-        this.jobDescriptionInfo["jobDate"] = String(jobDescriptionInfo.jobDate) === `0001-01-01` ? '' : String(jobDescriptionInfo.jobDate);
-        this.jobDescriptionInfo["accountingCode"] = String(jobDescriptionInfo.accountingCode);
-        this.jobDescriptionInfo["routingData"] = String(jobDescriptionInfo.routingData);
-        this.jobDescriptionInfo["requestData"] = String(jobDescriptionInfo.requestData);
-        this.jobDescriptionInfo["libraryListCount"] = String(jobDescriptionInfo.libraryListCount);
-        this.jobDescriptionInfo["libraryList"] = String(jobDescriptionInfo.libraryList);
-        this.jobDescriptionInfo["jobSwitches"] = String(jobDescriptionInfo.jobSwitches);
-        this.jobDescriptionInfo["textDescription"] = String(jobDescriptionInfo.textDescription);
-        this.jobDescriptionInfo["jobQueueLibrary"] = String(jobDescriptionInfo.jobQueueLibrary);
-        this.jobDescriptionInfo["jobQueue"] = String(jobDescriptionInfo.jobQueue);
-        this.jobDescriptionInfo["jobQueuePriority"] = String(jobDescriptionInfo.jobQueuePriority);
-        this.jobDescriptionInfo["holdOnJobQueue"] = String(jobDescriptionInfo.holdOnJobQueue);
-        this.jobDescriptionInfo["outputQueueLibrary"] = String(jobDescriptionInfo.outputQueueLibrary);
-        this.jobDescriptionInfo["outputQueue"] = String(jobDescriptionInfo.outputQueue);
-        this.jobDescriptionInfo["outputQueuePriority"] = String(jobDescriptionInfo.outputQueuePriority);
-        this.jobDescriptionInfo["spooledFileAction"] = String(jobDescriptionInfo.spooledFileAction);
-        this.jobDescriptionInfo["printerDevice"] = String(jobDescriptionInfo.printerDevice);
-        this.jobDescriptionInfo["printText"] = String(jobDescriptionInfo.printText);
-        this.jobDescriptionInfo["jobMessageQueueMaximumSize"] = String(jobDescriptionInfo.jobMessageQueueMaximumSize);
-        this.jobDescriptionInfo["jobMessageQueueFullAction"] = String(jobDescriptionInfo.jobMessageQueueFullAction);
-        this.jobDescriptionInfo["syntaxCheckSeverity"] = String(jobDescriptionInfo.syntaxCheckSeverity);
-        this.jobDescriptionInfo["jobEndSeverity"] = String(jobDescriptionInfo.jobEndSeverity);
-        this.jobDescriptionInfo["joblogOutput"] = String(jobDescriptionInfo.joblogOutput);
-        this.jobDescriptionInfo["inquiryMessageReply"] = String(jobDescriptionInfo.inquiryMessageReply);
-        this.jobDescriptionInfo["messageLoggingLevel"] = String(jobDescriptionInfo.messageLoggingLevel);
-        this.jobDescriptionInfo["messageLoggingSeverity"] = String(jobDescriptionInfo.messageLoggingSeverity);
-        this.jobDescriptionInfo["messageLoggingText"] = String(jobDescriptionInfo.messageLoggingText);
-        this.jobDescriptionInfo["logClProgramCommands"] = String(jobDescriptionInfo.logClProgramCommands);
-        this.jobDescriptionInfo["deviceRecoveryAction"] = String(jobDescriptionInfo.deviceRecoveryAction);
-        this.jobDescriptionInfo["timeSliceEndPool"] = String(jobDescriptionInfo.timeSliceEndPool);
-        this.jobDescriptionInfo["allowMultipleThreads"] = String(jobDescriptionInfo.allowMultipleThreads);
-        this.jobDescriptionInfo["workloadGroup"] = String(jobDescriptionInfo.workloadGroup);
-        this.jobDescriptionInfo["aspgrp"] = String(jobDescriptionInfo.aspgrp);
-        this.jobDescriptionInfo["ddmConversation"] = String(jobDescriptionInfo.ddmConversation);
-        // }));
+        this.jobDescriptionInfo["Job description library"] = String(jobDescriptionInfo.jobDescriptionLibrary);
+        this.jobDescriptionInfo["Job description"] = String(jobDescriptionInfo.jobDescription);
+        this.jobDescriptionInfo["Authorization name"] = String(jobDescriptionInfo.authorizationName);
+        this.jobDescriptionInfo["Job date"] = String(jobDescriptionInfo.jobDate) === `0001-01-01` ? '' : String(jobDescriptionInfo.jobDate);
+        this.jobDescriptionInfo["Accounting code"] = String(jobDescriptionInfo.accountingCode);
+        this.jobDescriptionInfo["Routing data"] = String(jobDescriptionInfo.routingData);
+        this.jobDescriptionInfo["Request data"] = String(jobDescriptionInfo.requestData);
+        this.jobDescriptionInfo["Library list count"] = String(jobDescriptionInfo.libraryListCount);
+        this.jobDescriptionInfo["Library list"] = String(jobDescriptionInfo.libraryList);
+        this.jobDescriptionInfo["Job switches"] = String(jobDescriptionInfo.jobSwitches);
+        this.jobDescriptionInfo["Text description"] = String(jobDescriptionInfo.textDescription);
+        this.jobDescriptionInfo["Job queue library"] = String(jobDescriptionInfo.jobQueueLibrary);
+        this.jobDescriptionInfo["Job queue"] = String(jobDescriptionInfo.jobQueue);
+        this.jobDescriptionInfo["Job queue priority"] = String(jobDescriptionInfo.jobQueuePriority);
+        this.jobDescriptionInfo["Hold on job queue"] = String(jobDescriptionInfo.holdOnJobQueue);
+        this.jobDescriptionInfo["Output queue library"] = String(jobDescriptionInfo.outputQueueLibrary);
+        this.jobDescriptionInfo["Output queue"] = String(jobDescriptionInfo.outputQueue);
+        this.jobDescriptionInfo["Output queue priority"] = String(jobDescriptionInfo.outputQueuePriority);
+        this.jobDescriptionInfo["Spooled file action"] = String(jobDescriptionInfo.spooledFileAction);
+        this.jobDescriptionInfo["Printer device"] = String(jobDescriptionInfo.printerDevice);
+        this.jobDescriptionInfo["Print text"] = String(jobDescriptionInfo.printText);
+        this.jobDescriptionInfo["Job message queue maximum size"] = String(jobDescriptionInfo.jobMessageQueueMaximumSize);
+        this.jobDescriptionInfo["Job message queue full action"] = String(jobDescriptionInfo.jobMessageQueueFullAction);
+        this.jobDescriptionInfo["Syntax check severity"] = String(jobDescriptionInfo.syntaxCheckSeverity);
+        this.jobDescriptionInfo["Job end severity"] = String(jobDescriptionInfo.jobEndSeverity);
+        this.jobDescriptionInfo["Joblog output"] = String(jobDescriptionInfo.joblogOutput);
+        this.jobDescriptionInfo["Inquiry message reply"] = String(jobDescriptionInfo.inquiryMessageReply);
+        this.jobDescriptionInfo["Message logging level"] = String(jobDescriptionInfo.messageLoggingLevel);
+        this.jobDescriptionInfo["Message logging severity"] = String(jobDescriptionInfo.messageLoggingSeverity);
+        this.jobDescriptionInfo["Message logging text"] = String(jobDescriptionInfo.messageLoggingText);
+        this.jobDescriptionInfo["Log cl program commands"] = String(jobDescriptionInfo.logClProgramCommands);
+        this.jobDescriptionInfo["Device recovery action"] = String(jobDescriptionInfo.deviceRecoveryAction);
+        this.jobDescriptionInfo["Time slice end pool"] = String(jobDescriptionInfo.timeSliceEndPool);
+        this.jobDescriptionInfo["Allow mltiple threads"] = String(jobDescriptionInfo.allowMultipleThreads);
+        this.jobDescriptionInfo["Workload group"] = String(jobDescriptionInfo.workloadGroup);
+        this.jobDescriptionInfo["ASP group"] = String(jobDescriptionInfo.aspgrp);
+        this.jobDescriptionInfo["DDM conversation"] = String(jobDescriptionInfo.ddmConversation);
       }
 
       // Library list
@@ -148,156 +106,7 @@ export class JobDescription extends Base {
   }
 
   generateHTML(): string {
-    // const descriptionTab = `<h1>Description</h1>
-    //     <vscode-data-grid>
-    //       <vscode-data-grid-row row-type="header">
-    //         <vscode-data-grid-cell cell-type="columnheader" grid-column="1"></vscode-data-grid-cell>
-    //         <vscode-data-grid-cell cell-type="columnheader" grid-column="2"></vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Job Description</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.jobDescription}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Job Description Library</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.jobDescriptionLibrary}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Authorization Name</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.authorizationName}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Job Date</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.jobDate}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Accounting Code</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.accountingCode}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Routing Data</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.routingData}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Request Data</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.requestData}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Job Switches</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.jobSwitches}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Text Description</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.textDescription}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Job Queue</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.jobQueue}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Job Queue Library</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.jobQueueLibrary}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Job Queue Priority</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.jobQueuePriority}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Hold On Job Queue</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.holdOnJobQueue}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Output Queue Library</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.outputQueueLibrary}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Output Queue</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.outputQueue}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Output Queue Priority</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.outputQueuePriority}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Spooled File Action</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.spooledFileAction}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Printer Device</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.printerDevice}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Print Text</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.printText}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Job Message Queue Maximum Size</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.jobMessageQueueMaximumSize}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Job Message Queue Full Action</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.jobMessageQueueFullAction}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Syntax Check Severity</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.syntaxCheckSeverity}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Job End Severity</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.jobEndSeverity}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Joblog Output</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.joblogOutput}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Inquiry Message Reply</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.inquiryMessageReply}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Message Logging Level</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.messageLoggingLevel}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Message Logging Severity</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.messageLoggingSeverity}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Message Logging Text</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.messageLoggingText}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Log CL Program Commands</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.logClProgramCommands}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Device Recovery Action</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.deviceRecoveryAction}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Time Slice End Pool</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.timeSliceEndPool}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Allow Multiple Threads</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.allowMultipleThreads}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">Workload Group</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.workloadGroup}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">ASPGRP</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.aspgrp}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //       <vscode-data-grid-row>
-    //         <vscode-data-grid-cell grid-column="1">DDM Conversation</vscode-data-grid-cell>
-    //         <vscode-data-grid-cell grid-column="2">${this.jobDescriptionInfo?.ddmConversation}</vscode-data-grid-cell>
-    //       </vscode-data-grid-row>
-    //     </vscode-data-grid>
-    //     `;
-
-    const descriptionTab = /* html */ `<h1>Description</h1>
+    const descriptionTab = /* html */ `
       ${Components.dataGrid<[string, string]>({
       columns: [
         { title: "", cellValue: entry => entry[0] },
@@ -305,7 +114,7 @@ export class JobDescription extends Base {
       ]
     }, Object.entries(this.jobDescriptionInfo))}`;
 
-    const libraryListTab = /* html */ `<h1>Library list</h1>
+    const libraryListTab = /* html */ `
       ${Components.dataGrid<JobDescriptionLibrary>({
       columns: [
         { title: "Sequence", cellValue: l => String(l.sequence) },
@@ -321,12 +130,9 @@ export class JobDescription extends Base {
     return panels;
   }
 
-  // We do the same action when use the button or Save document
   async handleAction(data: any): Promise<HandleActionResult> {
     // Nothing to do
-    return {
-      dirty: true
-    };
+    return { };
   }
 
   async save(): Promise<void> {
