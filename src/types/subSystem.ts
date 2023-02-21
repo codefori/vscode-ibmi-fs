@@ -1,22 +1,7 @@
 import * as vscode from 'vscode';
 import Base from "./base";
 import { Code4i } from '../tools';
-
-interface SubSystemInfo {
-    subsystemDescriptionLibrary: string
-    subsystemDescription: string
-    status: string
-    maximumActiveJobs: number
-    currentActiveJobs: number
-    subsystemMonitorJob: string
-    textDescription: string
-    controllingSubsystem: string
-    workloadGroup: string
-    signonDeviceFileLibrary: string
-    signonDeviceFile: string
-    secondaryLanguageLibrary: string
-    iaspName: string
-}
+import { Components } from "../webviewToolkit";
 
 interface ActiveJobInfo {
     jobName: string
@@ -81,7 +66,7 @@ interface RoutingEntryInfo {
 }
 
 export class SubSystem extends Base {
-    private subSystemInfo: SubSystemInfo | undefined;
+    private subSystemInfo: Record<string, string> = {};
     private activeJobsInfo: ActiveJobInfo[] | undefined;
     private autostartJobsInfo: AutostartJobInfo[] | undefined;
     private prestartJobsInfo: PrestartJobInfo[] | undefined;
@@ -92,7 +77,7 @@ export class SubSystem extends Base {
         const content = Code4i.getContent();
         if (connection && content) {
             // Subsystem Description
-            const subSystemInfo = await Code4i.getContent().runSQL([`SELECT ifnull(SUBSYSTEM_DESCRIPTION_LIBRARY, '') "subsystemDescriptionLibrary",
+            const [subSystemInfo] = await Code4i.getContent().runSQL([`SELECT ifnull(SUBSYSTEM_DESCRIPTION_LIBRARY, '') "subsystemDescriptionLibrary",
                 ifnull(SUBSYSTEM_DESCRIPTION, '') "subsystemDescription",
                 ifnull(STATUS, '') "status",
                 ifnull(MAXIMUM_ACTIVE_JOBS, 0) "maximumActiveJobs",
@@ -108,78 +93,78 @@ export class SubSystem extends Base {
             FROM QSYS2.SUBSYSTEM_INFO 
             where SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}' AND SUBSYSTEM_DESCRIPTION = '${this.name}' LIMIT 1`].join(` `));
 
-            if (subSystemInfo && subSystemInfo.length > 0) {
-                const resultSubSystemInfo: SubSystemInfo[] = subSystemInfo.map(row => ({
-                    subsystemDescriptionLibrary: String(row.subsystemDescriptionLibrary),
-                    subsystemDescription: String(row.subsystemDescription),
-                    status: String(row.status),
-                    maximumActiveJobs: Number(row.maximumActiveJobs),
-                    currentActiveJobs: Number(row.currentActiveJobs),
-                    subsystemMonitorJob: String(row.subsystemMonitorJob),
-                    textDescription: String(row.textDescription),
-                    controllingSubsystem: String(row.controllingSubsystem),
-                    workloadGroup: String(row.workloadGroup),
-                    signonDeviceFileLibrary: String(row.signonDeviceFileLibrary),
-                    signonDeviceFile: String(row.signonDeviceFile),
-                    secondaryLanguageLibrary: String(row.secondaryLanguageLibrary),
-                    iaspName: String(row.iaspName)
-                }));
-                this.subSystemInfo = resultSubSystemInfo[0];
+            if (subSystemInfo) {
+                this.subSystemInfo["Library"] = String(subSystemInfo.subsystemDescriptionLibrary);
+                this.subSystemInfo["Description"] = String(subSystemInfo.textDescription);
+                this.subSystemInfo["Status"] = String(subSystemInfo.status);
+                this.subSystemInfo["Monitor job"] = String(subSystemInfo.subsystemMonitorJob);
+                this.subSystemInfo["Maximum active job"] = String(subSystemInfo.maximumActiveJobs);
+                this.subSystemInfo["Current active job"] = String(subSystemInfo.currentActiveJobs);
+                this.subSystemInfo["Controlling subsystem"] = String(subSystemInfo.controllingSubsystem);
+                this.subSystemInfo["Workload group"] = String(subSystemInfo.workloadGroup);
+                this.subSystemInfo["Signon device file library"] = String(subSystemInfo.signonDeviceFileLibrary);
+                this.subSystemInfo["Signon device file"] = String(subSystemInfo.signonDeviceFile);
+                this.subSystemInfo["Secondary language library"] = String(subSystemInfo.secondaryLanguageLibrary);
+                this.subSystemInfo["iASP"] = String(subSystemInfo.iaspName);
             }
 
             // Active job
-            const activeJobsInfo = await Code4i.getContent().runSQL([`SELECT ifnull(X.JOB_NAME, '') jobName,
-                ifnull(X.JOB_NAME_SHORT, '') "jobNameShort",
-                ifnull(X.JOB_USER, '') "jobUser",
-                ifnull(X.JOB_NUMBER, '') "jobNumber",
-                ifnull(X.JOB_INFORMATION, '') "jobInformation",
-                ifnull(X.JOB_STATUS, '') "jobStatus",
-                ifnull(X.JOB_TYPE, '') "jobType",
-                ifnull(X.JOB_TYPE_ENHANCED, '') "jobTypeEnhanced",
-                ifnull(X.JOB_SUBSYSTEM, '') "jobSubsystem",
-                ifnull(X.JOB_DATE, '') "jobDate",
-                ifnull(X.JOB_DESCRIPTION_LIBRARY, '') "jobDescriptionLibrary",
-                ifnull(X.JOB_DESCRIPTION, '') "jobDescription",
-                ifnull(X.JOB_ACCOUNTING_CODE, '') "jobAccountingCode",
-                ifnull(X.SUBMITTER_JOB_NAME, '') "submitterJobName",
-                ifnull(X.SUBMITTER_MESSAGE_QUEUE_LIBRARY, '') "submitterMessageQueueLibrary",
-                ifnull(X.SUBMITTER_MESSAGE_QUEUE, '') "submitterMessageQueue",
-                ifnull(X.SERVER_TYPE, '') "serverType",
-                X.JOB_ENTERED_SYSTEM_TIME "jobEnteredSystemTime",
-                X.JOB_SCHEDULED_TIME "jobScheduledTime",
-                X.JOB_ACTIVE_TIME "jobActiveTime",
-                X.JOB_END_TIME "jobEndTime",
-                ifnull(X.JOB_END_SEVERITY, '') "jobEndSeverity",
-                ifnull(X.COMPLETION_STATUS, '') "completionStatus"
-            FROM TABLE (QSYS2.JOB_INFO(JOB_SUBSYSTEM_FILTER => '${this.name}', JOB_USER_FILTER => '*ALL')) X;`].join(` `));
+            try {
+              const activeJobsInfo = await Code4i.getContent().runSQL([`SELECT ifnull(X.JOB_NAME, '') jobName,
+                  ifnull(X.JOB_NAME_SHORT, '') "jobNameShort",
+                  ifnull(X.JOB_USER, '') "jobUser",
+                  ifnull(X.JOB_NUMBER, '') "jobNumber",
+                  ifnull(X.JOB_INFORMATION, '') "jobInformation",
+                  ifnull(X.JOB_STATUS, '') "jobStatus",
+                  ifnull(X.JOB_TYPE, '') "jobType",
+                  ifnull(X.JOB_TYPE_ENHANCED, '') "jobTypeEnhanced",
+                  ifnull(X.JOB_SUBSYSTEM, '') "jobSubsystem",
+                  ifnull(X.JOB_DATE, '') "jobDate",
+                  ifnull(X.JOB_DESCRIPTION_LIBRARY, '') "jobDescriptionLibrary",
+                  ifnull(X.JOB_DESCRIPTION, '') "jobDescription",
+                  ifnull(X.JOB_ACCOUNTING_CODE, '') "jobAccountingCode",
+                  ifnull(X.SUBMITTER_JOB_NAME, '') "submitterJobName",
+                  ifnull(X.SUBMITTER_MESSAGE_QUEUE_LIBRARY, '') "submitterMessageQueueLibrary",
+                  ifnull(X.SUBMITTER_MESSAGE_QUEUE, '') "submitterMessageQueue",
+                  ifnull(X.SERVER_TYPE, '') "serverType",
+                  X.JOB_ENTERED_SYSTEM_TIME "jobEnteredSystemTime",
+                  X.JOB_SCHEDULED_TIME "jobScheduledTime",
+                  X.JOB_ACTIVE_TIME "jobActiveTime",
+                  X.JOB_END_TIME "jobEndTime",
+                  ifnull(X.JOB_END_SEVERITY, '') "jobEndSeverity",
+                  ifnull(X.COMPLETION_STATUS, '') "completionStatus"
+              FROM TABLE (QSYS2.JOB_INFO(JOB_SUBSYSTEM_FILTER => '${this.name}', JOB_USER_FILTER => '*ALL')) X;`].join(` `));
 
-            if (activeJobsInfo && activeJobsInfo.length > 0) {
-                const resultActiveJobInfo: ActiveJobInfo[] = activeJobsInfo.map(row => ({
-                    jobName: String(row.jobName),
-                    jobNameShort: String(row.jobNameShort),
-                    jobUser: String(row.jobUser),
-                    jobNumber: String(row.jobNumber),
-                    jobInformation: String(row.jobInformation),
-                    jobStatus: String(row.jobStatus),
-                    jobType: String(row.jobType),
-                    jobTypeEnhanced: String(row.jobTypeEnhanced),
-                    jobSubsystem: String(row.jobSubsystem),
-                    jobDate: String(row.jobDate),
-                    jobDescriptionLibrary: String(row.jobDescriptionLibrary),
-                    jobDescription: String(row.jobDescription),
-                    jobAccountingCode: String(row.jobAccountingCode),
-                    submitterJobName: String(row.submitterJobName),
-                    submitterMessageQueueLibrary: String(row.submitterMessageQueueLibrary),
-                    submitterMessageQueue: String(row.submitterMessageQueue),
-                    serverType: String(row.serverType),
-                    jobEnteredSystemTime: String(row.jobEnteredSystemTime),
-                    jobScheduledTime: String(row.jobScheduledTime),
-                    jobActiveTime: String(row.jobActiveTime),
-                    jobEndTime: String(row.jobEndTime),
-                    jobEndSeverity: String(row.jobEndSeverity),
-                    completionStatus: String(row.completionStatus)
-                }));
-                this.activeJobsInfo = resultActiveJobInfo;
+              if (activeJobsInfo && activeJobsInfo.length > 0) {
+                  const resultActiveJobInfo: ActiveJobInfo[] = activeJobsInfo.map(row => ({
+                      jobName: String(row.jobName),
+                      jobNameShort: String(row.jobNameShort),
+                      jobUser: String(row.jobUser),
+                      jobNumber: String(row.jobNumber),
+                      jobInformation: String(row.jobInformation),
+                      jobStatus: String(row.jobStatus),
+                      jobType: String(row.jobType),
+                      jobTypeEnhanced: String(row.jobTypeEnhanced),
+                      jobSubsystem: String(row.jobSubsystem),
+                      jobDate: String(row.jobDate),
+                      jobDescriptionLibrary: String(row.jobDescriptionLibrary),
+                      jobDescription: String(row.jobDescription),
+                      jobAccountingCode: String(row.jobAccountingCode),
+                      submitterJobName: String(row.submitterJobName),
+                      submitterMessageQueueLibrary: String(row.submitterMessageQueueLibrary),
+                      submitterMessageQueue: String(row.submitterMessageQueue),
+                      serverType: String(row.serverType),
+                      jobEnteredSystemTime: String(row.jobEnteredSystemTime),
+                      jobScheduledTime: String(row.jobScheduledTime),
+                      jobActiveTime: String(row.jobActiveTime),
+                      jobEndTime: String(row.jobEndTime),
+                      jobEndSeverity: String(row.jobEndSeverity),
+                      completionStatus: String(row.completionStatus)
+                  }));
+                  this.activeJobsInfo = resultActiveJobInfo;
+              }
+            } catch (error) {
+              
             }
 
             // Autostart job
@@ -272,60 +257,15 @@ export class SubSystem extends Base {
     }
 
     generateHTML(): string {
-        const descriptionTab = `<h1>Description</h1>
-            <vscode-data-grid>
-              <vscode-data-grid-row row-type="header">
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="1"></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="2"></vscode-data-grid-cell>
-              </vscode-data-grid-row>
-              <vscode-data-grid-row>
-                <vscode-data-grid-cell grid-column="1">Description</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="2">${this.subSystemInfo?.textDescription}</vscode-data-grid-cell>
-              </vscode-data-grid-row>
-              <vscode-data-grid-row>
-                <vscode-data-grid-cell grid-column="1">Status</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="2">${this.subSystemInfo?.status}</vscode-data-grid-cell>
-              </vscode-data-grid-row>
-              <vscode-data-grid-row>
-                <vscode-data-grid-cell grid-column="1">Monitor job</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="2">${this.subSystemInfo?.subsystemMonitorJob}</vscode-data-grid-cell>
-              </vscode-data-grid-row>
-              <vscode-data-grid-row>
-                <vscode-data-grid-cell grid-column="1">Maximum active job</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="2">${this.subSystemInfo?.maximumActiveJobs}</vscode-data-grid-cell>
-              </vscode-data-grid-row>
-              <vscode-data-grid-row>
-                <vscode-data-grid-cell grid-column="1">Current active job</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="2">${this.subSystemInfo?.currentActiveJobs}</vscode-data-grid-cell>
-              </vscode-data-grid-row>
-              <vscode-data-grid-row>
-                <vscode-data-grid-cell grid-column="1">Controlling subsystem</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="2">${this.subSystemInfo?.controllingSubsystem}</vscode-data-grid-cell>
-              </vscode-data-grid-row>
-              <vscode-data-grid-row>
-                <vscode-data-grid-cell grid-column="1">Workload group</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="2">${this.subSystemInfo?.workloadGroup}</vscode-data-grid-cell>
-              </vscode-data-grid-row>
-              <vscode-data-grid-row>
-                <vscode-data-grid-cell grid-column="1">Signon device file library</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="2">${this.subSystemInfo?.signonDeviceFileLibrary}</vscode-data-grid-cell>
-              </vscode-data-grid-row>
-              <vscode-data-grid-row>
-                <vscode-data-grid-cell grid-column="1">Signon device file</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="2">${this.subSystemInfo?.signonDeviceFile}</vscode-data-grid-cell>
-              </vscode-data-grid-row>
-              <vscode-data-grid-row>
-                <vscode-data-grid-cell grid-column="1">Secondary language library</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="2">${this.subSystemInfo?.secondaryLanguageLibrary}</vscode-data-grid-cell>
-              </vscode-data-grid-row>
-              <vscode-data-grid-row>
-                <vscode-data-grid-cell grid-column="1">iASP</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="2">${this.subSystemInfo?.iaspName}</vscode-data-grid-cell>
-              </vscode-data-grid-row>
-            </vscode-data-grid>
-        `;
+        const descriptionTab = /* html */ `
+        ${Components.dataGrid<[string, string]>({
+        columns: [
+          { title: "", cellValue: entry => entry[0] },
+          { title: "", cellValue: entry => entry[1] }
+        ]
+      }, Object.entries(this.subSystemInfo))}`;
 
-        const activeJobTab = `<h1>Auto start</h1>
+        const activeJobTab = `
             <vscode-data-grid>
               <vscode-data-grid-row row-type="header">
                 <vscode-data-grid-cell cell-type="columnheader" grid-column="1"><b>Name</b></vscode-data-grid-cell>
@@ -369,7 +309,7 @@ export class SubSystem extends Base {
             </vscode-data-grid>
         `;
 
-        const autostartTab = `<h1>Autostart</h1>
+        const autostartTab = `
           <vscode-data-grid>
             <vscode-data-grid-row row-type="header">
             <vscode-data-grid-cell cell-type="columnheader" grid-column="1"><b>Library</b></vscode-data-grid-cell>
@@ -391,7 +331,7 @@ export class SubSystem extends Base {
           </vscode-data-grid>
         `;
 
-        const prestartTab = `<h1>Prestart</h1>
+        const prestartTab = `
           <vscode-data-grid>
             <vscode-data-grid-row row-type="header">
             <vscode-data-grid-cell cell-type="columnheader" grid-column="1"><b>Library</b></vscode-data-grid-cell>
@@ -425,7 +365,7 @@ export class SubSystem extends Base {
           </vscode-data-grid>
         `;
 
-        const routingTab = `<h1>Routing entry</h1>
+        const routingTab = `
             <vscode-data-grid>
             <vscode-data-grid-row row-type="header">
             <vscode-data-grid-cell cell-type="columnheader" grid-column="1"><b>Library</b></vscode-data-grid-cell>
@@ -459,34 +399,13 @@ export class SubSystem extends Base {
         </vscode-data-grid>
         `;
 
-        const panels = /*html*/`
-            <vscode-panels>
-                <vscode-panel-tab id="tab-1">
-                  DESCRIPTION
-                </vscode-panel-tab>
-                <vscode-panel-tab id="tab-2">
-                  ACTIVE JOB
-                  <vscode-badge appearance="secondary">${this.activeJobsInfo?.length ? this.activeJobsInfo?.length: 0}</vscode-badge>
-                </vscode-panel-tab>
-                <vscode-panel-tab id="tab-3">
-                  AUTOSTART JOB
-                  <vscode-badge appearance="secondary">${this.autostartJobsInfo?.length ? this.autostartJobsInfo?.length: 0}</vscode-badge>
-                </vscode-panel-tab>
-                <vscode-panel-tab id="tab-4">
-                  PRESTART JOB
-                  <vscode-badge appearance="secondary">${this.prestartJobsInfo?.length ? this.prestartJobsInfo?.length: 0}</vscode-badge>
-                </vscode-panel-tab>
-                <vscode-panel-tab id="tab-5">
-                  ROUTING ENTRY
-                  <vscode-badge appearance="secondary">${this.routingEntriesInfo?.length ? this.routingEntriesInfo?.length: 0}</vscode-badge>
-                </vscode-panel-tab>
-                <vscode-panel-view id="view-1">${descriptionTab}</vscode-panel-view>
-                <vscode-panel-view id="view-2">${activeJobTab}</vscode-panel-view>
-                <vscode-panel-view id="view-3">${autostartTab}</vscode-panel-view>
-                <vscode-panel-view id="view-4">${prestartTab}</vscode-panel-view>
-                <vscode-panel-view id="view-5">${routingTab}</vscode-panel-view>
-            </vscode-panels>
-        `;
+        const panels = Components.panels([
+          { title: "DESCRIPTION", content: descriptionTab },
+          { title: "ACTIVE JOB", content: activeJobTab, badge: this.activeJobsInfo?.length ? this.activeJobsInfo?.length : 0 },
+          { title: "AUTOSTART JOB", content: autostartTab, badge: this.autostartJobsInfo?.length ? this.autostartJobsInfo?.length : 0 },
+          { title: "PRESTART JOB", content: prestartTab, badge: this.prestartJobsInfo?.length ? this.prestartJobsInfo?.length : 0 },
+          { title: "ROUTING ENTRY", content: routingTab, badge: this.routingEntriesInfo?.length ? this.routingEntriesInfo?.length : 0 }
+        ]);
 
         return panels;
     }
