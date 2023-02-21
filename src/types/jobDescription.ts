@@ -141,10 +141,10 @@ export class JobDescription extends Base {
 
   private async getLibraryList(): Promise<JobDescriptionLibrary[] | undefined> {
     let jobDescriptionLibraries: JobDescriptionLibrary[] = [];
-    if (parseInt(this.jobDescriptionInfo["libraryListCount"]) > 0 ) {
-      for (let index = 0; index < parseInt(this.jobDescriptionInfo["libraryListCount"]); index++) {
+    if (parseInt(this.jobDescriptionInfo["Library list count"]) > 0 ) {
+      for (let index = 0; index < parseInt(this.jobDescriptionInfo["Library list count"]); index++) {
         const start = index * 10 + index * 1;
-        const library = this.jobDescriptionInfo!.libraryList.substring(start, start + 11);
+        const library = this.jobDescriptionInfo["Library list"].substring(start, start + 11);
         const sequence = (index + 1) * 10;
         jobDescriptionLibraries.push({ sequence, library });
       }
