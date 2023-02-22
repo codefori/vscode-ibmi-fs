@@ -67,10 +67,10 @@ interface RoutingEntryInfo {
 
 export class SubSystem extends Base {
     private subSystemInfo: Record<string, string> = {};
-    private activeJobsInfo: ActiveJobInfo[] | undefined;
-    private autostartJobsInfo: AutostartJobInfo[] | undefined;
-    private prestartJobsInfo: PrestartJobInfo[] | undefined;
-    private routingEntriesInfo: RoutingEntryInfo[] | undefined;
+    private activeJobsInfo: ActiveJobInfo[] | undefined = [];
+    private autostartJobsInfo: AutostartJobInfo[] | undefined = [];
+    private prestartJobsInfo: PrestartJobInfo[] | undefined = [];
+    private routingEntriesInfo: RoutingEntryInfo[] | undefined = [];
 
     async fetch(): Promise<void> {
         const connection = Code4i.getConnection();
@@ -110,7 +110,7 @@ export class SubSystem extends Base {
 
             // Active job
             try {
-              const activeJobsInfo = await Code4i.getContent().runSQL([`SELECT ifnull(X.JOB_NAME, '') jobName,
+              const activeJobsInfo = await Code4i.getContent().runSQL([`SELECT ifnull(X.JOB_NAME, '') "jobName",
                   ifnull(X.JOB_NAME_SHORT, '') "jobNameShort",
                   ifnull(X.JOB_USER, '') "jobUser",
                   ifnull(X.JOB_NUMBER, '') "jobNumber",
@@ -128,14 +128,15 @@ export class SubSystem extends Base {
                   ifnull(X.SUBMITTER_MESSAGE_QUEUE, '') "submitterMessageQueue",
                   ifnull(X.SERVER_TYPE, '') "serverType",
                   X.JOB_ENTERED_SYSTEM_TIME "jobEnteredSystemTime",
-                  X.JOB_SCHEDULED_TIME "jobScheduledTime",
+                  ifnull(cast(X.JOB_SCHEDULED_TIME as char(19)), '') "jobScheduledTime",
                   X.JOB_ACTIVE_TIME "jobActiveTime",
-                  X.JOB_END_TIME "jobEndTime",
+                  ifnull(cast(X.JOB_END_TIME as char(19)), '') "jobEndTime",
                   ifnull(X.JOB_END_SEVERITY, '') "jobEndSeverity",
                   ifnull(X.COMPLETION_STATUS, '') "completionStatus"
               FROM TABLE (QSYS2.JOB_INFO(JOB_SUBSYSTEM_FILTER => '${this.name}', JOB_USER_FILTER => '*ALL')) X;`].join(` `));
 
               if (activeJobsInfo && activeJobsInfo.length > 0) {
+                if (activeJobsInfo[0].jobUser!.toString().length > 0) {
                   const resultActiveJobInfo: ActiveJobInfo[] = activeJobsInfo.map(row => ({
                       jobName: String(row.jobName),
                       jobNameShort: String(row.jobNameShort),
@@ -162,6 +163,7 @@ export class SubSystem extends Base {
                       completionStatus: String(row.completionStatus)
                   }));
                   this.activeJobsInfo = resultActiveJobInfo;
+                }
               }
             } catch (error) {
               
@@ -265,146 +267,79 @@ export class SubSystem extends Base {
         ]
       }, Object.entries(this.subSystemInfo))}`;
 
-        const activeJobTab = `
-            <vscode-data-grid>
-              <vscode-data-grid-row row-type="header">
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="1"><b>Name</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="2"><b>User</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="3"><b>Number</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="4"><b>Information ?</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="5"><b>Status</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="6"><b>Type</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="7"><b>Date</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="8"><b>Library</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="9"><b>JOBD</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="10"><b>Accounting code</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="11"><b>Entered system time</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="12"><b>Scheduled time</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="13"><b>Active time</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="14"><b>End time</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="15"><b>End severity</b></vscode-data-grid-cell>
-                <vscode-data-grid-cell cell-type="columnheader" grid-column="16"><b>Completion status</b></vscode-data-grid-cell>
-              </vscode-data-grid-row>
-              ${this.activeJobsInfo?.map(activeJobInfo => {
-                  return /*html*/`
-                  <vscode-data-grid-row>
-                    <vscode-data-grid-cell grid-column="1">${activeJobInfo.jobNameShort}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="2">${activeJobInfo.jobUser}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="3">${activeJobInfo.jobNumber}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="4">${activeJobInfo.jobInformation}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="5">${activeJobInfo.jobStatus}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="6">${activeJobInfo.jobTypeEnhanced}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="7">${activeJobInfo.jobDate}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="8">${activeJobInfo.jobDescriptionLibrary}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="9">${activeJobInfo.jobDescription}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="10">${activeJobInfo.jobAccountingCode}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="11">${activeJobInfo.jobEnteredSystemTime}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="12">${activeJobInfo.jobScheduledTime}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="13">${activeJobInfo.jobActiveTime}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="14">${activeJobInfo.jobEndTime}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="15">${activeJobInfo.jobEndSeverity}</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="16">${activeJobInfo.completionStatus}</vscode-data-grid-cell>
-                  </vscode-data-grid-row>`;
-                }).join("")}
-            </vscode-data-grid>
-        `;
+      const activeJobTab = /* html */ `
+          ${Components.dataGrid<ActiveJobInfo>({
+              columns: [
+                  { title: "Name", cellValue: l => String(l.jobNameShort) },
+                  { title: "User", cellValue: l => l.jobUser },
+                  { title: "Number", cellValue: l => l.jobNumber },
+                  { title: "Information ?", cellValue: l => l.jobInformation },
+                  { title: "Status", cellValue: l => l.jobStatus },
+                  { title: "Type", cellValue: l => l.jobTypeEnhanced },
+                  { title: "Date", cellValue: l => l.jobDate },
+                  { title: "Library", cellValue: l => l.jobDescriptionLibrary },
+                  { title: "JOBD", cellValue: l => l.jobDescription },
+                  { title: "Accounting code", cellValue: l => l.jobAccountingCode },
+                  { title: "Entered system time", cellValue: l => l.jobEnteredSystemTime },
+                  { title: "Scheduled time", cellValue: l => l.jobScheduledTime },
+                  { title: "Active time", cellValue: l => l.jobActiveTime },
+                  { title: "End time", cellValue: l => l.jobEndTime },
+                  { title: "End severity", cellValue: l => l.jobEndSeverity },
+                  { title: "Completion status", cellValue: l => l.completionStatus }            
+              ]
+          }, this.activeJobsInfo!)}`;
 
-        const autostartTab = `
-          <vscode-data-grid>
-            <vscode-data-grid-row row-type="header">
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="1"><b>Library</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="2"><b>Description</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="3"><b>Job name</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="4"><b>JOBD Library</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="5"><b>JOBD</b></vscode-data-grid-cell>
-          </vscode-data-grid-row>
-          ${this.autostartJobsInfo?.map(autostartJobInfo => {
-              return /*html*/`
-              <vscode-data-grid-row>
-                <vscode-data-grid-cell grid-column="1">${autostartJobInfo.subsystemDescriptionLibrary}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="2">${autostartJobInfo.subsystemDescription}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="3">${autostartJobInfo.autostartJobName}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="4">${autostartJobInfo.jobDescriptionLibrary}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="5">${autostartJobInfo.jobDescription}</vscode-data-grid-cell>
-              </vscode-data-grid-row>`;
-            }).join("")}
-          </vscode-data-grid>
-        `;
+        const autostartTab = /* html */ `
+            ${Components.dataGrid<AutostartJobInfo>({
+                columns: [
+                    { title: "Library", cellValue: l => String(l.subsystemDescriptionLibrary) },
+                    { title: "Description", cellValue: l => l.subsystemDescription },
+                    { title: "Job name", cellValue: l => l.autostartJobName },
+                    { title: "JOBD Library", cellValue: l => l.jobDescriptionLibrary },
+                    { title: "JOBD", cellValue: l => l.jobDescription }
+                ]
+            }, this.autostartJobsInfo!)}`;
 
-        const prestartTab = `
-          <vscode-data-grid>
-            <vscode-data-grid-row row-type="header">
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="1"><b>Library</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="2"><b>Description</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="3"><b>Program library</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="4"><b>Program</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="5"><b>Subsystem active</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="6"><b>User profile</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="7"><b>Job name</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="8"><b>Library</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="9"><b>Job description</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="10"><b>Start jobs</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="11"><b>Initial jobs</b></vscode-data-grid-cell>
-          </vscode-data-grid-row>
-          ${this.prestartJobsInfo?.map(prestartJobInfo => {
-            return /*html*/`
-            <vscode-data-grid-row>
-                <vscode-data-grid-cell grid-column="1">${prestartJobInfo.subsystemDescriptionLibrary}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="2">${prestartJobInfo.subsystemDescription}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="3">${prestartJobInfo.prestartJobProgramLibrary}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="4">${prestartJobInfo.prestartJobProgram}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="5">${prestartJobInfo.subsystemActive}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="6">${prestartJobInfo.userProfile}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="7">${prestartJobInfo.prestartJobName}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="8">${prestartJobInfo.jobDescriptionLibrary}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="9">${prestartJobInfo.jobDescription}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="10">${prestartJobInfo.startJobs}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="11">${prestartJobInfo.initialJobs}</vscode-data-grid-cell>
-            </vscode-data-grid-row>`;
-            }).join("")}
-          </vscode-data-grid>
-        `;
+        const prestartTab = /* html */ `
+          ${Components.dataGrid<PrestartJobInfo>({
+              columns: [
+                  { title: "Library", cellValue: l => String(l.subsystemDescriptionLibrary) },
+                  { title: "Description", cellValue: l => l.subsystemDescription },
+                  { title: "Program library", cellValue: l => l.prestartJobProgramLibrary },
+                  { title: "Program", cellValue: l => l.prestartJobProgram },
+                  { title: "Subsystem active", cellValue: l => l.subsystemActive },
+                  { title: "User profile", cellValue: l => l.userProfile },
+                  { title: "Job name", cellValue: l => l.prestartJobName },
+                  { title: "Library", cellValue: l => l.jobDescriptionLibrary },
+                  { title: "Job description", cellValue: l => l.jobDescription },
+                  { title: "Start jobs", cellValue: l => l.startJobs },
+                  { title: "Initial jobs", cellValue: l => String(l.initialJobs) }
+              ]
+          }, this.prestartJobsInfo!)}`;
 
-        const routingTab = `
-            <vscode-data-grid>
-            <vscode-data-grid-row row-type="header">
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="1"><b>Library</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="2"><b>Description</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="3"><b>Number</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="4"><b>Program library</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="5"><b>Program</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="6"><b>Class library</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="7"><b>Class</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="8"><b>Maximum steps</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="9"><b>Pool id</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="10"><b>Comparison data</b></vscode-data-grid-cell>
-            <vscode-data-grid-cell cell-type="columnheader" grid-column="11"><b>Comparison start</b></vscode-data-grid-cell>
-        </vscode-data-grid-row>
-        ${this.routingEntriesInfo?.map(routingEntrieInfo => {
-            return /*html*/`
-            <vscode-data-grid-row>
-                <vscode-data-grid-cell grid-column="1">${routingEntrieInfo.subsystemDescriptionLibrary}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="2">${routingEntrieInfo.subsystemDescription}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="3">${routingEntrieInfo.sequenceNumber}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="4">${routingEntrieInfo.programLibrary}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="5">${routingEntrieInfo.programName}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="6">${routingEntrieInfo.classLibrary}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="7">${routingEntrieInfo.class}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="8">${routingEntrieInfo.maximumSteps}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="9">${routingEntrieInfo.poolId}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="10">${routingEntrieInfo.comparisonData}</vscode-data-grid-cell>
-                <vscode-data-grid-cell grid-column="11">${routingEntrieInfo.comparisonStart}</vscode-data-grid-cell>
-            </vscode-data-grid-row>`;
-            }).join("")}
-        </vscode-data-grid>
-        `;
+        const routingTab = /* html */ `
+            ${Components.dataGrid<RoutingEntryInfo>({
+                columns: [
+                    { title: "Library", cellValue: l => String(l.subsystemDescriptionLibrary) },
+                    { title: "Description", cellValue: l => l.subsystemDescription },
+                    { title: "Number", cellValue: l => String(l.sequenceNumber) },
+                    { title: "Program library", cellValue: l => l.programLibrary },
+                    { title: "Program", cellValue: l => l.programName },
+                    { title: "Class library", cellValue: l => l.classLibrary },
+                    { title: "Class", cellValue: l => l.class },
+                    { title: "Maximum steps", cellValue: l => String(l.maximumSteps) },
+                    { title: "Pool id", cellValue: l => String(l.poolId) },
+                    { title: "Comparison data", cellValue: l => l.comparisonData },
+                    { title: "Comparison start", cellValue: l => String(l.comparisonStart) }
+                ]
+            }, this.routingEntriesInfo!)}`;
 
         const panels = Components.panels([
-          { title: "DESCRIPTION", content: descriptionTab },
-          { title: "ACTIVE JOB", content: activeJobTab, badge: this.activeJobsInfo?.length ? this.activeJobsInfo?.length : 0 },
-          { title: "AUTOSTART JOB", content: autostartTab, badge: this.autostartJobsInfo?.length ? this.autostartJobsInfo?.length : 0 },
-          { title: "PRESTART JOB", content: prestartTab, badge: this.prestartJobsInfo?.length ? this.prestartJobsInfo?.length : 0 },
-          { title: "ROUTING ENTRY", content: routingTab, badge: this.routingEntriesInfo?.length ? this.routingEntriesInfo?.length : 0 }
+            { title: "DESCRIPTION", content: descriptionTab },
+            { title: "ACTIVE JOB", content: activeJobTab, badge: this.activeJobsInfo?.length ? this.activeJobsInfo?.length : 0 },
+            { title: "AUTOSTART JOB", content: autostartTab, badge: this.autostartJobsInfo?.length ? this.autostartJobsInfo?.length : 0 },
+            { title: "PRESTART JOB", content: prestartTab, badge: this.prestartJobsInfo?.length ? this.prestartJobsInfo?.length : 0 },
+            { title: "ROUTING ENTRY", content: routingTab, badge: this.routingEntriesInfo?.length ? this.routingEntriesInfo?.length : 0 }
         ]);
 
         return panels;
