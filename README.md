@@ -14,9 +14,9 @@ Has support for:
 * Data Areas (DTAARA) - display and edit
 * Data Queues (DTAQ) - display, send data, clear
 * Save Files (SAVF) - display, download and upload
+* Job Browser view
 
 ## TODO:
 
 * More file types
-* Job Browser view
 * Spool File Browser view

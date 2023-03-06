@@ -7,6 +7,7 @@ import BindingDirectory from './types/bindingDirectory';
 import { Command } from './types/command';
 import { DataArea } from './types/dataarea';
 import { DataQueue } from './types/dataqueue';
+import { JobProperties } from './types/job';
 import Program from './types/program';
 import { SaveFile } from './types/saveFile';
 import { generatePage, generateError } from './webviewToolkit';
@@ -113,7 +114,15 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
           return new SaveFile(uri, library, objectName);
         }
     }
-  } else {
+  } if (pieces.length === 4) {
+    const nameInfo = path.parse(pieces[3]);
+    const type = nameInfo.ext.startsWith(`.`) ? nameInfo.ext.substring(1) : nameInfo.ext;
+    const objectName = uri.path.substring(1, uri.path.indexOf(type)-1);
+    switch (type.toUpperCase()) {
+      case `JOB`:
+        return new JobProperties(uri, "", objectName);
+    }
+  }else {
     throw new Error(`Invalid path.`);
   }
   return;

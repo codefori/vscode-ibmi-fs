@@ -7,6 +7,7 @@ import ObjectProvider from './objectProvider';
 import { Code4i } from './tools';
 import { DataQueueActions } from './types/dataqueue';
 import { SaveFileActions } from './types/saveFile';
+import { JobBrowserView } from './views/jobBrowser';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -19,6 +20,13 @@ export async function activate(context: vscode.ExtensionContext) {
 				retainContextWhenHidden: true
 			}
 		})
+	);
+
+	context.subscriptions.push(
+		vscode.window.registerTreeDataProvider(
+			`jobBrowser`,
+			new JobBrowserView(context)
+		)
 	);
 
 	SaveFileActions.register(context);

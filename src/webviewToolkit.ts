@@ -54,6 +54,38 @@ const footer = /*html*/`
       return bindings;
     }
 
+    function getInputs() {
+      let data = {};
+      // Text filed
+      for (const input of document.querySelectorAll('vscode-text-field')) {
+        data[input.id] = input.value;
+      }
+
+      // Checkbox
+      for (const input of document.querySelectorAll('vscode-checkbox')) {
+        data[input.id] = input.checked;
+      }
+
+      // Dropdown
+      for (const input of document.querySelectorAll('vscode-dropdown')) {
+        const selectElement = document.querySelector('#' + input.id);
+        data[input.id] = selectElement.options[selectElement.selectedIndex].value;
+      }
+      
+      // Radio
+      for (const input of document.querySelectorAll('vscode-radio-group')) {
+        const radioElement = document.getElementsByName(input.name);
+        for(i = 0; i < radioElement.length; i++) {
+          if(radioElement[i].checked) {
+            data[input.name] = radioElement[i].textContent;
+            break;
+          }
+        }
+      }
+
+      return data;
+    }
+
     const vscode = acquireVsCodeApi();
 
     for (const link of document.querySelectorAll('[href^="action:"]')) {
@@ -74,10 +106,7 @@ const footer = /*html*/`
         id: link.id,
         value: ''
       }
-      
-      console.log(link)
-      console.log(link.dataset.action)
-      
+
       if(link.dataset.action === "checkbox"){
         link.addEventListener('click', (event) => {
           data.value = !event.target.currentChecked;
@@ -90,6 +119,15 @@ const footer = /*html*/`
           vscode.postMessage(data);
         });
       }
+    }
+
+    const saveButton = document.getElementById("saveData");
+    if (saveButton) {
+      saveButton.addEventListener("click", () => {
+          const data = getInputs();
+          vscode.postMessage({data})
+      }
+      );
     }
 
     window.addEventListener("message", (event) => {
@@ -142,7 +180,7 @@ export namespace Components {
     placeholder: string
     readonly: boolean
     size: number
-    type: 'Text' | 'Email' | 'Password' | 'Tel' | 'Text' | 'Url'
+    type: 'Text' | 'Email' | 'Password' | 'Tel' | 'Url'
     value: string
   }
 
@@ -223,6 +261,15 @@ export namespace Components {
     content: string
   }
 
+  interface RadioGroup extends Component {
+    disabled: boolean
+    name: string
+    orientation: 'horiztonal' | 'vertical'
+    items: string[]
+    readonly: boolean
+    label: string
+  }
+
   export function panels(panels: Panel[], attributes?: Component, activeid?: number): string {
     return /*html*/ `<vscode-panels ${renderAttributes(attributes)} ${activeid ? `activeid="tab-${activeid}"` : ""}>
       ${panels.map((panel, index) => /*html*/ `<vscode-panel-tab id="tab-${index + 1}">${panel.title.toUpperCase()}${panel.badge ? badge(panel.badge, true) : ''}</vscode-panel-tab>`).join("")}
@@ -267,10 +314,18 @@ export namespace Components {
     return /* html */`<vscode-divider ${renderAttributes(options)}></vscode-divider>`;
   }
 
-  export function dropDown(id: string, dropDown: Partial<DropDown>, noChangeListener?: boolean) {
-    return /*html*/ `<vscode-dropdown id="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(dropDown, "indicator")}>
+  export function dropDown(id: string, dropDown: Partial<DropDown>, label?: string, noChangeListener?: boolean) {
+    return /*html*/ `${label ? /*html*/ `<label for="${id}">${label}:</label><br>`: ''}
+    <vscode-dropdown id="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(dropDown, "indicator")}>
       ${dropDown.indicator ? /*html*/ _icon(dropDown.indicator, "indicator") : ''}
       ${dropDown.items?.map(item => /*html*/ `<vscode-option>${item}</vscode-option>`).join("")}
+    </vscode-dropdown>`;
+  }
+
+  export function radioGroup(name: string, radioGroup: Partial<RadioGroup>, noChangeListener?: boolean) {
+    return /*html*/ `<vscode-radio-group name="${name}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(radioGroup, "indicator")}>
+      <label slot="label">${radioGroup.label || ""}</label>
+      ${radioGroup.items?.map(item => /*html*/ `<vscode-radio>${item}</vscode-radio>`).join("")}
     </vscode-dropdown>`;
   }
 
@@ -286,8 +341,8 @@ export namespace Components {
     return /* html */`<vscode-checkbox id="${id}" value="${id}" ${renderChangeListener("checkbox", noChangeListener)} ${renderAttributes(options)}>${label || ''}</vscode-checkbox>`;
   }
 
-  export function button(label?: string, options?: Partial<Button>) {
-    return /* html */`<vscode-button ${renderAttributes(options, "icon", "action")} ${options?.action ? `href="action:${options.action}"` : ""}>
+  export function button(id: string, label?: string, options?: Partial<Button>) {
+    return /* html */`<vscode-button id="${id}" name="${id}" ${renderAttributes(options, "icon", "action")} ${options?.action ? `href="action:${options.action}"` : ""}>
       ${label || ''}
       ${options?.icon ? /* html */ _icon(options.icon.name, options.icon.left ? "start" : "") : ''}
       </vscode-button>`;
