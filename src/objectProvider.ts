@@ -7,6 +7,7 @@ import BindingDirectory from './types/bindingDirectory';
 import { Command } from './types/command';
 import { DataArea } from './types/dataarea';
 import { DataQueue } from './types/dataqueue';
+import { JobQueue } from './types/jobQueue';
 import Program from './types/program';
 import { SaveFile } from './types/saveFile';
 import { generatePage, generateError } from './webviewToolkit';
@@ -112,6 +113,9 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
         if (uri.fragment.toUpperCase() === 'SAVF') {
           return new SaveFile(uri, library, objectName);
         }
+
+      case `JOBQ`:
+        return new JobQueue(uri, library, objectName);
     }
   } else {
     throw new Error(`Invalid path.`);
