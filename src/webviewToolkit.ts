@@ -35,6 +35,7 @@ const head = /*html*/`
     .cellValue {      
       display: table-cell;
       padding-left: 10px;
+      background-color: transparent;
     }
   </style>`;
 
