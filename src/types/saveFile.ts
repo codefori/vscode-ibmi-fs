@@ -1,8 +1,7 @@
-import { CommandResult, IBMiObject } from '@halcyontech/vscode-ibmi-types';
-import { basename, extname } from 'path';
+import { CommandResult, FilteredItem, IBMiObject } from '@halcyontech/vscode-ibmi-types';
+import { basename } from 'path';
 import * as vscode from 'vscode';
-import { Filter } from '../import/code-for-ibmi';
-import { Code4i, getQSYSObjectPath, IBMI_OBJECT_NAME, makeid } from '../tools';
+import { Code4i, IBMI_OBJECT_NAME, getQSYSObjectPath, makeid } from '../tools';
 import { Components } from '../webviewToolkit';
 import Base from "./base";
 
@@ -82,7 +81,7 @@ export namespace SaveFileActions {
         }
     };
 
-    export const uploadSavf = async (filter: Filter) => {
+    export const uploadSavf = async (filterItem: FilteredItem) => {
         const saveFiles = await vscode.window.showOpenDialog({
             canSelectFiles: true,
             canSelectFolders: false,
@@ -133,7 +132,7 @@ export namespace SaveFileActions {
                                 progress.report({ message: `restoring ${fileName} as SAVF`, increment });
 
                                 const copyFromStreamFile = await Code4i.runCommand({
-                                    command: `CPYFRMSTMF FROMSTMF('${remotePath}') TOMBR('${getQSYSObjectPath(filter.library, name, 'FILE')}') MBROPT(*REPLACE)`
+                                    command: `CPYFRMSTMF FROMSTMF('${remotePath}') TOMBR('${getQSYSObjectPath(filterItem.filter.library, name, 'FILE')}') MBROPT(*REPLACE)`
                                 });
                                 if (copyFromStreamFile.code !== 0) {
                                     result.successful = false;
@@ -162,7 +161,7 @@ export namespace SaveFileActions {
             });
 
             if (result.successful) {
-                vscode.window.showInformationMessage(`Successfully uploaded ${uploaded}/${saveFiles.length} Save file${saveFiles.length > 1 ? 's' : ''} to ${filter.library}.`);
+                vscode.window.showInformationMessage(`Successfully uploaded ${uploaded}/${saveFiles.length} Save file${saveFiles.length > 1 ? 's' : ''} to ${filterItem.filter.library}.`);
             }
             else {
                 vscode.window.showErrorMessage(`Failed to upload Save file${saveFiles.length > 1 ? 's' : ''}: ${result.error}`);
