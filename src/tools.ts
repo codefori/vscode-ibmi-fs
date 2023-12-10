@@ -36,7 +36,7 @@ export namespace Code4i {
     }
 
     export async function runCommand(command: RemoteCommand) : Promise<CommandResult>  {
-        return await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, command);
+        return await getConnection().runCommand(command);
     }    
 }
 
