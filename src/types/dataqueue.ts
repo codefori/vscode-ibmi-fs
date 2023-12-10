@@ -45,7 +45,7 @@ export namespace DataQueueActions {
             placeHolder: "key data",
             title: `Enter key data`,
             validateInput: data => {
-                if (data.length > dataQueue.keyLength) {
+                if (data.length > Number(dataQueue.keyLength)) {
                     return `Key data is too long (maximum ${dataQueue.keyLength} characters)`;
                 }
             }
@@ -55,7 +55,7 @@ export namespace DataQueueActions {
                 placeHolder: "data",
                 title: `Enter data`,
                 validateInput: data => {
-                    if (data.length > dataQueue.maximumMessageLength) {
+                    if (data.length > Number(dataQueue.maximumMessageLength)) {
                         return `Data is too long (maximum ${dataQueue.maximumMessageLength} characters)`;
                     }
                 }
