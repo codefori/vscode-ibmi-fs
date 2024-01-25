@@ -52,6 +52,9 @@
           },
           {
             "filenamePattern": "object*/**/*.FILE"
+          },
+          {
+            "filenamePattern": "object*/**/*.SBSD"
           }
         ],
         "priority": "default"
