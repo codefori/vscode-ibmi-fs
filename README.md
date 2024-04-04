@@ -18,5 +18,3 @@ Has support for:
 ## TODO:
 
 * More file types
-* Job Browser view
-* Spool File Browser view
