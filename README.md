@@ -1,6 +1,6 @@
 # vscode-ibmi-fs
 
-This extension provides additional functionality not found in the base, such as object editing, job browser, spool file browser, etc.
+This extension provides additional functionality not found in the base for editing objects inside of the QSYS file system.
 
 ## Current functionality
 
