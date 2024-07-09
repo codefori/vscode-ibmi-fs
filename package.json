@@ -6,7 +6,7 @@
   "preview": true,
   "license": "MIT",
   "engines": {
-    "vscode": "^1.71.0"
+    "vscode": "^1.90.0"
   },
   "author": {
     "name": "Code4i",
@@ -142,7 +142,7 @@
     "@types/glob": "^7.2.0",
     "@types/mocha": "^9.1.1",
     "@types/node": "^16.18.79",
-    "@types/vscode": "^1.86.0",
+    "@types/vscode": "^1.90.0",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "esbuild": "^0.19.12",
