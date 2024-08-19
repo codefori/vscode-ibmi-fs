@@ -138,7 +138,7 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@halcyontech/vscode-ibmi-types": "^2.6.5",
+    "@halcyontech/vscode-ibmi-types": "^2.12",
     "@types/glob": "^7.2.0",
     "@types/mocha": "^9.1.1",
     "@types/node": "^20",
