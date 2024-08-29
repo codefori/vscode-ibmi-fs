@@ -138,19 +138,18 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@halcyontech/vscode-ibmi-types": "^2.6.5",
+    "@halcyontech/vscode-ibmi-types": "^2.12",
     "@types/glob": "^7.2.0",
     "@types/mocha": "^9.1.1",
-    "@types/node": "^16.18.79",
+    "@types/node": "^20",
     "@types/vscode": "^1.90.0",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "esbuild": "^0.19.12",
-    "esbuild-loader": "^3.2.0",
+		"esbuild-loader": "^4.2.2",
     "eslint": "^8.56.0",
     "glob": "^8.1.0",
     "mocha": "^10.2.0",
-    "ts-loader": "^9.5.1",
     "typescript": "^4.9.5",
     "webpack": "^5.90.1",
     "webpack-cli": "^4.10.0"
