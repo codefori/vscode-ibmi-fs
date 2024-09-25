@@ -9,7 +9,7 @@ import util from 'util';
 
 const writeFileAsync = util.promisify(fs.writeFile);
 
-export function getSpooledFileUri(msg: IBMiMessageQueueMessage, options?: MsgOpenOptions) {
+export function getMessageDetailFileUri(msg: IBMiMessageQueueMessage, options?: MsgOpenOptions) {
   return getUriFromPath(`${msg.messageQueueLibrary}/${msg.messageQueue}/${msg.messageID}~${msg.messageKey}.msg`, options);
 }
 export function getUriFromPath_Msg(path: string, options?: MsgOpenOptions) {
@@ -45,28 +45,8 @@ export class MsgFS implements vscode.FileSystemProvider {
   onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.emitter.event;
 
   constructor(context: vscode.ExtensionContext) {
-
-    context.subscriptions.push(
-      // vscode.workspace.onDidChangeConfiguration(async event => {
-        // if (event.affectsConfiguration(`code-for-ibmi.connectionSettings`)) {
-        //   this.updateSpooledFileSupport();
-        // }
-      // })
-    );
-
-    // getInstance()?.subscribe(context, `connected`, "Connection Setup" , () => this.updateSpooledFileSupport());
-    // getInstance()?.subscribe(context, `disconnected`, "Disconnect clean up" , () => this.updateSpooledFileSupport());
   }
 
-  // private updateSpooledFileSupport() {
-
-  //   const connection = Code4i.getConnection();
-  //   const config = connection?.config;
-
-  //   if (connection) {
-  //   }
-
-  // }
 
   stat(uri: vscode.Uri): vscode.FileStat {
     return {
@@ -82,18 +62,13 @@ export class MsgFS implements vscode.FileSystemProvider {
     const contentApi = Code4i.getContent();
     const connection = Code4i.getConnection();
     if (connection && contentApi) {
-      //           0         1            2             3  a          b                c                d                  e       
       // path: `message://${msg.Qlib}/${msg.Qname}/${msg.MessageID}~${msg.KEY}.msg``,
       const lpath = uri.path.split(`/`);
-      const lfilename = lpath[3].split(`~`);
-      const qualifiedJobName = lfilename[3] + '/' + lfilename[2] + '/' + lfilename[1];
-      const splfNumber = lfilename[4].replace(`.msg`, ``);
-      const name = lfilename[0];
       const options:ParsedUrlQuery = parse(uri.query);
 
-      const spooledFileContent = await IBMiContentMsgq.downloadMessageContent(uri.path, `txt`, options);
-      if (spooledFileContent !== undefined) {
-        return new Uint8Array(Buffer.from(spooledFileContent, `utf8`));
+      const messageContent = await IBMiContentMsgq.downloadMessageContent(uri.path, `msg`, options);
+      if (messageContent !== undefined) {
+        return new Uint8Array(Buffer.from(messageContent, `utf8`));
       }
       else {
         throw new Error(`Couldn't read ${uri}; check IBM i connection.`);
@@ -105,28 +80,29 @@ export class MsgFS implements vscode.FileSystemProvider {
   }
 
   async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
-    const lpath = uri.path.split(`/`);
-    let localFilepath = os.homedir() + `/` + lpath[3] + `.txt`;
-    let savFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(localFilepath) });
-    if (savFilepath) {
-      let localPath = savFilepath.path;
-      if (process.platform === `win32`) {
-        //Issue with getFile not working propertly on Windows
-        //when there was a / at the start.
-        if (localPath[0] === `/`) localPath = localPath.substring(1);
-      }
-      try {
-        // let fileEncoding = `utf8`;
-        // await writeFileAsync(localPath, content, fileEncoding);
-        await writeFileAsync(localPath, content);
-        vscode.window.showInformationMessage(`Spooled File, ${uri}, was saved.`);
-      } catch (e) {
-        vscode.window.showErrorMessage(l10n.t(`Error saving Spoooled File, ${uri}! ${e}`));
-      }
-    }
-    else {
-      vscode.window.showErrorMessage(`Spooled file, ${uri}, was not saved.`);
-    }
+    // const lpath = uri.path.split(`/`);
+    // let localFilepath = os.homedir() + `/` + lpath[3] + `.txt`;
+    // let savFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(localFilepath) });
+    // if (savFilepath) {
+    //   let localPath = savFilepath.path;
+    //   if (process.platform === `win32`) {
+    //     //Issue with getFile not working propertly on Windows
+    //     //when there was a / at the start.
+    //     if (localPath[0] === `/`) localPath = localPath.substring(1);
+    //   }
+    //   try {
+    //     // let fileEncoding = `utf8`;
+    //     // await writeFileAsync(localPath, content, fileEncoding);
+    //     await writeFileAsync(localPath, content);
+    //     vscode.window.showInformationMessage(`Message, ${uri}, was saved.`);
+    //   } catch (e) {
+    //     vscode.window.showErrorMessage(l10n.t(`Error saving Message, ${uri}! ${e}`));
+    //   }
+    // }
+    // else {
+    //   vscode.window.showErrorMessage(`Message, ${uri}, was not saved.`);
+    // }
+    throw new Error("Method not implemented.");
   }
 
   rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { readonly overwrite: boolean; }): void | Thenable<void> {

@@ -1,11 +1,10 @@
 
 import { SortOptions } from '@halcyontech/vscode-ibmi-types/api/IBMiContent';
 import vscode, { l10n, TreeDataProvider } from 'vscode';
-import { IBMiContentMsgq } from "../api/IBMiContentMsgq";
-// import { getSpooledFileUri } from '../filesystem/qsys/SplfFs';
 import { Code4i } from '../tools';
+import { IBMiContentMsgq } from "../api/IBMiContentMsgq";
 import { IBMiMessageQueueViewItem, IBMiMessageQueue } from '../typings';
-
+import { getMessageDetailFileUri } from '../filesystem/qsys/MsgQFs';
 
 //https://code.visualstudio.com/api/references/icons-in-labels
 const objectIcons: Record<string, string> = {
@@ -50,16 +49,16 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
         // let filter;
         switch (element.contextValue.split(`_`)[0]) {
         case `msgq`:
-          //Fetch spooled files
+          //Fetch messages from message queue
           try {
-            const objects = await IBMiContentMsgq.getMessageQueueMessageList(element.queue, element.queueLibrary, element.sort, element.filter);
+            const objects = await IBMiContentMsgq.getMessageQueueMessageList(element.messageQueue, element.messageQueueLibrary, element.sort, element.filter);
             items.push(...objects
               .map((object: IBMiMessageQueueViewItem) => new MessageQueueList( element, object)));
 
           } catch (e: any) {
             // console.log(e);
             vscode.window.showErrorMessage(e.message);
-            items.push(new vscode.TreeItem(l10n.t(`Error loading user spooled files.`)));
+            items.push(new vscode.TreeItem(l10n.t(`Error loading messages for message queue {0}.`,element.messageQueueLibrary+'/'+element.messageQueue)));
           }
         case `MSG`:
           { }
@@ -131,18 +130,18 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
   }
 }
 
-export class MessageQueue extends vscode.TreeItem {
+export class MessageQueue extends vscode.TreeItem implements IBMiMessageQueue {
   protected: boolean;
   parent: vscode.TreeItem;
-  queue: string;
-  queueLibrary: string;
+  messageQueue: string;
+  messageQueueLibrary: string;
   description: string;
   filter: string; // reduces tree items to matching tokens
   readonly sort: SortOptions = { order: "date", ascending: true };
   constructor(parent: vscode.TreeItem, theMsgq: IBMiMessageQueue) {
     super(theMsgq.messageQueueLibrary+`/`+theMsgq.messageQueue, vscode.TreeItemCollapsibleState.Collapsed);
-    this.queue = theMsgq.messageQueue;
-    this.queueLibrary = theMsgq.messageQueueLibrary;
+    this.messageQueue = theMsgq.messageQueue;
+    this.messageQueueLibrary = theMsgq.messageQueueLibrary;
     const icon = objectIcons[`msgq`] || objectIcons[``];
     // TODO: need to use a command to chekc authority to message queue object.  How to run that or get the result here??
     // this.protected = this.messageQueue.toLocaleUpperCase() !== currentUser.toLocaleUpperCase() ? true : false;
@@ -180,14 +179,9 @@ export class MessageQueueList extends vscode.TreeItem implements IBMiMessageQueu
   messageKey: string;
   messageText: string;
   protected: boolean;
-  // path: string;
   readonly sort: SortOptions = { order: "date", ascending: true };
   readonly sortBy: (sort: SortOptions) => void;
-  /**
-   * @param {vscode.TreeItem} parent
-   * @param {IBMiSpooledFile} object
-   * @param {IBMiSplfUser} filter
-   */
+  
   constructor( parent: MessageQueue, object: IBMiMessageQueueViewItem) {
 
     const icon = objectIcons[`msg`] || objectIcons[``];
@@ -196,8 +190,8 @@ export class MessageQueueList extends vscode.TreeItem implements IBMiMessageQueu
 
     this.parent = parent;
     this.name = object.messageID+' - '+object.messageText;
-
-    // this.description = l10n.t(`- {0} - Pages: {1}, Time: {2} `, this.status, this.totalPages, this.creationTimestamp.substring(11));
+    this.resourceUri = getMessageDetailFileUri(object, parent.protected ? { readonly: true } : undefined);
+    // this.path = this.resourceUri.path.substring(1); // removes leading slash for QSYS paths
     this.iconPath = new vscode.ThemeIcon(icon);
     this.protected = parent.protected;
     this.contextValue = `message${this.protected ? `_readonly` : ``}`;
@@ -206,17 +200,6 @@ export class MessageQueueList extends vscode.TreeItem implements IBMiMessageQueu
     this.messageID = object.messageID;
     this.messageKey = object.messageKey;
     this.messageText = object.messageText;
-    // this.resourceUri = getMessageQueueMessageUri(object, parent.protected ? { readonly: this.protected } : undefined);
-    // this.tooltip = ``
-    //   .concat(this.messageID            ? l10n.t(`Message ID . . . .${0}`,this.messageID) :``)
-    //   .concat(this.messageType          ? l10n.t(`Message Type . . .${0}`,this.messageType):``)
-    //   .concat(this.severity             ? l10n.t(`Severity . . . . .${0}`,this.severity):``)
-    //   .concat(this.messageTimestamp     ? l10n.t(`Time Arrived . . .${0}`,this.messageTimestamp):``)
-    //   .concat(this.messageKey           ? l10n.t(`Key  . . . . . . .${0}`,this.messageKey):``)
-    //   .concat(this.fromUser             ? l10n.t(`From User  . . . .${0}`,this.fromUser):``)
-    //   .concat(this.fromJob              ? l10n.t(`From Job . . . . .${0}`,this.fromJob):``)
-    //   .concat(this.fromProgram          ? l10n.t(`From Program . . .${0}`,this.fromProgram):``)
-    // ;
     this.command = {
       command: `vscode.open`,
       title: `Show Message Details`,

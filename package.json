@@ -6,7 +6,7 @@
   "preview": true,
   "license": "MIT",
   "engines": {
-    "vscode": "^1.90  .0"
+    "vscode": "^1.90.0"
   },
   "author": {
     "name": "Code4i",
@@ -21,7 +21,7 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onFileSystem:MsgqFs"
+    "onFileSystem:MsgQFs"
   ],
   "extensionDependencies": [
     "HalcyonTechLtd.code-for-ibmi"
@@ -109,8 +109,8 @@
         "title": "Send data",
         "category": "IBM i FS",
         "icon": "arrow-right"
-      }
-      ,{
+      },
+      {
         "command": "vscode-ibmi-msgqbrowser.filterMessageQueue",
         "enablement": "code-for-ibmi:connected",
         "title": "Filter Message Queue",
@@ -122,8 +122,15 @@
         "enablement": "code-for-ibmi:connected",
         "title": "Search User Message Queue",
         "category": "IBM i Messages",
-        "icon": "$(search-fuzzy)"
+        "icon": "$(search)"
       },
+      {
+				"command": "code-for-ibmi.searchObjectBrowser",
+				"title": "Highlight",
+				"category": "IBM i",
+				"icon": "$(search-fuzzy)",
+				"enablement": "code-for-ibmi:connected"
+			},
       {
         "command": "vscode-ibmi-msgqbrowser.addMessageQueueFilter",
         "title": "Add Message Queue Filter",
@@ -132,8 +139,8 @@
         "icon": "$(add)"
       },
       {
-        "command": "vscode-ibmi-msgqbrowser.deleteMessageQueueFilter",
-        "title": "Delete Message Queue Filter",
+        "command": "vscode-ibmi-msgqbrowser.removeMessageQueueFilter",
+        "title": "Remove Message Queue Filter",
         "category": "IBM i Messages",
         "enablement": "code-for-ibmi:connected == true",
         "icon": "$(trash)"
@@ -146,11 +153,11 @@
         "icon": "$(list-ordered)"
       },
       {
-        "command": "vscode-ibmi-msgqbrowser.deleteMessagesAll",
+        "command": "vscode-ibmi-msgqbrowser.removeMessageAll",
         "title": "Delete All User Messages",
         "category": "IBM i Messages",
         "enablement": "code-for-ibmi:connected == true",
-        "icon": "$(delete)"
+        "icon": "$(clear-all)"
       },
       {
         "command": "vscode-ibmi-msgqbrowser.deleteMessage",
@@ -251,9 +258,13 @@
           "command": "vscode-ibmi-msgqbrowser.sortMessageQueueFilter",
           "when": "view == msgqBrowser",
           "group": "navigation@1"
-        }
-      ]
-      ,
+        },
+        {
+					"command": "code-for-ibmi.searchObjectBrowser",
+					"group": "navigation@6",
+					"when": "view == objectBrowser"
+				}
+      ],
       "vscode-ibmi-msgqbrowser.sortMessageQueue": [
         {
           "command": "vscode-ibmi-msgqbrowser.sortMessagesByID"
@@ -284,8 +295,13 @@
           "group": "5_DtaqAction@2"
         },
         {
+          "command": "vscode-ibmi-msgqbrowser.removeMessageAll",
+          "when": "view == msgqBrowser && viewItem =~ /^msgq.*$/",
+          "group": "inline@1"
+        },
+        {
           "command": "vscode-ibmi-msgqbrowser.refreshMSGQBrowser",
-          "when": "view == msgqBrowser",
+          "when": "view == msgqBrowser && viewItem =~ /^msgq.*$/",
           "group": "inline@1"
         },
         {
@@ -294,7 +310,7 @@
           "group": "inline@2"
         },
         {
-          "command": "vscode-ibmi-msgqbrowser.deleteMessageQueueFilter",
+          "command": "vscode-ibmi-msgqbrowser.removeMessageQueueFilter",
           "when": "view == msgqBrowser && viewItem =~ /^msgq.*$/",
           "group": "inline@3"
         },
@@ -309,12 +325,12 @@
           "group": "4_messagequeue@2"
         },
         {
-          "command": "vscode-ibmi-msgqbrowser.deleteMessageQueueFilter",
+          "command": "vscode-ibmi-msgqbrowser.removeMessageQueueFilter",
           "when": "view == msgqBrowser && viewItem =~ /^msgq.*$/",
           "group": "5_messagequeue@1"
         },
         {
-          "command": "vscode-ibmi-msgqbrowser.deleteMessagesAll",
+          "command": "vscode-ibmi-msgqbrowser.removeMessageAll",
           "when": "view == msgqBrowser && viewItem =~ /^msgq$/",
           "group": "5_messagequeue@2"
         },
@@ -375,7 +391,7 @@
           "when": "never"
         },
         {
-          "command": "vscode-ibmi-msgqbrowser.deleteMessagesAll",
+          "command": "vscode-ibmi-msgqbrowser.removeMessageAll",
           "when": "never"
         },
         {
@@ -397,10 +413,14 @@
         {
           "command": "vscode-ibmi-msgqbrowser.revealMSGQBrowser",
           "when": "never"
-        }
+        },
+        {
+					"command": "code-for-ibmi.searchObjectBrowser",
+					"when": "never"
+				}
       ]
-    } 
-    ,"submenus": [
+    },
+    "submenus": [
       {
         "id": "vscode-ibmi-msgqbrowser.sortMessageQueue",
         "label": "Sort Message Queue by"
@@ -409,7 +429,7 @@
   },
   "scripts": {
     "clean": "rimraf dist",
-    "package":"npx @vscode/vsce package --pre-release",
+    "package": "npx @vscode/vsce package --pre-release",
     "vscode:prepublish": "npm run build",
     "compile": "npm run clean && webpack",
     "watch": "npm run clean && webpack --watch",
@@ -425,19 +445,20 @@
     "@types/glob": "^7.2.0",
     "@types/mocha": "^9.1.1",
     "@types/node": "^20",
+    "@types/tmp": "^0.2.6",
     "@types/vscode": "^1.90.0",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "esbuild": "^0.19.12",
-		"esbuild-loader": "^4.2.2",
-    "rimraf": "^5.0.5",
+    "esbuild-loader": "^4.2.2",
     "eslint": "^8.56.0",
     "glob": "^8.1.0",
     "mocha": "^10.2.0",
+    "rimraf": "^5.0.5",
     "tmp": "^0.2.1",
     "typescript": "^4.9.5",
     "webpack": "^5.94.0",
-		"webpack-cli": "^5.1.4"
+    "webpack-cli": "^5.1.4"
   },
   "dependencies": {
     "@vscode/webview-ui-toolkit": "^1.4.0"

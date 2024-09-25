@@ -61,14 +61,10 @@ export namespace IBMiContentMsgq {
   /**
   * Download the contents of a message queue message
   * @param {string} uriPath 
-  * @param {string} name 
-  * @param {string} qualifiedJobName 
-  * @param {string} splfNumber 
   * @param {string} fileExtension 
   * @param {string=} additionalPath 
-  * @returns {string} a string containing spooled file data 
   */
-  export async function downloadMessageContent(uriPath: string, fileExtension: string, options?: MsgOpenOptions, additionalPath?: string) {
+  export async function downloadMessageContent(uriPath: string, fileExtension: string, options?: MsgOpenOptions) {
     const connection = Code4i.getConnection();
     const tempRmt = connection.getTempRemote(uriPath);
     const tmplclfile = await tmpFile();
@@ -134,7 +130,7 @@ export namespace IBMiContentMsgq {
   /**
   * @param {string} messageQueue
   * @param {string} messageQueueLibrary
-  * @returns {Promise<String>} a string with the count of spooled file for user
+  * @returns {Promise<String>} a string with the count of messages in message queue
   */
   export async function getMessageQueueCount(messageQueue: string, messageQueueLibrary: string): Promise<string> {
     messageQueue = messageQueue.toUpperCase();
@@ -154,7 +150,7 @@ export namespace IBMiContentMsgq {
   /**
   * @param {string} messageQueue
   * @param {string} messageQueueLibrary
-  * @returns {Promise<String>} a string with the count of spooled file for user
+  * @returns {Promise<String>} an object of message attributes
   */
   export async function getMessageAttributes(messageQueue: string, messageQueueLibrary: string, msgKey: string): Promise<IBMiMessageQueueMessage> {
     messageQueue = messageQueue.toUpperCase();

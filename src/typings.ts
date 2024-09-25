@@ -43,3 +43,10 @@ export interface FuncInfo {
   text: string
   comment: string
 }
+
+export interface SearchParms {
+  messageQueue: string | undefined,
+  messageQueueLibrary?: string,
+  term: string | undefined,
+  word: string,
+}

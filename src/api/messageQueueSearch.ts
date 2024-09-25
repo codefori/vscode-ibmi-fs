@@ -4,7 +4,7 @@ import fs from "fs";
 import tmp from "tmp";
 import { CommandResult } from "@halcyontech/vscode-ibmi-types";
 import { Code4i, makeid } from "../tools";
-import { isProtectedFilter } from '../filesystem/qsys/Msgfs';
+import { isProtectedFilter } from '../filesystem/qsys/MsgQFs';
 import { IBMiContentMsgq } from "./IBMiContentMsgq";
 import { FuncInfo, IBMiMessageQueue } from '../typings';
 
