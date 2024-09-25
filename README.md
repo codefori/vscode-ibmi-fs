@@ -17,4 +17,5 @@ Has support for:
 
 ## TODO:
 
+* Message queue viewer - Active work
 * More file types
