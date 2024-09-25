@@ -6,12 +6,16 @@ import ObjectProvider from './objectProvider';
 import { Code4i } from './tools';
 import { DataQueueActions } from './types/dataqueue';
 import { SaveFileActions } from './types/saveFile';
+import { initializeMessageQueueBrowser } from './messageQueueBrowser';
+import { initializeMessageQueueSearchView } from './messageQueueSearchResults';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
 	await Code4i.initialize();
 
+	initializeMessageQueueBrowser(context);
+	await initializeMessageQueueSearchView(context);
 	context.subscriptions.push(
 		vscode.window.registerCustomEditorProvider(`vscode-ibmi-fs.editor`, new ObjectProvider(), {
 			webviewOptions: {
@@ -23,7 +27,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	SaveFileActions.register(context);
 	DataQueueActions.register(context);
 
-	console.log('Congratulations, your extension "vscode-ibmi-fs" is now active!');
+	console.log(`Congratulations, your extension "vscode-ibmi-fs" "Version" :"${context.extension.packageJSON.version}" is now active!`);
 }
 
 // this method is called when your extension is deactivated
