@@ -2,7 +2,7 @@
   "name": "vscode-ibmi-fs",
   "displayName": "IBM i FileSystem",
   "description": "File system provider for IBM i QSYS",
-  "version": "0.0.3.dev0",
+  "version": "0.0.3-dev.0",
   "preview": true,
   "license": "MIT",
   "engines": {
@@ -130,8 +130,8 @@
     "clean": "rimraf dist",
     "package":"npx @vscode/vsce package --pre-release",
     "vscode:prepublish": "npm run build",
-    "compile": "npm run clean && webpack",
-    "watch": "npm run clean && webpack --watch",
+    "compile": "npm run clean && webpack --mode development",
+    "watch": "npm run clean && webpack --watch --mode development",
     "build": "npm run clean && webpack --mode production --devtool hidden-source-map"
   },
   "devDependencies": {
