@@ -5,6 +5,7 @@ import BindingDirectory from './types/bindingDirectory';
 import { Command } from './types/command';
 import { DataArea } from './types/dataarea';
 import { DataQueue } from './types/dataqueue';
+import MessageFile from './types/messageFile';
 import Program from './types/program';
 import { SaveFile } from './types/saveFile';
 import { generateError, generatePage } from './webviewToolkit';
@@ -55,7 +56,7 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
   async resolveCustomEditor(document: Base, webviewPanel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {
     webviewPanel.webview.options = {
       enableScripts: true,
-      enableCommandUris: true,
+      enableCommandUris: true
     };
 
     if (document.failedFetch) {
@@ -103,6 +104,9 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
 
       case `CMD`:
         return new Command(uri, library, objectName);
+
+      case `MSGF`:
+        return new MessageFile(uri, library, objectName);
 
       case `DTAQ`:
         return new DataQueue(uri, library, objectName);
