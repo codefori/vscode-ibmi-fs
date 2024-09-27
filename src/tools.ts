@@ -52,9 +52,9 @@ export namespace Code4i {
     type = type.toUpperCase();
 
     // Note: this line does not work for most *USRPRFs because as a regular programmer I dont have access to see the profile
-    const objQuery = `select OB.OBJTEXT OBJECT_TEXT
+    const objQuery = `/*GETOBJECTTEXT*/ select OB.OBJTEXT OBJECT_TEXT
   from table ( QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library}', OBJTYPELIST => '${type}', OBJECT_NAME => '${object}') ) OB 
-  limit 1`;
+  limit 1 /*GETOBJECTTEXT*/`;
     let results = await Code4i!.runSQL(objQuery);
     if (results.length === 0) {
       return ` I dont know where to find the text for ${library}/${object}`;

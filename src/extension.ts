@@ -3,7 +3,7 @@
 import * as vscode from 'vscode';
 
 import ObjectProvider from './objectProvider';
-import { Code4i } from './tools';
+import { Code4i, getInstance } from './tools';
 import { DataQueueActions } from './types/dataqueue';
 import { SaveFileActions } from './types/saveFile';
 import { initializeMessageQueueBrowser } from './messageQueueBrowser';
@@ -28,6 +28,13 @@ export async function activate(context: vscode.ExtensionContext) {
 	DataQueueActions.register(context);
 
 	console.log(`Congratulations, your extension "vscode-ibmi-fs" "Version" :"${context.extension.packageJSON.version}" is now active!`);
+	getInstance()?.subscribe(
+    context,
+    'connected',
+    `Refresh views`,
+    () => {
+      vscode.commands.executeCommand("vscode-ibmi-msgqbrowser.refreshMSGQBrowser");
+    });
 }
 
 // this method is called when your extension is deactivated

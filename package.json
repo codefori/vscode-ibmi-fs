@@ -125,7 +125,7 @@
         "icon": "$(search)"
       },
       {
-				"command": "code-for-ibmi.searchObjectBrowser",
+				"command": "vscode-ibmi-msgqbrowser.searchMessageQueueBrowser",
 				"title": "Highlight",
 				"category": "IBM i",
 				"icon": "$(search-fuzzy)",
@@ -161,21 +161,21 @@
       },
       {
         "command": "vscode-ibmi-msgqbrowser.deleteMessage",
-        "title": "Delete SELECTED Message ID",
+        "title": "Delete SELECTED Message",
         "enablement": "code-for-ibmi:connected",
         "category": "IBM i Messages",
         "icon": "$(delete)"
       },
       {
         "command": "vscode-ibmi-msgqbrowser.deleteMessagesNamed",
-        "title": "Delete like NAMED Message ID",
+        "title": "Delete messages like Message ID",
         "enablement": "code-for-ibmi:connected",
         "category": "IBM i Messages",
         "icon": "$(delete)"
       },
       {
         "command": "vscode-ibmi-msgqbrowser.deleteMessagesFiltered",
-        "title": "Delete like FILTERED Message IDs",
+        "title": "Delete all FILTERED messages",
         "enablement": "code-for-ibmi:connected",
         "category": "IBM i Messages",
         "icon": "$(delete)"
@@ -260,9 +260,9 @@
           "group": "navigation@1"
         },
         {
-					"command": "code-for-ibmi.searchObjectBrowser",
+					"command": "vscode-ibmi-msgqbrowser.searchMessageQueueBrowser",
 					"group": "navigation@6",
-					"when": "view == objectBrowser"
+					"when": "view == msgqBrowser"
 				}
       ],
       "vscode-ibmi-msgqbrowser.sortMessageQueue": [
@@ -387,10 +387,6 @@
           "when": "never"
         },
         {
-          "command": "vscode-ibmi-msgqbrowser.deleteMessagesFiltered",
-          "when": "never"
-        },
-        {
           "command": "vscode-ibmi-msgqbrowser.removeMessageAll",
           "when": "never"
         },
@@ -400,6 +396,10 @@
         },
         {
           "command": "vscode-ibmi-msgqbrowser.deleteMessagesNamed",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-msgqbrowser.deleteMessagesFiltered",
           "when": "never"
         },
         {
@@ -415,7 +415,7 @@
           "when": "never"
         },
         {
-					"command": "code-for-ibmi.searchObjectBrowser",
+					"command": "vscode-ibmi-msgqbrowser.searchMessageQueueBrowser",
 					"when": "never"
 				}
       ]

@@ -75,17 +75,17 @@ export namespace IBMiContentMsgq {
 
     let retried = false;
     let retry = 1;
-    let fileEncoding = `utf8`;
+    let fileEncoding :BufferEncoding | null= "utf8";
+    // let fileEncoding = `utf8`;
     let cpymsgCompleted: CommandResult = { code: -1, stdout: ``, stderr: `` };
-    let results: string = ``;
+    // let results: string;
     while (retry > 0) {
       retry--;
       try {
         //If this command fails we need to try again after we delete the temp remote
         switch (fileExtension.toLowerCase()) {
           case `pdf`:
-            // fileEncoding = null;
-            fileEncoding = ``;
+            fileEncoding = null;
             // await connection.runCommand({
             //   command: `CPYSPLF FILE(${name}) TOFILE(*TOSTMF) JOB(${qualifiedJobName}) SPLNBR(${splfNumber}) TOSTMF('${tempRmt}') WSCST(*PDF) STMFOPT(*REPLACE)\nDLYJOB DLY(1)`
             //  , environment: `ile`
@@ -121,18 +121,17 @@ export namespace IBMiContentMsgq {
     }
 
     await client.getFile(tmplclfile, tempRmt);
-    results = await readFileAsync(tmplclfile, fileEncoding);
+    const results = await readFileAsync(tmplclfile, fileEncoding);
     if (cpymsgCompleted.code === 0) {
     }
     return results;
-
   }
   /**
   * @param {string} messageQueue
   * @param {string} messageQueueLibrary
   * @returns {Promise<String>} a string with the count of messages in message queue
   */
-  export async function getMessageQueueCount(messageQueue: string, messageQueueLibrary: string): Promise<string> {
+  export async function getMessageQueueCount(messageQueue: string, messageQueueLibrary: string, searchWords?: string, messageID?: string): Promise<string> {
     messageQueue = messageQueue.toUpperCase();
     messageQueueLibrary = messageQueueLibrary.toUpperCase();
 
@@ -140,7 +139,9 @@ export namespace IBMiContentMsgq {
 
     const objQuery = `select count(*) MSGQ_COUNT
     from table (QSYS2.MESSAGE_QUEUE_INFO(QUEUE_LIBRARY => '${messageQueueLibrary}', QUEUE_NAME=>'${messageQueue}') ) MSGQ 
-    where 1=1` ;
+    where 1=1
+    ${messageID ? ` and MESSAGE_ID = '${messageID}'`:''}
+    ${searchWords ?` and (MESSAGE_TEXT like '%${searchWords}%' or MESSAGE_SECOND_LEVEL_TEXT like '%${searchWords}%')`:''}`;
     let results = await Code4i!.runSQL(objQuery);
     if (results.length === 0) {
       return ` ${messageQueueLibrary}/${messageQueue} has no messages`;
