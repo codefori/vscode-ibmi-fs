@@ -28,7 +28,7 @@ export namespace IBMiContentMsgq {
     sort.order = sort.order || { order: 'date' ,ascending:'asc'};
     messageID = messageID || '';
 
-    const objQuery = [`select MESSAGE_ID, MESSAGE_KEY, MESSAGE_TEXT`
+    const objQuery = [`select  MESSAGE_ID, MESSAGE_KEY, MESSAGE_TEXT`
     , ` from table ( QSYS2.MESSAGE_QUEUE_INFO(`
     , ` QUEUE_NAME => '${queue}'`
     , `, QUEUE_LIBRARY => '${queueLibrary}')`

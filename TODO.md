@@ -1,13 +1,13 @@
 *  MessageQueue message viewer
     *  ✔ add message queue to viewer 
     *  ✔ sort list of message queues 
-    *  ✔ delete any one message queue filter 
+    *  delete any one message queue filter 
     *  refresh list of message queues in view
     *  add filter to list and refresh list
     *  remove filter from list and refresh list
 *  Clear message queue messages
-    *  All 
-    *  ✔ Selected
+    *  ✔ All 
+    *  Selected
     *  Filtered
     *  by ID
 *  Selected message queue
@@ -29,6 +29,7 @@
     *  Option to send reply to Inqury Message
 
 *  System object management for MSGQS
+    *  Verify authority to MSGQ and lock if not authorized to edit
     *  CRTMSGQ (should also add a filter for the same Q name)
     *  CLRMSGQ (for remove all messages above)
     *  DLTMSGQ (should also remove the filter of the same Q name)

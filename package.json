@@ -188,6 +188,13 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "vscode-ibmi-msgqbrowser.refreshMSGQ",
+        "title": "Refresh Message Queue",
+        "enablement": "code-for-ibmi:connected",
+        "category": "IBM i Messages",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "vscode-ibmi-msgqbrowser.sortMessagesByID",
         "title": "Name",
         "enablement": "code-for-ibmi:connected",
@@ -247,7 +254,7 @@
         {
           "command": "vscode-ibmi-msgqbrowser.refreshMSGQBrowser",
           "when": "view == msgqBrowser",
-          "group": "navigation@1"
+          "group": "navigation@91"
         },
         {
           "command": "vscode-ibmi-msgqbrowser.addMessageQueueFilter",
@@ -300,7 +307,7 @@
           "group": "inline@1"
         },
         {
-          "command": "vscode-ibmi-msgqbrowser.refreshMSGQBrowser",
+          "command": "vscode-ibmi-msgqbrowser.refreshMSGQ",
           "when": "view == msgqBrowser && viewItem =~ /^msgq.*$/",
           "group": "inline@1"
         },
