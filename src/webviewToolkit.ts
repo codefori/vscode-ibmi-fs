@@ -1,4 +1,4 @@
-const webToolKit = require("@vscode/webview-ui-toolkit/dist/toolkit.min.js");
+const webToolKit = require("@vscode-elements/elements/dist/bundled");
 
 const head = /*html*/`
   <meta charset="UTF-8">
@@ -128,7 +128,7 @@ export function generateError(text: string) {
 `;
 }
 
-//https://github.com/microsoft/vscode-webview-ui-toolkit/blob/main/docs/components.md
+// https://vscode-elements.github.io/components/
 export namespace Components {
   interface Component {
     class?: string
@@ -169,7 +169,7 @@ export namespace Components {
   }
 
   interface Button extends Component {
-    appearance: "primary" | "secondary" | "icon"
+    secondary: boolean;
     ariaLabel: string
     gautofocus: boolean
     disabled: boolean
@@ -181,7 +181,8 @@ export namespace Components {
     formtarget: string
     type: string
     value: string
-    icon: ButtonIcon,
+    icon: string,
+    iconAfter: string;
     action: string
   }
 
@@ -223,34 +224,36 @@ export namespace Components {
     content: string
   }
 
-  export function panels(panels: Panel[], attributes?: Component, activeid?: number): string {
-    return /*html*/ `<vscode-panels ${renderAttributes(attributes)} ${activeid ? `activeid="tab-${activeid}"` : ""}>
-      ${panels.map((panel, index) => /*html*/ `<vscode-panel-tab id="tab-${index + 1}">${panel.title.toUpperCase()}${panel.badge ? badge(panel.badge, true) : ''}</vscode-panel-tab>`).join("")}
-      ${panels.map((panel, index) => /*html*/ `<vscode-panel-view id="view-${index + 1}" ${panel.class ? `class="${panel.class}"` : ''}>${panel.content}</vscode-panel-view>`).join("")}
-    </vscode-panels>`;
+  export function panels(panels: Panel[], attributes?: Component, activeTab?: number): string {
+    return /*html*/ `<vscode-tabs ${renderAttributes(attributes)} ${activeTab ? `selected-index="${activeTab}"` : ""}>
+
+      ${panels.map((panel, index) => /*html*/ `
+        <vscode-tab-header slot="header">
+          ${panel.title.toUpperCase()}${panel.badge ? badge(panel.badge, true) : ''}
+        </vscode-tab-header>
+        <vscode-tab-panel>
+          ${panel.content}
+        </vscode-tab-panel>
+      `).join("")}
+    </vscode-tabs>`;
   }
 
   export function dataGrid<T>(grid: DataGrid<T>, content: T[]): string {
-    return /*html*/ `<vscode-data-grid ${renderAttributes(grid, "columns", "stickyHeader", "rowClass", "headerClass")} ${gridTemplateColumns(grid)}>
+    return /*html*/ `<vscode-table ${renderAttributes(grid, "columns", "stickyHeader", "rowClass", "headerClass")}>
         ${renderHeader(grid)}
-        ${content.map(row => renderRow(grid, row)).join("")}    
-      </vscode-data-grid>`;
-  }
 
-  function gridTemplateColumns<T>(grid: DataGrid<T>) {
-    const attemptToSize = grid.columns.some(col => col.size);
-    if (attemptToSize) {
-      return `grid-template-columns="${grid.columns.map(col => col.size ? col.size : "auto").join(" ")}"`;
-    } else {
-      return ``;
-    }
+        <vscode-table-body slot="body">
+          ${content.map(row => renderRow(grid, row)).join("")}
+        </vscode-table-body>
+      </vscode-table>`;
   }
 
   function renderHeader<T>(grid: DataGrid<T>) {
     if (grid.columns.filter(col => col.title).length) {
-      return /*html*/ `<vscode-data-grid-row row-type="${grid.stickyHeader ? "sticky-header" : "header"}" class="${grid.headerClass}"}>
-        ${grid.columns.map((col, index) => /*html*/ `<vscode-data-grid-cell cell-type="columnheader" grid-column="${index + 1}">${col.title || ""}</vscode-data-grid-cell>`).join("")}
-      </vscode-data-grid-row>`;
+      // TODO: support sticky-header. We need custom css for sticky header
+      return /*html*/ `<vscode-table-header row-type="${grid.stickyHeader ? "header" : "header"}" class="${grid.headerClass}"}>
+        ${grid.columns.map((col) => /*html*/ `<vscode-table-header-cell>${col.title || ""}</vscode-table-header-cell>`).join("")}
+      </vscode-table-header>`;
     }
     else {
       return "";
@@ -258,9 +261,9 @@ export namespace Components {
   }
 
   function renderRow<T>(grid: DataGrid<T>, row: T) {
-    return /*html*/ `<vscode-data-grid-row class="${grid.rowClass?.(row)}"}>
-        ${grid.columns.map((col, index) => /*html*/ `<vscode-data-grid-cell grid-column="${index + 1}" class="${col.cellClass?.(row) || ''}">${col.cellValue(row)}</vscode-data-grid-cell>`).join("")}        
-      </vscode-data-grid-row>`;
+    return /*html*/ `<vscode-table-row class="${grid.rowClass?.(row)}">
+        ${grid.columns.map((col) => /*html*/ `<vscode-table-cell class="${col.cellClass?.(row) || ''}">${col.cellValue(row)}</vscode-table-cell>`).join("")}        
+      </vscode-table-row>`;
   }
 
   export function divider(options?: Partial<Divider>) {
@@ -268,18 +271,18 @@ export namespace Components {
   }
 
   export function dropDown(id: string, dropDown: Partial<DropDown>, noChangeListener?: boolean) {
-    return /*html*/ `<vscode-dropdown id="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(dropDown, "indicator")}>
+    return /*html*/ `<vscode-single-select id="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(dropDown, "indicator")}>
       ${dropDown.indicator ? /*html*/ _icon(dropDown.indicator, "indicator") : ''}
-      ${dropDown.items?.map(item => /*html*/ `<vscode-option>${item}</vscode-option>`).join("")}
-    </vscode-dropdown>`;
+      ${dropDown.items?.map(item => /*html*/ `<option value="${item}">${item}</option>`).join("")}
+    </vscode-single-select>`;
   }
 
   export function textField(id: string, label?: string, options?: Partial<TextField>, noChangeListener?: boolean) {
-    return /* html */`<vscode-text-field id="${id}" name="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(options)}>${label || ''}</vscode-text-field>`;
+    return /* html */`<vscode-textfield id="${id}" name="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(options)}>${label || ''}</vscode-textfield>`;
   }
 
   export function textArea(id: string, label?: string, options?: Partial<TextArea>, noChangeListener?: boolean) {
-    return /* html */`<vscode-text-area id="${id}" name="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(options)}>${label || ''}</vscode-text-area>`;
+    return /* html */`<vscode-textarea id="${id}" name="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(options)}>${label || ''}</vscode-textarea>`;
   }
 
   export function checkbox(id: string, label?: string, options?: Partial<Checkbox>, noChangeListener?: boolean) {
@@ -289,12 +292,11 @@ export namespace Components {
   export function button(label?: string, options?: Partial<Button>) {
     return /* html */`<vscode-button ${renderAttributes(options, "icon", "action")} ${options?.action ? `href="action:${options.action}"` : ""}>
       ${label || ''}
-      ${options?.icon ? /* html */ _icon(options.icon.name, options.icon.left ? "start" : "") : ''}
       </vscode-button>`;
   }
 
-  export function badge(count: number, secondary?: boolean) {
-    return /* html */`<vscode-badge ${secondary ? 'appearance="secondary"' : ''}>${count}</vscode-badge>`;
+  export function badge(count: number, variant?: boolean) {
+    return /* html */`<vscode-badge ${variant ? `variant="${variant}"` : ''}>${count}</vscode-badge>`;
   }
 
   export function keyValueTable<T>(getKey: (e: T) => string, getValue: (e: T) => string, entries: T[]) {

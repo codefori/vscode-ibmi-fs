@@ -208,8 +208,8 @@ export class DataQueue extends Base {
     private renderDataQueuePanel(): string {
         return /*html*/ `${Components.keyValueTable(infoKey, infoValue, Object.entries(this._info))}
         ${Components.divider()}
-        ${Components.button("Send data", { action: ACTION_SEND, icon: { name: "arrow-right", left: true } })}
-        ${Components.button("Clear", { action: ACTION_CLEAR, appearance: "secondary", icon: { name: "clear-all", left: true } })}
+        ${Components.button("Send data", { action: ACTION_SEND, icon: "arrow-right" })}
+        ${Components.button("Clear", { action: ACTION_CLEAR, secondary: true, icon: "clear-all" })}
         `;
     }
 }

@@ -40,9 +40,9 @@ const extensionConfig = {
       },
       {
         test: /\.js$/,
-        include: path.resolve(__dirname, `node_modules/@vscode/webview-ui-toolkit/dist/toolkit.min.js`),
+        include: path.resolve(__dirname, `node_modules/@vscode-elements/elements/dist`),
         type: `asset/source`
-      }
+      },
     ]
   },
   devtool: 'nosources-source-map',

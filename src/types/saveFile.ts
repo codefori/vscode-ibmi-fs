@@ -369,7 +369,7 @@ function renderHeaders(size: string, headers: Header[]): string {
         headers
         )}
     ${Components.divider()}
-    ${Components.button(`Download${size ? ` (${size})` : ''}`, { action: ACTION_DOWNLOAD, icon: { name: "cloud-download" } })}`;
+    ${Components.button(`Download${size ? ` (${size})` : ''}`, { action: ACTION_DOWNLOAD, icon: "cloud-download" })}`;
 }
 
 function renderObjects(objects: Object[]): string {
