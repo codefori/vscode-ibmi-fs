@@ -20,7 +20,7 @@ export namespace DataQueueActions {
         const library = item.library.toUpperCase();
         const name = item.name.toUpperCase();
         if (await vscode.window.showWarningMessage(`Are you sure you want to clear Data Queue ${library}/${name}?`, { modal: true }, "Clear")) {
-            await Code4i.getContent().runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
+            await Code4i.getConnection().runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
             vscode.window.showInformationMessage(`Data Queue ${library}/${name} cleared.`);
             return true;
         }

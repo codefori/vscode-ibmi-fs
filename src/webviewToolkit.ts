@@ -133,10 +133,11 @@ export namespace Components {
   interface Component {
     class?: string
     style?: string
+    focused?: boolean
   }
 
   interface TextField extends Component {
-    autofocus: boolean
+    focused: boolean
     disabled: boolean
     maxlength: number
     placeholder: string
@@ -147,7 +148,6 @@ export namespace Components {
   }
 
   interface TextArea extends Component {
-    autofocus: boolean
     cols: number
     disabled: boolean
     form: string
@@ -160,7 +160,6 @@ export namespace Components {
   }
 
   interface Checkbox extends Component {
-    autofocus: boolean
     checked: boolean
     disabled: boolean
     readonly: boolean
@@ -171,7 +170,6 @@ export namespace Components {
   interface Button extends Component {
     secondary: boolean;
     ariaLabel: string
-    gautofocus: boolean
     disabled: boolean
     form: string
     formaction: string
@@ -224,14 +222,19 @@ export namespace Components {
     content: string
   }
 
+  export function section(content: string) {
+    return `<section>${content}</section>`;
+  }
+
   export function panels(panels: Panel[], attributes?: Component, activeTab?: number): string {
     return /*html*/ `<vscode-tabs ${renderAttributes(attributes)} ${activeTab ? `selected-index="${activeTab}"` : ""}>
 
       ${panels.map((panel, index) => /*html*/ `
         <vscode-tab-header slot="header">
-          ${panel.title.toUpperCase()}${panel.badge ? badge(panel.badge, true) : ''}
+          ${panel.title.toUpperCase()} &nbsp ${panel.badge ? badge(panel.badge, `tab-header-counter`) : ''}
         </vscode-tab-header>
         <vscode-tab-panel>
+          <div style="padding-top: 1em;"></div>
           ${panel.content}
         </vscode-tab-panel>
       `).join("")}
@@ -295,7 +298,7 @@ export namespace Components {
       </vscode-button>`;
   }
 
-  export function badge(count: number, variant?: boolean) {
+  export function badge(count: number, variant?: 'default' | 'counter' | 'activity-bar-counter' | 'tab-header-counter') {
     return /* html */`<vscode-badge ${variant ? `variant="${variant}"` : ''}>${count}</vscode-badge>`;
   }
 

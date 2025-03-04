@@ -24,7 +24,7 @@ export default class Program extends Base {
       const name = this.name.toUpperCase();
 
       //https://www.ibm.com/docs/en/i/7.4?topic=services-program-info-view
-      const [programInfo] = await content.runSQL(`Select ${this.selectClause} From QSYS2.PROGRAM_INFO Where PROGRAM_LIBRARY = '${library}' And PROGRAM_NAME = '${name}'`);
+      const [programInfo] = await connection.runSQL(`Select ${this.selectClause} From QSYS2.PROGRAM_INFO Where PROGRAM_LIBRARY = '${library}' And PROGRAM_NAME = '${name}'`);
 
       this.type = String(programInfo.OBJECT_TYPE);
 
@@ -81,45 +81,42 @@ export default class Program extends Base {
   }
 
   generateHTML(): string {
-    const detailTab = /*html*/`<vscode-data-grid>
-    ${Object.entries(this.info).filter(row => row[1]).map(row => {
-      return /*html*/`
-      <vscode-data-grid-row>
-        <vscode-data-grid-cell grid-column="1">${this.columns.get(row[0]) || row[0]}</vscode-data-grid-cell>
-        <vscode-data-grid-cell grid-column="2">${row[1]}</vscode-data-grid-cell>
-      </vscode-data-grid-row>`;
-    }).join("")}
-    </vscode-data-grid>`;
 
-    const boundTab = /*html*/`
-      <section>
-        ${this.boundModules ?
-        Components.dataGrid<ILEModule>({
-          columns: [
-            { title: "Module", cellValue: d => `${d.library}/${d.object}` },
-            { title: "Attribute", cellValue: d => d.attribute },
-            { title: "Created", cellValue: d => d.created },
-            { title: "Debug Data Available", cellValue: d => d.debugData }
-          ]
-        }, this.boundModules)
-        : ``}
-      </section>
+    const detailTab = Components.dataGrid<any>({
+      columns: [
+        { cellValue: d => this.columns.get(d.name) || d.name },
+        { cellValue: d => d.value }
+      ]},
+      Object.entries(this.info).filter(row => row[1]).map(row => ({
+        name: row[0],
+        value: row[1]
+      }))
+    );
 
-      <section>
-        ${Components.divider()}
-      </section>
+    let boundTab = ``;
 
-      <section>
-        ${this.boundServicePrograms ?
-        Components.dataGrid<ILEServiceProgram>({
-          columns: [
-            { title: "Service Program", cellValue: d => `${d.library}/${d.object}` },
-            { title: "Signature", cellValue: d => d.signature },
-          ]
-        }, this.boundServicePrograms)
-        : ``}
-      </section>
-    `;
+    if (this.boundModules) {
+      boundTab += Components.dataGrid<ILEModule>({
+        columns: [
+          { title: "Module", cellValue: d => `${d.library}/${d.object}` },
+          { title: "Attribute", cellValue: d => d.attribute },
+          { title: "Created", cellValue: d => d.created },
+          { title: "Debug Data Available", cellValue: d => d.debugData }
+        ]
+      }, this.boundModules);
+
+      boundTab += Components.divider();
+    }
+
+    if (this.boundServicePrograms) {
+      boundTab += Components.dataGrid<ILEServiceProgram>({
+        columns: [
+          { title: "Service Program", cellValue: d => `${d.library}/${d.object}` },
+          { title: "Signature", cellValue: d => d.signature },
+        ]
+      }, this.boundServicePrograms);
+    }
+
 
     const exportsAvailable = this.type === `*SRVPGM`;
 
@@ -136,30 +133,24 @@ export default class Program extends Base {
 
     const boundCount = (this.boundModules ? this.boundModules.length : 0) + (this.boundServicePrograms ? this.boundServicePrograms.length : 0);
 
-    const panels = /*html*/`
-      <vscode-panels>
-        <vscode-panel-tab id="tab-1">
-          DETAIL
-        </vscode-panel-tab>
-        <vscode-panel-tab id="tab-2">
-          BOUND
-          <vscode-badge appearance="secondary">${boundCount}</vscode-badge>
-        </vscode-panel-tab>
-        ${exportsAvailable ?
-          /*html*/`
-          <vscode-panel-tab id="tab-3">
-            EXPORTS
-            <vscode-badge appearance="secondary">${this.exportedSymbols?.length}</vscode-badge>
-          </vscode-panel-tab>
-          `
-        : ``
-      }
-        <vscode-panel-view id="view-1">${detailTab}</vscode-panel-view>
-        <vscode-panel-view id="view-2">${boundTab}</vscode-panel-view>
-        ${exportsAvailable ? `<vscode-panel-view id="view-3">${exportsTab}</vscode-panel-view>` : ``}
-      </vscode-panels>`;
+    const newPanels = Components.panels([
+      {
+        title: `DETAIL`,
+        content: detailTab,
+      },
+      {
+        title: `BOUND`,
+        content: boundTab,
+        badge: boundCount
+      },
+      ...(exportsAvailable ? [{
+        title: `EXPORTS`,
+        content: exportsTab,
+        badge: this.exportedSymbols?.length
+      }] : [])
+    ])
 
-    return panels;
+    return newPanels;
   }
 
   async handleAction(data: any): Promise<HandleActionResult> {
@@ -266,7 +257,7 @@ async function getBoundModules(library: string, object: string): Promise<ILEModu
     `where a.PROGRAM_LIBRARY = '${library}' and a.PROGRAM_NAME = '${object}'`
   ].join(` `);
 
-  const rows = await Code4i.getContent().runSQL(query);
+  const rows = await Code4i.getConnection().runSQL(query);
   return rows.map(row => ({
     library: String(row.BOUND_MODULE_LIBRARY),
     object: String(row.BOUND_MODULE),

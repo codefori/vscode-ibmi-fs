@@ -20,11 +20,11 @@ export namespace Code4i {
     } 
 
     export function getConfig() {
-        return codeForIBMi.instance.getConfig();
+        return getConnection().getConfig();
     } 
 
     export function getContent() {
-        return codeForIBMi.instance.getContent();
+        return getConnection().getContent();
     } 
 
     export function getTempLibrary(): string {
@@ -47,5 +47,5 @@ export function getQSYSObjectPath(library: string, name: string, type: string, m
 }
 
 export function makeid(length? : number){
-    return codeForIBMi.tools.makeid(length);
+    return Math.random().toString(36).substring(2, length ? length + 2 : 7);
 }

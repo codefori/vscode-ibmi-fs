@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import Base from "./base";
 import { makeid, Code4i } from '../tools';
+import { Components } from '../webviewToolkit';
 
 enum EntryStatus {
   existed,
@@ -60,92 +61,60 @@ export default class BindingDirectory extends Base {
   }
 
   generateHTML(): string {
-    const entriesTab = /*html*/`<vscode-data-grid>
-    <vscode-data-grid-row row-type="header">
-      <vscode-data-grid-cell cell-type="columnheader" grid-column="1">Object</vscode-data-grid-cell>
-      <vscode-data-grid-cell cell-type="columnheader" grid-column="2">Type</vscode-data-grid-cell>
-      <vscode-data-grid-cell cell-type="columnheader" grid-column="3">Activation</vscode-data-grid-cell>
-      <vscode-data-grid-cell cell-type="columnheader" grid-column="4">Creation</vscode-data-grid-cell>
-      <vscode-data-grid-cell cell-type="columnheader" grid-column="5"></vscode-data-grid-cell>
-    </vscode-data-grid-row>
-    ${this.entries?.filter(entry => entry.status !== EntryStatus.deleted).map(entry => {
-      return /*html*/`
-      <vscode-data-grid-row>
-        <vscode-data-grid-cell grid-column="1">${entry.library}/${entry.object}</vscode-data-grid-cell>
-        <vscode-data-grid-cell grid-column="2">${entry.type}</vscode-data-grid-cell>
-        <vscode-data-grid-cell grid-column="3">${entry.activation}</vscode-data-grid-cell>
-        <vscode-data-grid-cell grid-column="4">${entry.creation.date}</vscode-data-grid-cell>
-        <vscode-data-grid-cell grid-column="5">
-        <vscode-link href="action:delete" entrylibrary="${entry.library}" entryobject="${entry.object}">
-          Delete
-        </vscode-link>
-        </vscode-data-grid-cell>
-      </vscode-data-grid-row>`;
-    }).join("")}
-    </vscode-data-grid>
-    `;
+    const entriesTab = Components.dataGrid<Entry>(
+      {columns: [
+        {title: `Object`, cellValue: entry => `${entry.library}/${entry.object}`},
+        {title: `Type`, cellValue: entry => entry.type},
+        {title: `Activation`, cellValue: entry => entry.activation},
+        {title: `Creation`, cellValue: entry => `${entry.creation.date} ${entry.creation.time}`},
+        {title: ``, cellValue: entry => /*html*/`<vscode-link href="action:delete" entrylibrary="${entry.library}" entryobject="${entry.object}">Delete</vscode-link>`}
+      ]},
+      this.entries?.filter(entry => entry.status !== EntryStatus.deleted) || []
+    );
 
+    // We need a form builder!!!
     const addTab = /*html*/`
       <form>
-        <vscode-text-field readonly="false" id="inLibrary" maxlength="10" value="*LIBL">Entry library</vscode-text-field>
+        ${Components.textField(`inLibrary`, `Entry library`, { value: "*LIBL", maxlength: 10 })}
         <br><br>
-        <vscode-text-field readonly="false" id="inObject" maxlength="10" autofocus>Entry library</vscode-text-field>
+        ${Components.textField(`inObject`, `Entry object`, { value: "*ALL", maxlength: 10, focused: true })}
         <br>
         <section>
           <p>Object Type</p>
-          <vscode-dropdown id="inType" readonly="false">
-            <vscode-option>*SRVPGM</vscode-option>
+          <vscode-single-select id="inType" readonly="false">
+            <vscode-option selected>*SRVPGM</vscode-option>
             <vscode-option>*MODULE</vscode-option>
-          </vscode-dropdown>
+          </vscode-single-select>
         </section>
         <br>
         <section>
           <p>Activation</p>
-          <vscode-dropdown id="inActivation" readonly="false">
-            <vscode-option>*IMMED</vscode-option>
+          <vscode-single-select id="inActivation" readonly="false">
+            <vscode-option selected>*IMMED</vscode-option>
             <vscode-option>*DEFER</vscode-option>
-          </vscode-dropdown>
+          </vscode-single-select>
         </section>
         <br><br>
-        <vscode-button type="create" href="action:create" appearance="primary">Create</vscode-button>
+        ${Components.button("Cancel", { action: "cancel" })}
       </form>
     `;
 
-    const exportsTab = /*html*/`<vscode-data-grid>
-    <vscode-data-grid-row row-type="header">
-      <vscode-data-grid-cell cell-type="columnheader" grid-column="1">Symbol</vscode-data-grid-cell>
-      <vscode-data-grid-cell cell-type="columnheader" grid-column="2">Object</vscode-data-grid-cell>
-      <vscode-data-grid-cell cell-type="columnheader" grid-column="3">Usage</vscode-data-grid-cell>
-    </vscode-data-grid-row>
-    ${this.exports?.map(entry => {
-      return /*html*/`
-      <vscode-data-grid-row>
-        <vscode-data-grid-cell grid-column="1">${entry.symbol}</vscode-data-grid-cell>
-        <vscode-data-grid-cell grid-column="2">${entry.library}/${entry.object}</vscode-data-grid-cell>
-        <vscode-data-grid-cell grid-column="3">${entry.usage}</vscode-data-grid-cell>
-      </vscode-data-grid-row>`;
-    }).join("")}
-    </vscode-data-grid>`;
+    const newExportsTab = Components.dataGrid<ILESymbol>(
+      {columns: [
+        {title: `Symbol`, cellValue: entry => entry.symbol},
+        {title: `Object`, cellValue: entry => `${entry.library}/${entry.object}`},
+        {title: `Usage`, cellValue: entry => entry.usage}
+      ]},
+      this.exports || []
+    );
 
-    const panels = /*html*/`
-    <vscode-panels>
-      <vscode-panel-tab id="tab-1">
-        ENTRIES
-        <vscode-badge appearance="secondary">${this.entries?.filter(entry => entry.status !== EntryStatus.deleted).length}</vscode-badge>
-      </vscode-panel-tab>
-      <vscode-panel-tab id="tab-2">
-        ADD
-      </vscode-panel-tab>
-      <vscode-panel-tab id="tab-3">
-        EXPORTS
-        <vscode-badge appearance="secondary">${this.exports?.length}</vscode-badge>
-      </vscode-panel-tab>
-      <vscode-panel-view id="view-1">${entriesTab}</vscode-panel-view>
-      <vscode-panel-view id="view-2">${addTab}</vscode-panel-view>
-      <vscode-panel-view id="view-3">${exportsTab}</vscode-panel-view>
-    </vscode-panels>`;
+    const newPanels = Components.panels([
+      { title: "Entries", content: entriesTab },
+      { title: "Add", content: addTab },
+      { title: "Exports", content: newExportsTab }
+    ]);
 
-    return panels;
+    return newPanels;
   }
 
   async save(): Promise<void> {
