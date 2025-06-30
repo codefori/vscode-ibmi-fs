@@ -7,7 +7,7 @@ import util from "util";
 import vscode, { l10n, } from 'vscode';
 import { MsgFS, getUriFromPath_Msg, parseFSOptions } from "./filesystem/qsys/MsgQFs";
 import { IBMiContentMsgq } from "./api/IBMiContentMsgq";
-import { Code4i, findExistingDocumentUri, getInstance, makeid } from "./tools";
+import { Code4i, findExistingDocumentUri, makeid } from "./tools";
 import { IBMiMessageQueue, IBMiMessageQueueViewItem, MsgOpenOptions, SearchParms } from './typings';
 import MSGQBrowser, { MessageQueue, MessageQueueList } from './views/messageQueueView';
 
@@ -64,7 +64,9 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
       }
 
       filter = await vscode.window.showInputBox({
-        prompt: l10n.t(`Enter name of Message Queue (library optional)`),
+        title: l10n.t(`MSGQ to show Messages`),
+        prompt: l10n.t(`If no library given then assumed *LIBL.`),
+        placeHolder: `Library/MSGQ`,
         value: connection.currentUser
       });
 
@@ -82,7 +84,7 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
           if (!messageQueues.includes(newMsgq)) {
             messageQueues.push(newMsgq);
             config.messageQueues = messageQueues;
-            getInstance()!.setConfig(config);
+            Code4i.getInstance()!.setConfig(config);
             vscode.commands.executeCommand(`vscode-ibmi-msgqbrowser.sortMessageQueueFilter`, node);
           }
         }
@@ -98,7 +100,7 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
         // await ConnectionConfiguration.update(config);
         messageQueues.sort((filter1, filter2) => filter1.messageQueue.toLowerCase().localeCompare(filter2.messageQueue.toLowerCase()));
         config.messageQueues = messageQueues;
-        getInstance()!.setConfig(config);
+        Code4i.getInstance()!.setConfig(config);
         vscode.commands.executeCommand(`vscode-ibmi-msgqbrowser.refreshMSGQBrowser`);
       } catch (e) {
         // console.log(e);
@@ -136,7 +138,7 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
                 if (index > -1) {
                   messageQueues.splice(index, 1);
                   config.messageQueues = messageQueues;
-                  getInstance()!.setConfig(config);
+                  Code4i.getInstance()!.setConfig(config);
                   vscode.commands.executeCommand(`vscode-ibmi-msgqbrowser.refreshMSGQBrowser`);
                 }
               }
@@ -268,9 +270,11 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
               , environment: `ile`
             });
             if (commandResult) {
-              // vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
               if (commandResult.code === 0 || commandResult.code === null) {
+                // vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
               } else {
+                vscode.window.showErrorMessage(` ${commandResult.stderr}.`);
+                deleteCount = 0;
               }
             }
 
@@ -283,9 +287,9 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
           if (deleteCount > 0) {
             vscode.commands.executeCommand(`vscode-ibmi-msgqbrowser.refreshMSGQ`, node);
             vscode.window.showInformationMessage(l10n.t(`Deleted {0} messages.`, deleteCount));
-            await connection.runCommand({ command: `DLTF FILE(${tempLib}/${TempFileName}) ` , environment: `ile` });
-            await connection.runCommand({ command: `DLTPGM PGM(${tempLib}/${TempMbrName}) ` , environment: `ile` });
           }
+          await connection.runCommand({ command: `DLTF FILE(${tempLib}/${TempFileName}) ` , environment: `ile` });
+          await connection.runCommand({ command: `DLTPGM PGM(${tempLib}/${TempMbrName}) ` , environment: `ile` });
 
         }
         else {
@@ -340,6 +344,8 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
               // vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
               if (commandResult.code === 0 || commandResult.code === null) {
               } else {
+                vscode.window.showErrorMessage(` ${commandResult.stderr}.`);
+                deleteCount = 0;
               }
             }
 
@@ -353,9 +359,9 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
             node.parent.setDescription(``); // turn off item description
             vscode.commands.executeCommand(`vscode-ibmi-msgqbrowser.refreshMSGQ`, node);
             vscode.window.showInformationMessage(l10n.t(`Deleted {0} messages.`, deleteCount));
-            await connection.runCommand({ command: `DLTF FILE(${tempLib}/${TempFileName}) ` , environment: `ile` });
-            await connection.runCommand({ command: `DLTPGM PGM(${tempLib}/${TempMbrName}) ` , environment: `ile` });
           }
+          await connection.runCommand({ command: `DLTF FILE(${tempLib}/${TempFileName}) ` , environment: `ile` });
+          await connection.runCommand({ command: `DLTPGM PGM(${tempLib}/${TempMbrName}) ` , environment: `ile` });
 
         }
         else {

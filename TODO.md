@@ -1,22 +1,25 @@
 *  MessageQueue message viewer
     *  ✔ add message queue to viewer 
+        *  ✔ refresh list
     *  ✔ sort list of message queues 
-    *  delete any one message queue filter 
-    *  refresh list of message queues in view
-    *  add filter to list and refresh list
-    *  remove filter from list and refresh list
+    *  ✔ delete any one message queue filter 
+        *  ✔ refresh list
+    *  ✔ refresh list of message queues in view
+    *  Indicate if message is a inquiry or normal message
+        *  ICON???
 *  Clear message queue messages
     *  ✔ All 
+        *  Refresh afterwards
     *  Selected
+        *  Refresh afterwards
     *  Filtered
+        *  Refresh afterwards
     *  by ID
-*  Selected message queue
-    *  Refresh
-    *  Filter message list
-    *  Delete message queue from viewer
+        *  Refresh afterwards
 *  Hoover over/tooltip 
     *  ✔ Message queue 
         *  ✔ Object Text 
+            *  ✔ when no text replace null return with *BLANKS
         *  ✔ Message count 
     *  ✔ Message item 
         *  ✔ Message attributes 

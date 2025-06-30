@@ -89,7 +89,8 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
   async resolveTreeItem(item: MessageQueue, element: any, token: vscode.CancellationToken): Promise<vscode.TreeItem> {
     if (element.contextValue === 'msgq') {
       const msgqNum = await IBMiContentMsgq.getMessageQueueCount(element.messageQueue, element.messageQueueLibrary, element.filter);
-      const msgqText = await IBMiContentMsgq.getObjectText(element.messageQueue, element.messageQueueLibrary, `*MSGQ`);
+      let msgqText = await IBMiContentMsgq.getObjectText(element.messageQueue, element.messageQueueLibrary, `*MSGQ`);
+      msgqText = msgqText === 'null' ?'*BLANKS' : msgqText;
       item.tooltip = ``
         .concat(msgqText ? l10n.t(`Queue Text:\t  {0}`, msgqText) : ``)
         .concat(msgqNum ? l10n.t(`\nMessage Count: {0}`, msgqNum) : ``);

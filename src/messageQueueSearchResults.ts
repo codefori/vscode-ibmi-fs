@@ -1,14 +1,20 @@
 import vscode, { l10n, } from 'vscode';
 import { IBMiContentMsgq } from "./api/IBMiContentMsgq";
 import { MessageQueueSearch } from './api/messageQueueSearch';
-import { Code4i, getInstance } from "./tools";
-import { UserMsgqSearchView } from './views/messageQueueSearchView';
+import { Code4i } from "./tools";
+import { MsgqSearchView } from './views/messageQueueSearchView';
 import { SearchParms } from './typings';
 // import setSearchResults from "@halcyontech/vscode-ibmi-types/instantiate";
 
-let userMsgqSearchViewProvider = <UserMsgqSearchView>{};
+import { ConnectionProfile, Profile, ConnectionConfig, CustomVariable,  } from '@halcyontech/vscode-ibmi-types';
+import type { Action  } from '@halcyontech/vscode-ibmi-types/api/types';
+import { runAction } from '@halcyontech/vscode-ibmi-types/ui/actions';
+const custVars: string[] = ['LMI_REL_IDLIBS', 'LMI_REL_IDLIB', 'REL', 'PCR', 'NUMPCR'];
+const custVarActionCmd = 'CUSTVARVAL LMI_REL_IDLIBS(${IDLIBS|List of PDN libraries for PCR |}) LMI_REL_IDLIB(${IDLIB|A PDN library name for PCR |}) REL(${REL|Aldon Application Release|BASE,BASE30,CVTBASE,DEVBASE,D1CVT,D1DTS,D1SYS,D1WFI,D2CVT,D2DTS,D2SYS,D2WFI,EXITS,RIMS,SYSBASE,TEST}) PCR(${PCR|Text string of project ID in form of PCRXXXXXvv|PCR}) NUMPCR(${NUMPCR|PCR number for actions that need only the number in form of XXXXXvv|XXXXXvv})';
+
+let userMsgqSearchViewProvider = <MsgqSearchView>{};
 export async function initializeMessageQueueSearchView(context: vscode.ExtensionContext) {
-  userMsgqSearchViewProvider = new UserMsgqSearchView(context);
+  userMsgqSearchViewProvider = new MsgqSearchView(context);
   let search = <SearchParms>{};
   context.subscriptions.push(
     vscode.commands.registerCommand(`vscode-ibmi-msgqbrowser.searchMessageQueue`, async (node) => {
@@ -24,7 +30,7 @@ export async function initializeMessageQueueSearchView(context: vscode.Extension
         search.word = node.filter; // TODO: what does this represent??
       }
       if (!search.messageQueue) {
-        const config = getConfig();
+        const config = Code4i.getConfig();
         search.messageQueue = await vscode.window.showInputBox({
           placeHolder: `*LIBL/*MSGQ`,
           prompt: l10n.t(`Enter message queue to search over`),
@@ -107,46 +113,57 @@ export async function initializeMessageQueueSearchView(context: vscode.Extension
       }
 
     }),
-    vscode.window.registerTreeDataProvider(`userMsgqSearchView`, userMsgqSearchViewProvider),
+    vscode.window.registerTreeDataProvider(`MsgqSearchView`, userMsgqSearchViewProvider),
   );
-  getInstance()?.subscribe(context, `connected`, "Get temporary library", runOnConnection);
+  Code4i.getInstance()?.subscribe(context, `connected`, "Get temporary library", runOnConnection);
 }
 
-function getConfig() {
-  const config = Code4i.getConfig();
-  if (config) {
-    return config;
-  }
-  else {
-    throw new Error(l10n.t('Not connected to an IBM i'));
-  }
-}
 
-function getConnection() {
-  const connection = Code4i.getConnection();
-  if (connection) {
-    return connection;
-  }
-  else {
-    throw new Error(l10n.t('Not connected to an IBM i'));
-  }
-}
-
-function getContent() {
-  const content = Code4i.getContent();
-  if (content) {
-    return content;
-  }
-  else {
-    throw new Error(l10n.t('Not connected to an IBM i'));
-  }
-}
-
-// let userMsgqSearchViewProvider = <UserMsgqSearchView>{};
+// let userMsgqSearchViewProvider = <MsgqSearchView>{};
 export function setSearchResultsSplf(actionCommand: string, term: string, results: MessageQueueSearch.Result[]) {
   userMsgqSearchViewProvider.setResults(actionCommand, term, results);
 }
 
 async function runOnConnection(): Promise<void> {
   const library = Code4i.getTempLibrary();
+}
+
+async function selectConnectionProfiles(config?: ConnectionConfig): Promise<ConnectionProfile | undefined> {
+  const storage = Code4i.getStorage();
+  if (config && storage) {
+    const chosenProfile = await getOrPickAvailableProfile(config.connectionProfiles);
+    if (chosenProfile) {
+      // vscode.window.showInformationMessage(l10n.t(`Switched to profile "{0}".`, chosenProfile.name));
+      return chosenProfile;
+    }
+  }
+  return undefined;
+};
+function assignProfile(fromProfile: ConnectionProfile, toProfile: ConnectionProfile) {
+  toProfile.homeDirectory = fromProfile.homeDirectory;
+  toProfile.currentLibrary = fromProfile.currentLibrary;
+  toProfile.libraryList = fromProfile.libraryList;
+  toProfile.objectFilters = fromProfile.objectFilters;
+  toProfile.ifsShortcuts = fromProfile.ifsShortcuts;
+  toProfile.customVariables = fromProfile.customVariables;
+}
+
+async function getOrPickAvailableProfile(availableProfiles: ConnectionProfile[], profileNode?: Profile): Promise<ConnectionProfile | undefined> {
+  if (availableProfiles.length > 0) {
+    if (profileNode) {
+      return availableProfiles.find(profile => profile.name === profileNode.profile);
+    }
+    else {
+      const items = availableProfiles.map(profile => {
+        return {
+          label: profile.name,
+          profile: profile
+        };
+      });
+      return (await vscode.window.showQuickPick(items))?.profile;
+    }
+  }
+  else {
+    vscode.window.showInformationMessage(`No profiles exist for this system.`);
+  }
 }

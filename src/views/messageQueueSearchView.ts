@@ -6,7 +6,7 @@ import { QsysFsOptions } from '@halcyontech/vscode-ibmi-types/';
 import { MessageQueueSearch } from '../api/messageQueueSearch';
 export type OpenEditableOptions = QsysFsOptions & { position?: Range };
 
-export class UserMsgqSearchView implements TreeDataProvider<any> {
+export class MsgqSearchView implements TreeDataProvider<any> {
   private _term = ``;
   private _actionCommand = ``;
   private _results: MessageQueueSearch.Result[] = [];
@@ -41,7 +41,7 @@ export class UserMsgqSearchView implements TreeDataProvider<any> {
     this.refresh();
     this.setViewVisible(true);
 
-    vscode.commands.executeCommand(`UserMsgqSearchView.focus`);
+    vscode.commands.executeCommand(`MsgqSearchView.focus`);
   }
 
   refresh() {
@@ -53,10 +53,10 @@ export class UserMsgqSearchView implements TreeDataProvider<any> {
   }
 
   collapse() {
-    vscode.commands.executeCommand(`workbench.actions.treeView.UserMsgqSearchView.collapseAll`);
+    vscode.commands.executeCommand(`workbench.actions.treeView.MsgqSearchView.collapseAll`);
   }
   expand() {
-    vscode.commands.executeCommand(`workbench.actions.treeView.UserMsgqSearchView.expandAll`);
+    vscode.commands.executeCommand(`workbench.actions.treeView.MsgqSearchView.expandAll`);
   }
 
   async getChildren(hitSource: HitSource): Promise<vscode.TreeItem[]> {

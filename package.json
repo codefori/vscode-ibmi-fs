@@ -2,7 +2,7 @@
   "name": "vscode-ibmi-fs",
   "displayName": "IBM i FileSystem",
   "description": "File system provider for IBM i QSYS",
-  "version": "0.0.2",
+  "version": "0.0.3-dev",
   "preview": true,
   "license": "MIT",
   "engines": {
@@ -42,14 +42,14 @@
       "ibmi-explorer": [
         {
           "id": "msgqBrowser",
-          "name": "User MSGQ Browser",
+          "name": "Message Queue Browser",
           "when": "code-for-ibmi:connected && vscode-ibmi-msgqbrowser:msgqBrowserDisabled !== true ",
           "visibility": "collapsed"
         }
       ],
       "MessageQueue-search": [
         {
-          "id": "userMsgqSearchView",
+          "id": "MsgqSearchView",
           "name": "MSGQ-Search_Results",
           "when": "vscode-ibmi-msgqbrowser:searchViewVisible"
         }
@@ -125,12 +125,12 @@
         "icon": "$(search)"
       },
       {
-				"command": "vscode-ibmi-msgqbrowser.searchMessageQueueBrowser",
-				"title": "Highlight",
-				"category": "IBM i",
-				"icon": "$(search-fuzzy)",
-				"enablement": "code-for-ibmi:connected"
-			},
+        "command": "vscode-ibmi-msgqbrowser.searchMessageQueueBrowser",
+        "title": "Highlight",
+        "category": "IBM i",
+        "icon": "$(search-fuzzy)",
+        "enablement": "code-for-ibmi:connected"
+      },
       {
         "command": "vscode-ibmi-msgqbrowser.addMessageQueueFilter",
         "title": "Add Message Queue Filter",
@@ -238,17 +238,17 @@
       "view/title": [
         {
           "command": "vscode-ibmi-msgqbrowser.closeSearchView",
-          "when": "view == userMsgqSearchView",
+          "when": "view == MsgqSearchView",
           "group": "navigation@2"
         },
         {
           "command": "vscode-ibmi-msgqbrowser.collapseSearchView",
-          "when": "view == userMsgqSearchView",
+          "when": "view == MsgqSearchView",
           "group": "navigation@1"
         },
         {
           "command": "vscode-ibmi-msgqbrowser.expandSearchView",
-          "when": "view == userMsgqSearchView",
+          "when": "view == MsgqSearchView",
           "group": "navigation@1"
         },
         {
@@ -267,10 +267,10 @@
           "group": "navigation@1"
         },
         {
-					"command": "vscode-ibmi-msgqbrowser.searchMessageQueueBrowser",
-					"group": "navigation@6",
-					"when": "view == msgqBrowser"
-				}
+          "command": "vscode-ibmi-msgqbrowser.searchMessageQueueBrowser",
+          "group": "navigation@6",
+          "when": "view == msgqBrowser"
+        }
       ],
       "vscode-ibmi-msgqbrowser.sortMessageQueue": [
         {
@@ -422,9 +422,9 @@
           "when": "never"
         },
         {
-					"command": "vscode-ibmi-msgqbrowser.searchMessageQueueBrowser",
-					"when": "never"
-				}
+          "command": "vscode-ibmi-msgqbrowser.searchMessageQueueBrowser",
+          "when": "never"
+        }
       ]
     },
     "submenus": [
@@ -448,7 +448,7 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@halcyontech/vscode-ibmi-types": "^2.13",
+    "@halcyontech/vscode-ibmi-types": "^2.15.2",
     "@types/glob": "^7.2.0",
     "@types/mocha": "^9.1.1",
     "@types/node": "^20",
@@ -456,7 +456,7 @@
     "@types/vscode": "^1.90.0",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
-    "esbuild": "^0.19.12",
+    "esbuild": "^0.25.0",
     "esbuild-loader": "^4.2.2",
     "eslint": "^8.56.0",
     "glob": "^8.1.0",

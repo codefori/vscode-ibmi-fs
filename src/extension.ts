@@ -3,7 +3,7 @@
 import * as vscode from 'vscode';
 
 import ObjectProvider from './objectProvider';
-import { Code4i, getInstance } from './tools';
+import { Code4i } from './tools';
 import { DataQueueActions } from './types/dataqueue';
 import { SaveFileActions } from './types/saveFile';
 import { initializeMessageQueueBrowser } from './messageQueueBrowser';
@@ -12,7 +12,7 @@ import { initializeMessageQueueSearchView } from './messageQueueSearchResults';
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
-	await Code4i.initialize();
+	await Code4i.initialize(context);
 
 	initializeMessageQueueBrowser(context);
 	await initializeMessageQueueSearchView(context);
@@ -28,7 +28,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	DataQueueActions.register(context);
 
 	console.log(`Congratulations, your extension "vscode-ibmi-fs" "Version" :"${context.extension.packageJSON.version}" is now active!`);
-	getInstance()?.subscribe(
+	Code4i.getInstance()?.subscribe(
     context,
     'connected',
     `Refresh views`,

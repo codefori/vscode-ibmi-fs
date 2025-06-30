@@ -1,43 +1,37 @@
 import { CodeForIBMi, CommandResult, RemoteCommand } from '@halcyontech/vscode-ibmi-types';
-import Instance from "@halcyontech/vscode-ibmi-types/api/Instance";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
-import { Extension, extensions } from "vscode";
+import { Extension, extensions, ExtensionContext } from "vscode";
+import { loadBase, getBase } from './base';
 
 let codeForIBMi: CodeForIBMi;
-let baseExtension: Extension<CodeForIBMi> | undefined;
 export namespace Code4i {
-  export async function initialize() {
-    // const baseExtension = vscode.extensions.getExtension<CodeForIBMi>(`halcyontechltd.code-for-ibmi`);
-    baseExtension = (extensions ? extensions.getExtension(`halcyontechltd.code-for-ibmi`) : undefined);
-    if (baseExtension) {
-      codeForIBMi = (baseExtension.isActive ? baseExtension.exports : await baseExtension.activate());
-    }
-    else {
-      throw new Error("halcyontechltd.code-for-ibmi not found or cannot be activated");
-    }
+  export async function initialize(context: ExtensionContext) {
+    loadBase(context);
   }
 
+  export function getInstance() {
+    return getBase()!.instance;
+  }
   export function getConnection() {
-    return codeForIBMi.instance.getConnection();
+    return getInstance().getConnection();
   }
-
   export function getConfig() {
-    return codeForIBMi.instance.getConfig();
+    return getInstance().getConnection().getConfig();
   }
-
   export function getContent() {
-    return codeForIBMi.instance.getContent();
+    return getInstance().getConnection().getContent();
+  }
+  export function getStorage() {
+    return getInstance().getStorage();
   }
 
   export function getTempLibrary(): string {
     return getConfig().tempLibrary;
   }
-
   export async function getTable(library: string, name: string): Promise<Tools.DB2Row[]> {
     return getContent().getTable(library, name, name, true);
   }
-
   export async function runSQL(sqlStatement: string): Promise<Tools.DB2Row[]> {
     return getContent().ibmi.runSQL(sqlStatement);
   }
@@ -74,9 +68,6 @@ export function findExistingDocumentUri(uri: vscode.Uri) {
 }
 export function makeid(length?: number) {
   return codeForIBMi.tools.makeid(length);
-}
-export function getInstance(): Instance | undefined {
-  return (baseExtension && baseExtension.isActive && baseExtension.exports ? baseExtension.exports.instance : undefined);
 }
 export async function checkObject(library: string, name: string, type: string) {
   return await Code4i.getContent().checkObject({ library, name, type });
