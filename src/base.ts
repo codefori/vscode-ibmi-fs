@@ -8,7 +8,7 @@ export function loadBase(context: ExtensionContext): CodeForIBMi|undefined {
   if (!baseExtension) {
     baseExtension = (extensions ? extensions.getExtension(`halcyontechltd.code-for-ibmi`) : undefined);
 
-    if (baseExtension) {  
+    if (!baseExtension) {  
       throw new Error("halcyontechltd.code-for-ibmi not found or cannot be activated");
     }
   }

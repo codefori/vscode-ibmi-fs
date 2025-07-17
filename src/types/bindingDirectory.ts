@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import Base from "./base";
-import { makeid, Code4i } from '../tools';
+import { Code4i } from '../tools';
 
 enum EntryStatus {
   existed,
@@ -33,7 +33,7 @@ export default class BindingDirectory extends Base {
 
   async fetch(): Promise<void> {
     const tempLib = Code4i.getTempLibrary();
-    const tempName = makeid();
+    const tempName = Code4i.makeid();
     
     const command = await Code4i.runCommand({
       command: `DSPBNDDIR BNDDIR(${this.library}/${this.name}) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${tempName})`,

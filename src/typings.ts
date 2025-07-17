@@ -2,10 +2,10 @@ import { QsysFsOptions } from "@halcyontech/vscode-ibmi-types";
 import { Range } from "vscode";
 
 export interface IBMiMessageQueueMessage {
+  messageType?: string
   messageQueueLibrary?: string
   messageQueue?: string
   messageID?: string
-  messageType?: string
   messageSubType?: string
   severity?: string
   messageTimestamp?: string
@@ -17,20 +17,17 @@ export interface IBMiMessageQueueMessage {
   messageFileLibrary?: string
   messageFile?: string
   messageTokens?: string
-  messageText?: string
-  messageTextSecondLevel?: string
-}  
-export interface IBMiMessageQueueViewItem {
-  messageQueueLibrary: string
-  messageQueue: string
-  messageID: string
-  messageKey: string
   messageText: string
-}  
+  messageTextSecondLevel?: string
+  messageReply?: string
+  messageReplyUser?: string
+  messageReplyJob?: string
+}   
 export interface IBMiMessageQueue {
   messageQueueLibrary: string
   messageQueue: string
   text?: string
+  protected?: boolean
 }  
 
 export interface MsgOpenOptions {
@@ -43,7 +40,19 @@ export interface FuncInfo {
   text: string
   comment: string
 }
-
+export interface ObjLockState {
+  library:string
+  name:string
+  lockState: string
+  lockStatus: string
+  lockScope: string
+  jobName: string
+}
+export interface ObjAttributes {
+  library:string
+  name:string
+  text: string
+}
 export interface SearchParms {
   messageQueue: string | undefined,
   messageQueueLibrary?: string,

@@ -15,23 +15,23 @@ export class MsgqSearchView implements TreeDataProvider<any> {
 
   constructor(context: vscode.ExtensionContext) {
     context.subscriptions.push(
-      vscode.commands.registerCommand(`vscode-ibmi-msgqbrowser.refreshSearchView`, async () => {
+      vscode.commands.registerCommand(`vscode-ibmi-fs.refreshSearchView`, async () => {
         this.refresh();
       }),
-      vscode.commands.registerCommand(`vscode-ibmi-msgqbrowser.closeSearchView`, async () => {
-        vscode.commands.executeCommand(`setContext`, `vscode-ibmi-msgqbrowser:searchViewVisible`, false);
+      vscode.commands.registerCommand(`vscode-ibmi-fs.closeSearchView`, async () => {
+        vscode.commands.executeCommand(`setContext`, `vscode-ibmi-fs:searchViewVisible`, false);
       }),
-      vscode.commands.registerCommand(`vscode-ibmi-msgqbrowser.collapseSearchView`, async () => {
+      vscode.commands.registerCommand(`vscode-ibmi-fs.collapseSearchView`, async () => {
         this.collapse();
       }),
-      vscode.commands.registerCommand(`vscode-ibmi-msgqbrowser.expandSearchView`, async () => {
+      vscode.commands.registerCommand(`vscode-ibmi-fs.expandSearchView`, async () => {
         this.expand();
       }),
     );
   }
 
   setViewVisible(visible: boolean) {
-    vscode.commands.executeCommand(`setContext`, `vscode-ibmi-msgqbrowser:searchViewVisible`, visible);
+    vscode.commands.executeCommand(`setContext`, `vscode-ibmi-fs:searchViewVisible`, visible);
   }
 
   setResults(actionCommand :string, term: string, results: MessageQueueSearch.Result[]) {

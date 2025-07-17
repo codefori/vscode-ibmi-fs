@@ -10,6 +10,7 @@ import util from 'util';
 const writeFileAsync = util.promisify(fs.writeFile);
 
 export function getMessageDetailFileUri(msg: IBMiMessageQueueMessage, options?: MsgOpenOptions) {
+  // path: `messageID://${iasp?`/`+iasp:''}/${qsys.lib}/${msgf.lib}/${msgf.name}/${messageID}.msgid``,
   return getUriFromPath(`${msg.messageQueueLibrary}/${msg.messageQueue}/${msg.messageID}~${msg.messageKey}.msg`, options);
 }
 export function getUriFromPathMsg(path: string, options?: MsgOpenOptions) {
@@ -39,7 +40,7 @@ export function isProtectedFilter(filter?: string): boolean {
   return filter && Code4i.getConfig()?.objectFilters.find(f => f.name === filter)?.protected || false;
 }
 
-export class MsgqFS implements vscode.FileSystemProvider {
+export class MsgqfFS implements vscode.FileSystemProvider {
 
   private emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
   onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.emitter.event;
@@ -60,9 +61,8 @@ export class MsgqFS implements vscode.FileSystemProvider {
 
   async readFile(uri: vscode.Uri): Promise<Uint8Array> {
     const contentApi = Code4i.getContent();
-    const connection = Code4i.getConnection();
-    if (connection && contentApi) {
-      // path: `message://${msg.Qlib}/${msg.Qname}/${msg.MessageID}~${msg.KEY}.msg``,
+    if (contentApi) {
+      // path: `messageID://${iasp?`/`+iasp:''}/${qsys.lib}/${msgf.lib}/${msgf.name}/${messageID}.msgid``,
       const lpath = uri.path.split(`/`);
       const options:ParsedUrlQuery = parse(uri.query);
 

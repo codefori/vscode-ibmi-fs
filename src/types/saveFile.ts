@@ -1,7 +1,7 @@
 import { CommandResult, FilteredItem, IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { basename } from 'path';
 import * as vscode from 'vscode';
-import { Code4i, IBMI_OBJECT_NAME, getQSYSObjectPath, makeid } from '../tools';
+import { Code4i, IBMI_OBJECT_NAME, getQSYSObjectPath } from '../tools';
 import { Components } from '../webviewToolkit';
 import Base from "./base";
 
@@ -124,7 +124,7 @@ export namespace SaveFileActions {
                             }) || '').toUpperCase();
                         }
                         if (name) {
-                            const remotePath = `${Code4i.getConfig().tempDir}/${name}_${makeid()}.savf`;
+                            const remotePath = `${Code4i.getConfig().tempDir}/${name}_${Code4i.makeid()}.savf`;
                             try {
                                 progress.report({ message: `uploading ${fileName} to IFS` });
                                 await Code4i.getConnection().uploadFiles([{local: localPath, remote: remotePath}]);

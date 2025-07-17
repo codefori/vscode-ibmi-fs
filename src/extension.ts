@@ -28,13 +28,13 @@ export async function activate(context: vscode.ExtensionContext) {
 	DataQueueActions.register(context);
 
 	console.log(`Congratulations, your extension "vscode-ibmi-fs" "Version" :"${context.extension.packageJSON.version}" is now active!`);
-	Code4i.getInstance()?.subscribe(
-    context,
-    'connected',
-    `Refresh views`,
-    () => {
-      vscode.commands.executeCommand("vscode-ibmi-msgqbrowser.refreshMSGQBrowser");
-    });
+	// Code4i.getInstance()?.subscribe(
+  //   context,
+  //   'connected',
+  //   `Refresh views`,
+  //   () => {
+  //     vscode.commands.executeCommand("vscode-ibmi-fs.refreshMSGQBrowser");
+  //   });
 }
 
 // this method is called when your extension is deactivated

@@ -17,7 +17,7 @@ export async function initializeMessageQueueSearchView(context: vscode.Extension
   userMsgqSearchViewProvider = new MsgqSearchView(context);
   let search = <SearchParms>{};
   context.subscriptions.push(
-    vscode.commands.registerCommand(`vscode-ibmi-msgqbrowser.searchMessageQueue`, async (node) => {
+    vscode.commands.registerCommand(`vscode-ibmi-fs.searchMessageQueue`, async (node) => {
       //Initiate search from message item
       if (node && (/^message/.test(node.contextValue))) {
         search.messageQueue = node.messageQueue;
