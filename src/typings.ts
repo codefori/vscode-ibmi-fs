@@ -1,6 +1,10 @@
 import { QsysFsOptions } from "@halcyontech/vscode-ibmi-types";
 import { Range } from "vscode";
 
+export interface ErrorDS {
+  errorID?: string
+  errorText?: string
+}
 export interface IBMiMessageQueueMessage {
   messageType?: string
   messageQueueLibrary?: string

@@ -52,8 +52,22 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
             const objects = await IBMiContentMsgq.getMessageQueueMessageList(element.messageQueue, element.messageQueueLibrary
               , element.sort, element.filter
               , undefined, element.inquiryMode);
-            items.push(...objects
-              .map((object: IBMiMessageQueueMessage) => new MessageQueueList(element, object)));
+            const distinctNames: string[] = [...new Set(objects.map(item => item.messageQueue || ''))];
+            const distinctLibraries: string[] = [...new Set(objects.map(item => item.messageQueueLibrary || ''))];
+            const msgReplies = await IBMiContentMsgq.getMessageReplies(distinctNames, distinctLibraries);
+            items.push(...objects.map((object: IBMiMessageQueueMessage) => {
+              let index = 0;
+              index = msgReplies.findIndex(f => (f.messageKeyAssociated === object.messageKey));
+              if (index >= 0) {
+                object.messageKeyAssociated = msgReplies[index].messageKey; // Associate to INQUIRY message its answer
+                object.messageReply = msgReplies[index].messageReply;
+                object.messageReplyUser = msgReplies[index].messageReplyUser;
+                object.messageReplyJob = msgReplies[index].messageReplyJob;
+              }
+              const messageItem = new MessageQueueList(element, object);
+              return messageItem;
+            })
+            );
 
           } catch (e: any) {
             console.log(e);
@@ -67,22 +81,23 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
 
       } else if (config.messageQueues) {
         let cfgMessageQueues: IBMiMessageQueue[] = config.messageQueues;
-        const filtereditems: IBMiMessageQueue[] = cfgMessageQueues.filter((item:any) => item.messageQueueLibrary !== `` || item.messageQueue !== ``);
+        const filtereditems: IBMiMessageQueue[] = cfgMessageQueues.filter((item: any) => item.messageQueueLibrary !== `` || item.messageQueue !== ``);
         const distinctNames: string[] = [...new Set(filtereditems.map(item => item.messageQueue))];
         const distinctLibraries: string[] = [...new Set(filtereditems.map(item => item.messageQueueLibrary))];
-        // const modifiedEntries: ObjAttributes[] = [];
         const objAttributes = await IBMiContentMsgq.getObjectText(distinctNames, distinctLibraries, ['*MSGQ']);
-        const objLockStates = await IBMiContentMsgq.getObjectLocks(distinctNames, distinctLibraries,[ '*MSGQ']);
+        const objLockStates = await IBMiContentMsgq.getObjectLocks(distinctNames, distinctLibraries, ['*MSGQ']);
         const mappedMessageQueues: MessageQueue[] = cfgMessageQueues.map(
           (aMsgq: IBMiMessageQueue) => {
             let index = 0;
-            index = objAttributes.findIndex(f => f.library === aMsgq.messageQueueLibrary && f.name === aMsgq.messageQueue);
-            if (index > 0){
+            index = objAttributes.findIndex(f => (f.library === aMsgq.messageQueueLibrary || aMsgq.messageQueueLibrary === '*LIBL')
+              && f.name === aMsgq.messageQueue);
+            if (index >= 0) {
               aMsgq.text = objAttributes[index].text;
             }
-            index = objLockStates.findIndex(f => f.library === aMsgq.messageQueueLibrary && f.name === aMsgq.messageQueue);
-            if (index > 0){
-              aMsgq.protected = objLockStates[index].lockState === '*EXCL' ?true:false;
+            index = objLockStates.findIndex(f => (f.library === aMsgq.messageQueueLibrary || aMsgq.messageQueueLibrary === '*LIBL')
+              && f.name === aMsgq.messageQueue);
+            if (index >= 0) {
+              aMsgq.protected = objLockStates[index].lockState === '*EXCL' ? true : false;
             }
             const newMsgqObj = new MessageQueue(element, aMsgq);
             return newMsgqObj;
@@ -112,6 +127,11 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
     if (item instanceof MessageQueue) {
       const msgqNum = await IBMiContentMsgq.getMessageQueueCount(element.messageQueue, element.messageQueueLibrary, element.filter
         , undefined, element.inquiryMode);
+      item.tooltip = ``
+        .concat(item.description ? l10n.t(`Queue Text:\t  {0}`, item.description) : ``)
+        .concat(msgqNum ? l10n.t(`\nMessage Count: {0}`, msgqNum) : ``)
+        .concat(item.protected ? l10n.t(`\n\nRead Only:\t  {0}`, item.protected) : ``)
+        ;
       if (!item.text) {
         const objAttributes = await IBMiContentMsgq.getObjectText([element.messageQueue], [element.messageQueueLibrary], [`*MSGQ`]) || '';
         item.text = objAttributes[0].text;
@@ -120,28 +140,19 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
       item.tooltip = ``
         .concat(item.description ? l10n.t(`Queue Text:\t  {0}`, item.description) : ``)
         .concat(msgqNum ? l10n.t(`\nMessage Count: {0}`, msgqNum) : ``)
-        .concat(item.protected ? l10n.t(`\n\nRead Only:\t  {0}`, item.protected) : ``)
+        .concat(l10n.t(`\n\nRead Only:\t  {0}`, item.protected))
         ;
     } else if (item instanceof MessageQueueList) {
-      const msgAttr = await IBMiContentMsgq.getMessageAttributes(element.messageQueue, element.messageQueueLibrary, element.messageKey);
-      // item.messageType = item.messageType||msgAttr.messageType||'';
-      // item.messageSubType = item.messageSubType||msgAttr.messageSubType;
-      // item.severity = item.severity||msgAttr.severity;
-      // item.messageTimestamp = item.messageTimestamp||msgAttr.messageTimestamp;
-      // item.messageKeyAssociated = item.messageKeyAssociated||msgAttr.messageKeyAssociated;
-      // item.fromUser = item.fromUser||msgAttr.fromUser;
-      // item.fromJob = item.fromJob||msgAttr.fromJob;
-      // item.fromProgram = item.fromProgram||msgAttr.fromProgram;
-      // item.messageFileLibrary = item.messageFileLibrary||msgAttr.messageFileLibrary;
-      // item.messageFile = item.messageFile||msgAttr.messageFile;
-      // item.messageTokens = item.messageTokens||msgAttr.messageTokens;
-      // item.messageTextSecondLevel = item.messageTextSecondLevel||msgAttr.messageTextSecondLevel;
-      item.messageReply = item.messageReply || msgAttr.messageReply;
-      item.messageReplyUser = item.messageReplyUser || msgAttr.messageReplyUser;
-      item.messageReplyJob = item.messageReplyJob || msgAttr.messageReplyJob;
-      item.setIcon();
-      item.setIconColor();
-      item.updateIconPath();
+      if (!item.messageReply) {
+        const msgReplies = await IBMiContentMsgq.getMessageReplies([element.messageQueue], [element.messageQueueLibrary], element.messageKey);
+        if (msgReplies.length > 0) {
+          item.messageReply = msgReplies[0].messageReply;
+          item.messageReplyUser = msgReplies[0].messageReplyUser;
+          item.messageReplyJob = msgReplies[0].messageReplyJob;
+          item.messageKeyAssociated = msgReplies[0].messageKey; // Keep message key of answer to message 
+          item.updateIconPath();
+        }
+      }
       item.tooltip = ``
         // .concat(msgAttr.messageType  ? l10n.t(`....+....0....+....0`,msgAttr.messageType):``)
         .concat(item.messageType ? l10n.t(`Message Type:\t{0}`, item.messageType) : ``)

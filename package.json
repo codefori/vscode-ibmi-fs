@@ -117,7 +117,7 @@
         "enablement": "code-for-ibmi:connected",
         "title": "Filter Message Queue",
         "category": "IBM i FS",
-        "icon": "$(filter)"
+        "icon": "$(list-filter)"
       },
       {
         "command": "vscode-ibmi-fs.filterMessageQueueInquiry",
@@ -135,7 +135,7 @@
       },
       {
         "command": "vscode-ibmi-fs.searchMessageQueueBrowser",
-        "title": "Highlight",
+        "title": "Search Messages",
         "category": "IBM i",
         "icon": "$(search-fuzzy)",
         "enablement": "code-for-ibmi:connected"
@@ -162,11 +162,25 @@
         "icon": "$(list-ordered)"
       },
       {
+        "command": "vscode-ibmi-fs.ReplyToUnansweredMessage",
+        "title": "Answer Message",
+        "category": "IBM i Messages",
+        "enablement": "code-for-ibmi:connected == true",
+        "icon": "$(reply)"
+      },
+      {
         "command": "vscode-ibmi-fs.removeMessageAll",
-        "title": "Delete All User Messages",
+        "title": "Rermove All Messages",
         "category": "IBM i Messages",
         "enablement": "code-for-ibmi:connected == true",
         "icon": "$(clear-all)"
+      },
+      {
+        "command": "vscode-ibmi-fs.removeMessageAllButUnanswered",
+        "title": "Remove All Messages Except Unanswered",
+        "category": "IBM i Messages",
+        "enablement": "code-for-ibmi:connected == true",
+        "icon": "$(combine)"
       },
       {
         "command": "vscode-ibmi-fs.deleteMessage",
@@ -316,6 +330,11 @@
           "group": "inline@1"
         },
         {
+          "command": "vscode-ibmi-fs.removeMessageAllButUnanswered",
+          "when": "view == msgqBrowser && viewItem =~ /^msgq$/",
+          "group": "inline@1"
+        },
+        {
           "command": "vscode-ibmi-fs.refreshMSGQ",
           "when": "view == msgqBrowser && viewItem =~ /^msgq.*$/",
           "group": "inline@1"
@@ -356,6 +375,11 @@
           "group": "5_messagequeue@2"
         },
         {
+          "command": "vscode-ibmi-fs.removeMessageAllButUnanswered",
+          "when": "view == msgqBrowser && viewItem =~ /^msgq$/",
+          "group": "5_messagequeue@2"
+        },
+        {
           "command": "vscode-ibmi-fs.deleteMessage",
           "when": "view == msgqBrowser && viewItem =~ /^message$/ ",
           "group": "3_message@0"
@@ -369,6 +393,11 @@
           "command": "vscode-ibmi-fs.deleteMessagesFiltered",
           "when": "view == msgqBrowser && viewItem =~ /^message$/ ",
           "group": "3_message@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.ReplyToUnansweredMessage",
+          "when": "view == msgqBrowser && viewItem =~ /^message.*$/",
+          "group": "1_message@3"
         },
         {
           "command": "vscode-ibmi-fs.searchMessageQueue",
@@ -408,10 +437,6 @@
           "when": "never"
         },
         {
-          "command": "vscode-ibmi-fs.removeMessageAll",
-          "when": "never"
-        },
-        {
           "command": "vscode-ibmi-fs.deleteMessage",
           "when": "never"
         },
@@ -441,6 +466,10 @@
         },
         {
           "command": "vscode-ibmi-fs.searchMessageQueueBrowser",
+          "when": "never"
+        },
+        {
+        "command": "vscode-ibmi-fs.ReplyToUnansweredMessage",
           "when": "never"
         }
       ]

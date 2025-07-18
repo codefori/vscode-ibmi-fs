@@ -150,6 +150,10 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
     }),
     vscode.commands.registerCommand(`vscode-ibmi-fs.removeMessageAll`, async (node: MessageQueue) => {
       if (node) {
+        if (node.protected) {
+          vscode.window.showErrorMessage(l10n.t(`You dont have authority to remove messages from {0}.`, node.messageQueue));
+          return;
+        }
         //Running from right click
         let message = l10n.t(`Are you sure you want to delete ALL mesages for queue {0}?`, String(node.label));
         let detail = ``;
@@ -184,12 +188,58 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
           vscode.window.showInformationMessage(l10n.t('Deletion canceled.'));
         }
       } else {
-        //Running from command.
+        vscode.window.showInformationMessage(l10n.t(`Remove All Messages, not performed! Use command from Message Queue Broswer.`));
+      }
+    }),
+    vscode.commands.registerCommand(`vscode-ibmi-fs.removeMessageAllButUnanswered`, async (node: MessageQueue) => {
+      if (node) {
+        if (node.protected) {
+          vscode.window.showErrorMessage(l10n.t(`You dont have authority to remove messages from {0}.`, node.messageQueue));
+          return;
+        }
+        //Running from right click
+        let message = l10n.t(`Are you sure you want to delete ALL mesages except for unanswered for queue {0}?`, String(node.label));
+        let detail = ``;
+        let result = await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`), l10n.t(`No`));
+
+        if (result === `Yes`) {
+
+          const connection = getConnection();
+
+          try {
+            //TODO: Needs to have write access to QUEUE to remove message
+            const commandResult = await connection.runCommand({
+              command: `CLRMSGQ MSGQ(${node.messageQueue}) CLEAR(*KEEPUNANS)`
+              , environment: `ile`
+            });
+            if (commandResult) {
+              // vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
+              if (commandResult.code === 0 || commandResult.code === null) {
+              } else {
+              }
+            }
+
+            vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node);
+          } catch (e: unknown) {
+            if (e instanceof Error) {
+              vscode.window.showErrorMessage(l10n.t(`Error deleting ALL message queue messages! {0}.`, e));
+            }
+          }
+
+        }
+        else {
+          vscode.window.showInformationMessage(l10n.t('Deletion canceled.'));
+        }
+      } else {
+        vscode.window.showInformationMessage(l10n.t(`Remove All Messages Except Unanswered, not performed! Use command from Message Queue Broswer.`));
       }
     }),
     vscode.commands.registerCommand(`vscode-ibmi-fs.deleteMessage`, async (node: MessageQueueList) => {
       if (node) {
-        const config = getConfig();
+        if (node.protected) {
+          vscode.window.showErrorMessage(l10n.t(`You dont have authority to remove messages from {0}.`, node.messageQueue));
+          return;
+        }
         //Running from right click
 
         const message = l10n.t('Are you sure you want to delete {0}?', node.messageID + '- "' + node.messageText + '"');
@@ -230,6 +280,10 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
     }),
     vscode.commands.registerCommand(`vscode-ibmi-fs.deleteMessagesNamed`, async (node: MessageQueueList) => {
       if (node) {
+        if (node.protected) {
+          vscode.window.showErrorMessage(l10n.t(`You dont have authority to remove messages from {0}.`, node.messageQueue));
+          return;
+        }
         //Running from right click
         let deleteCount = 0;
         let message = l10n.t(`Are you sure you want to delete ALL messages with this ID {0}?`, node.messageID);
@@ -301,6 +355,10 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
     }),
     vscode.commands.registerCommand(`vscode-ibmi-fs.deleteMessagesFiltered`, async (node: MessageQueueList) => {
       if (node) {
+        if (node.protected) {
+          vscode.window.showErrorMessage(l10n.t(`You dont have authority to remove messages from {0}.`, node.messageQueue));
+          return;
+        }
         //Running from right click
         let deleteCount = 0;
         let message = l10n.t(`Are you sure you want to delete ALL messages in {0} filtered by value {1}?`, String(node.parent.label), node.parent.filter ? node.parent.filter : ``);
@@ -371,8 +429,12 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
         //Running from command.
       }
     }),
-    vscode.commands.registerCommand(`vscode-ibmi-fs.filterMessageQueueInquiry`, async (node) => {
-      vscode.commands.executeCommand('vscode-ibmi-fs.filterMessageQueue', node, 'INQUIRY');
+    vscode.commands.registerCommand(`vscode-ibmi-fs.filterMessageQueueInquiry`, async (node: MessageQueue) => {
+      if (node.inquiryMode === 'INQUIRY') {
+        vscode.commands.executeCommand('vscode-ibmi-fs.filterMessageQueue', node);
+      } else {
+        vscode.commands.executeCommand('vscode-ibmi-fs.filterMessageQueue', node, 'INQUIRY');
+      }
     }),
     vscode.commands.registerCommand(`vscode-ibmi-fs.filterMessageQueue`, async (node, inquiryMode?: string) => {
 
@@ -409,13 +471,13 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
                 node.parent.setFilter(searchTerm);
                 node.parent.setInquiryMode(inquiryMode);
                 node.parent.clearToolTip();
-                node.parent.setDescription(`Filtered by: ${searchTerm?searchTerm:inquiryMode}`);
+                node.parent.setDescription(`Filtered by: ${searchTerm ? searchTerm : inquiryMode}`);
                 vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node.parent);
               } else {
                 node.setFilter(searchTerm);
                 node.setInquiryMode(inquiryMode);
                 node.clearToolTip();
-                node.setDescription(`Filtered by: ${searchTerm?searchTerm:inquiryMode}`);
+                node.setDescription(`Filtered by: ${searchTerm ? searchTerm : inquiryMode}`);
                 vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node);
               }
             } else {
@@ -467,6 +529,28 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
       // Find the MSGQBrowser object 
       // Check the values of the tree, update description la
       // vscode.commands.executeCommand(`vscode-ibmi-fs.refresh MSGQ`);
+    }),
+    vscode.commands.registerCommand(`vscode-ibmi-fs.ReplyToUnansweredMessage`, async (item: IBMiMessageQueueMessage) => {
+      // TODO: add context data for INQUIRY messages that allow this command to not function for ansewered or non-inquiry messages
+      try {
+        if (!item.messageReply && item.messageType === 'INQUIRY') {
+          const filter = await vscode.window.showInputBox({
+            title: l10n.t(`What is your answer?`),
+            prompt: l10n.t(`If no answer given then the reply *DFT is assumed.`),
+            placeHolder: `${item.messageText}`
+          });
+
+          if (filter) {
+            IBMiContentMsgq.answerMessage(item, filter);
+            // vscode.commands.executeCommand(`vscode-ibmi-fs.refresh MSGQ`);
+          }
+        } else {
+          vscode.window.showInformationMessage(l10n.t(`Message not in a state to reply with an answer.`));
+        }
+      } catch (e: any) {
+        console.log(e);
+        vscode.window.showErrorMessage(l10n.t(`Error answering message! {0}.`, e));
+      }
     }),
 
   );
