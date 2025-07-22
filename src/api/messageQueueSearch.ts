@@ -2,11 +2,10 @@
 import util from "util";
 import fs from "fs";
 import tmp from "tmp";
-import { CommandResult } from "@halcyontech/vscode-ibmi-types";
 import { Code4i } from "../tools";
 import { isProtectedFilter } from '../filesystem/qsys/MsgQFs';
 import { IBMiContentMsgq } from "./IBMiContentMsgq";
-import { FuncInfo, IBMiMessageQueue } from '../typings';
+import { IBMiMessageQueue } from '../typings';
 
 const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);

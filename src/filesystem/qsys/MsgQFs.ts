@@ -4,8 +4,9 @@ import { Code4i,  } from "../../tools";
 import { IBMiMessageQueueMessage, MsgOpenOptions } from "../../typings";
 import { IBMiContentMsgq } from "../../api/IBMiContentMsgq";
 import fs from 'fs';
-import os from 'os';
 import util from 'util';
+import path from 'path';
+
 
 const writeFileAsync = util.promisify(fs.writeFile);
 
@@ -15,26 +16,26 @@ export function getMessageDetailFileUri(msg: IBMiMessageQueueMessage, options?: 
 export function getUriFromPathMsg(path: string, options?: MsgOpenOptions) {
   return getUriFromPath(path, options);
 }
-
 export function getUriFromPath(path: string, options?: MsgOpenOptions) {
   const query = stringify(options as ParsedUrlQueryInput);
   return vscode.Uri.parse(path).with({ scheme: `message`, path: `/${path}`, query });
 }
-
 export function getFilePermission(uri: vscode.Uri): FilePermission | undefined {
   const fsOptions = parseFSOptions(uri);
   if (Code4i.getConfig()?.readOnlyMode || fsOptions.readonly) {
     return FilePermission.Readonly;
   }
 }
-
+export function getPathFromUri(uri: vscode.Uri): string {
+  const thePath = path.posix.basename(uri.path);
+  return thePath;
+}
 export function parseFSOptions(uri: vscode.Uri): MsgOpenOptions {
   const parameters = parse(uri.query);
   return {
     readonly: parameters.readonly === `true`
   };
 }
-
 export function isProtectedFilter(filter?: string): boolean {
   return filter && Code4i.getConfig()?.objectFilters.find(f => f.name === filter)?.protected || false;
 }
@@ -46,7 +47,6 @@ export class MsgqFS implements vscode.FileSystemProvider {
 
   constructor(context: vscode.ExtensionContext) {
   }
-
 
   stat(uri: vscode.Uri): vscode.FileStat {
     return {
@@ -62,11 +62,11 @@ export class MsgqFS implements vscode.FileSystemProvider {
     const contentApi = Code4i.getContent();
     const connection = Code4i.getConnection();
     if (connection && contentApi) {
-      // path: `message://${msg.Qlib}/${msg.Qname}/${msg.MessageID}~${msg.KEY}.msg``,
-      const lpath = uri.path.split(`/`);
+      // uri: `message://${msg.Qlib}/${msg.Qname}/${msg.MessageID}~${msg.KEY}.msg``,
+      // uriPath: `/${msg.Qlib}/${msg.Qname}/${msg.MessageID}~${msg.KEY}.msg``,
       const options:ParsedUrlQuery = parse(uri.query);
 
-      const messageContent = await IBMiContentMsgq.downloadMessageContent(uri.path, `msg`, options);
+      const messageContent = await IBMiContentMsgq.downloadMessageContent(uri.path.substring(1), `msg`, options);
       if (messageContent !== undefined) {
         return new Uint8Array(Buffer.from(messageContent, `utf8`));
       }

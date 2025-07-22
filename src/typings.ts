@@ -26,6 +26,8 @@ export interface IBMiMessageQueueMessage {
   messageReply?: string
   messageReplyUser?: string
   messageReplyJob?: string
+  messageReplyProgram?: string
+  messageReplyTimestamp?: string
 }   
 export interface IBMiMessageQueue {
   messageQueueLibrary: string

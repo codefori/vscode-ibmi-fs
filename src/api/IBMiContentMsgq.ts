@@ -1,6 +1,7 @@
 import fs from 'fs';
 import tmp from 'tmp';
 import util from 'util';
+import vscode, { l10n, } from 'vscode';
 import { Code4i } from '../tools';
 import { ErrorDS, IBMiMessageQueueMessage, MsgOpenOptions, ObjAttributes, ObjLockState } from '../typings';
 import { CommandResult } from '@halcyontech/vscode-ibmi-types';
@@ -38,8 +39,12 @@ export namespace IBMiContentMsgq {
      ${!queueLibrary ? `inner join QSYS2.LIBRARY_LIST_INFO on SCHEMA_NAME = MS1.MESSAGE_QUEUE_LIBRARY` : ''}
      where MS1.MESSAGE_TYPE not in ('REPLY') and MS1.MESSAGE_QUEUE_NAME = '${queue}'
      ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
-     ${searchWords ? ` and (MESSAGE_TEXT like '%${searchWords}%' or MESSAGE_SECOND_LEVEL_TEXT like '%${searchWords}%')` : ''}
      ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
+     ${searchWords ? ` /*and (1=1 or MESSAGE_TEXT like '%${searchWords}%' 
+                        or MESSAGE_SECOND_LEVEL_TEXT like '%${searchWords}%'
+                        or MESSAGE_ID = '${searchWords}'
+                        or MESSAGE_TYPE like '%${searchWords}%'
+                        )*/` : ''}
      order by MS1.MESSAGE_TIMESTAMP ${!sort.ascending ? 'desc' : 'asc'}`.replace(/\n\s*/g, ' ');
     let results = await Code4i!.runSQL(objQuery);
 
@@ -74,50 +79,62 @@ export namespace IBMiContentMsgq {
     return returnMsgqList;
 
   }
-  export async function getMessageQueueMessageFullDetails(queue: string, queueLibrary?: string, messageKey?: string ): Promise<IBMiMessageQueueMessage[]> 
-  {
+  export async function getMessageQueueMessageFullDetails(queue: string, queueLibrary?: string, messageKey?: string): Promise<IBMiMessageQueueMessage> {
 
     queue = queue.toUpperCase();
     queueLibrary = queueLibrary && queueLibrary.toUpperCase() !== '*LIBL' ? queueLibrary.toUpperCase() : ``;
     messageKey = messageKey || '';
-    const objQuery = `select MESSAGE_QUEUE_LIBRARY ,MESSAGE_QUEUE_NAME
-      ,MESSAGE_ID ,MESSAGE_TYPE ,MESSAGE_SUBTYPE ,SEVERITY ,MESSAGE_TIMESTAMP ,MESSAGE_KEY ,ASSOCIATED_MESSAGE_KEY
-      ,FROM_USER ,FROM_JOB ,FROM_PROGRAM
-      ,MESSAGE_FILE_LIBRARY ,MESSAGE_FILE_NAME
-      ,MESSAGE_TEXT ,MESSAGE_SECOND_LEVEL_TEXT
+    const objQuery = `select MS1.MESSAGE_QUEUE_LIBRARY ,MS1.MESSAGE_QUEUE_NAME
+      ,MS1.MESSAGE_ID ,MS1.MESSAGE_TYPE ,MS1.MESSAGE_SUBTYPE ,MS1.MESSAGE_TEXT ,MS1.SEVERITY ,MS1.MESSAGE_TIMESTAMP
+      ,hex(MS1.MESSAGE_KEY) MESSAGE_KEY ,hex(MS1.ASSOCIATED_MESSAGE_KEY) ASSOCIATED_MESSAGE_KEY
+      ,MS1.FROM_USER ,MS1.FROM_JOB ,MS1.FROM_PROGRAM
+      ,MS1.MESSAGE_FILE_LIBRARY ,MS1.MESSAGE_FILE_NAME ,MS1.MESSAGE_TOKENS
+      ,MS1.MESSAGE_SECOND_LEVEL_TEXT
+      ,MSR.MESSAGE_TEXT REPLY_MESSAGE
+      ,MSR.FROM_USER REPLY_FROM_USER ,MSR.FROM_JOB REPLY_FROM_JOB ,MSR.FROM_PROGRAM REPLY_FROM_PROGRAM
+      ,MSR.MESSAGE_KEY REPLY_MESSAGE_KEY ,MSR.ASSOCIATED_MESSAGE_KEY REPLIED_MESSAGE_KEY
+      ,MSR.MESSAGE_TIMESTAMP REPLY_TIMESTAMP
       from QSYS2.MESSAGE_QUEUE_INFO MS1
+      left join QSYS2.MESSAGE_QUEUE_INFO MSR on MSR.MESSAGE_QUEUE_LIBRARY = MS1.MESSAGE_QUEUE_LIBRARY 
+                                            and MSR.MESSAGE_QUEUE_NAME = MS1.MESSAGE_QUEUE_NAME 
+                                            and MSR.ASSOCIATED_MESSAGE_KEY = MS1.MESSAGE_KEY
       ${!queueLibrary ? `inner join QSYS2.LIBRARY_LIST_INFO on SCHEMA_NAME = MS1.MESSAGE_QUEUE_LIBRARY` : ''}
       where MS1.MESSAGE_TYPE not in ('REPLY') and MS1.MESSAGE_QUEUE_NAME = '${queue}'
-      ${messageKey ? ` and MESSAGE_KEY = '${messageKey}'` : ''}
+      ${messageKey ? ` and MS1.MESSAGE_KEY = binary(x'${messageKey}')` : ''}
       `.replace(/\n\s*/g, ' ');
     let results = await Code4i!.runSQL(objQuery);
 
     if (results.length === 0) {
-      return [];
+      return { messageText: `no results` };
     }
     // return results
     let returnMsgqList = results
-      .map(object => ({
-        messageQueueLibrary: object.MESSAGE_QUEUE_LIBRARY,
+      .map(result => ({
+        messageQueueLibrary: result.MESSAGE_QUEUE_LIBRARY,
         messageQueue: queue,
-        messageID: object.MESSAGE_ID,
-        messageType: object.MESSAGE_TYPE,
-        messageKey: object.MESSAGE_KEY,
-        messageSubType: String(object.MESSAGE_SUBTYPE),
-        severity: String(object.SEVERITY),
-        messageTimestamp: String(object.MESSAGE_TIMESTAMP),
-        messageKeyAssociated: String(object.ASSOCIATED_MESSAGE_KEY),
-        fromUser: String(object.FROM_USER),
-        fromJob: String(object.FROM_JOB),
-        fromProgram: String(object.FROM_PROGRAM),
-        messageFile: String(object.MESSAGE_FILE),
-        messageFileLibrary: String(object.MESSAGE_FILE_LIBRARY),
-        messageText: object.MESSAGE_TEXT,
-        messageTextSecondLevel: String(object.MESSAGE_SECOND_LEVEL_TEXT),
+        messageID: result.MESSAGE_ID,
+        messageType: result.MESSAGE_TYPE,
+        messageKey: result.MESSAGE_KEY,
+        messageSubType: String(result.MESSAGE_SUBTYPE),
+        severity: String(result.SEVERITY),
+        messageTimestamp: String(result.MESSAGE_TIMESTAMP),
+        fromUser: String(result.FROM_USER),
+        fromJob: String(result.FROM_JOB),
+        fromProgram: String(result.FROM_PROGRAM),
+        messageFile: String(result.MESSAGE_FILE),
+        messageFileLibrary: String(result.MESSAGE_FILE_LIBRARY),
+        messageText: result.MESSAGE_TEXT,
+        messageTextSecondLevel: String(result.MESSAGE_SECOND_LEVEL_TEXT),
+        messageReply: String(result.REPLY_MESSAGE !== null ?result.REPLY_MESSAGE:''),
+        messageReplyJob: String(result.REPLY_MESSAGE !== null ?result.REPLY_FROM_JOB:''),
+        messageReplyUser: String(result.REPLY_MESSAGE !== null ?result.REPLY_FROM_USER:''),
+        messageReplyProgram: String(result.REPLY_MESSAGE !== null ?result.REPLY_FROM_PROGRAM:''),
+        messageKeyAssociated: String(result.REPLY_MESSAGE !== null ?result.ASSOCIATED_MESSAGE_KEY:''), // answered INQUIRY message key
+        messageReplyTimestamp: String(result.REPLY_MESSAGE !== null ?result.REPLY_TIMESTAMP:'')
       } as IBMiMessageQueueMessage))
       ;
 
-    return returnMsgqList;
+    return returnMsgqList[0];
 
   }
   /**
@@ -135,58 +152,69 @@ export namespace IBMiContentMsgq {
     if (options) {
     }
 
+    let mdContent = ``;
     let retried = false;
     let retry = 1;
-    let fileEncoding: BufferEncoding | null = "utf8";
+    // let fileEncoding: BufferEncoding | null = "utf8";
     // let fileEncoding = `utf8`;
-    let cpymsgCompleted: CommandResult = { code: -1, stdout: ``, stderr: `` };
+    // let cpymsgCompleted: CommandResult = { code: -1, stdout: ``, stderr: `` };
     // let results: string;
     while (retry > 0) {
       retry--;
       try {
         //If this command fails we need to try again after we delete the temp remote
         switch (fileExtension.toLowerCase()) {
-        case `pdf`:
-          fileEncoding = null;
-          // await connection.runCommand({
-          //   command: `CPYSPLF FILE(${name}) TOFILE(*TOSTMF) JOB(${qualifiedJobName}) SPLNBR(${splfNumber}) TOSTMF('${tempRmt}') WSCST(*PDF) STMFOPT(*REPLACE)\nDLYJOB DLY(1)`
-          //  , environment: `ile`
-          // });
-          break;
         default:
-          // With the use of CPYSPLF and CPY to create a text based stream file in 1208, there are possibilities that the data becomes corrupt
-          // in the tempRmt object
-          connection.sendCommand({
-            command: `rm -f ${tempRmt}`
-          });
-
-          // fileExtension = `txt`;
-          // DLYJOB to ensure the CPY command completes in time.
-          cpymsgCompleted = await connection.runCommand({
-            command: ``
-            , environment: `ile`
-          });
+          const thePathParts: string[] = uriPath.split(/[/~.]/);
+          // console.log(thePathParts);
+          const md = await getMessageQueueMessageFullDetails(thePathParts[1], thePathParts[0], thePathParts[3]);
+          const mdFromJobParts = md.fromJob!.split('/');
+          // console.log(...formatMessageSecondText(md.messageTextSecondLevel||''));
+          if (md) {
+            const fmtMsgArray = formatMessageSecondText(md.messageTextSecondLevel||'');
+            mdContent = [
+              `                Message Information`,
+              ` Message ID . . . . . . :   ${md.messageID}         Severity . . . . . . . :   ${md.severity}`,
+              ` Date sent  . . . . . . :   ${md.messageTimestamp?.substring(0, 10)}      Time sent  . . . . . . :   ${md.messageTimestamp?.substring(11, 19)}`,
+              ` Message type . . . . . :   ${md.messageType}`,
+              ``,
+              ` From . . . . . . . . . :   ${md.fromUser}`,
+              ``,
+              ` From job . . . . . . . . . . . :   ${mdFromJobParts[2]}`,
+              `   User . . . . . . . . . . . . :     ${mdFromJobParts[1]}`,
+              `   Number . . . . . . . . . . . :     ${mdFromJobParts[0]}`,
+              ``,
+              ` From program . . . . . . . . . :   ${md.fromProgram}`,
+              ``,
+              ` To message queue . . . . . . . :   ${md.messageQueue}`,
+              `   Library  . . . . . . . . . . :     ${md.messageQueueLibrary}`,
+              ``,
+              ` Time sent  . . . . . . . . . . :   ${md.messageTimestamp?.substring(11)}`,
+              ``,
+              ` Message . . . . :   ${md.messageText}`,
+              // ...md.messageTextSecondLevel ? formatMessageSecondText(md.messageTextSecondLevel) :'',
+              ...fmtMsgArray,
+              ``,
+              `${md.messageReply ? ` Reply  . . . . :   ${md.messageReply}` : ''}`,
+              `${md.messageReplyUser ? ` Reply User . . :   ${md.messageReplyUser}` : ''}`,
+              `${md.messageReplyJob ? ` Reply Job  . . :   ${md.messageReplyJob}` : ''}`,
+              `${md.messageReplyProgram ? ` Reply Program  :   ${md.messageReplyProgram}` : ''}`,
+              `${md.messageReplyTimestamp ? ` Reply Timestamp:   ${md.messageReplyTimestamp}` : ''}`,
+              ``,
+              `              * * * * *   E N D   O F   D E T A I L S   * * * * *`
+            ].join("\n");
+          } else { }
+        // vscode.workspace.openTextDocument({ content: mdContent, language: `plaintext` }).then(doc => vscode.window.showTextDocument(doc));
         }
       } catch (e) {
-        if (String(e).startsWith(`CPDA08A`)) {
-          if (!retried) {
-            await connection.sendCommand({ command: `rm -f ${tempRmt}`, directory: `.` });
-            retry++;
-            retried = true;
-          } else {
-            throw e;
-          }
-        } else {
-          throw e;
-        }
       }
     }
 
-    await client.getFile(tmplclfile, tempRmt);
-    const results = await readFileAsync(tmplclfile, fileEncoding);
-    if (cpymsgCompleted.code === 0) {
-    }
-    return results;
+    // await client.getFile(tmplclfile, tempRmt);
+    // const results = await readFileAsync(tmplclfile, fileEncoding);
+    // if (cpymsgCompleted.code === 0) {
+    // }
+    return mdContent;
   }
   /**
   * @param {string} messageQueue
@@ -203,8 +231,12 @@ export namespace IBMiContentMsgq {
     from table (QSYS2.MESSAGE_QUEUE_INFO(QUEUE_LIBRARY => '${messageQueueLibrary}', QUEUE_NAME=>'${messageQueue}') ) MSGQ 
     where 1=1
     ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
-    ${searchWords ? ` and (MESSAGE_TEXT like '%${searchWords}%' or MESSAGE_SECOND_LEVEL_TEXT like '%${searchWords}%')` : ''}
     ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
+    ${searchWords ? ` and (MESSAGE_TEXT like '%${searchWords}%' 
+                        or MESSAGE_SECOND_LEVEL_TEXT like '%${searchWords}%'
+                        or MESSAGE_ID like '%${searchWords}%'
+                        or MESSAGE_ID like '%${searchWords}%'
+                        )` : ''}
     `.replace(/\n\s*/g, ' ');
     let results = await Code4i!.runSQL(objQuery);
     if (results.length === 0) {
@@ -224,6 +256,7 @@ export namespace IBMiContentMsgq {
       : libraries.map(library => `'${library}'`).join(', ');
     const objQuery2 = `select MSR.MESSAGE_QUEUE_LIBRARY, MSR.MESSAGE_QUEUE_NAME
       , MSR.MESSAGE_TEXT MESSAGE_REPLY, MSR.FROM_USER REPLY_FROM_USER, MSR.FROM_JOB REPLY_FROM_JOB
+      , MSR.FROM_PROGRAM REPLY_FROM_PROGRAM
       , hex(MSR.MESSAGE_KEY) MESSAGE_KEY, hex(MSR.ASSOCIATED_MESSAGE_KEY) ASSOCIATED_MESSAGE_KEY
       from QSYS2.MESSAGE_QUEUE_INFO MSR
       where MESSAGE_TYPE = 'REPLY'
@@ -242,6 +275,7 @@ export namespace IBMiContentMsgq {
         messageReply: String(result.MESSAGE_REPLY),
         messageReplyJob: String(result.REPLY_FROM_JOB),
         messageReplyUser: String(result.REPLY_FROM_USER),
+        messageReplyProgram: String(result.REPLY_FROM_PROGRAM),
         messageKey: String(result.MESSAGE_KEY), // Reply message key
         messageKeyAssociated: String(result.ASSOCIATED_MESSAGE_KEY) // answered INQUIRY message key
       } as IBMiMessageQueueMessage)
@@ -331,4 +365,83 @@ export namespace IBMiContentMsgq {
 
     return true;
   }
+}
+function formatMessageSecondText(text: string): string[] {
+  const formattedText: string[] = [];
+  const lineLength = 80;
+  // Regex to match the special characters, capturing them
+  const parts = text.split(/(&N |&P |&B )/); //
+  let firstLineBreak: boolean = true;
+  let formatIndents = '';
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (part === '&N ') {
+      formatIndents = ` `;
+      if (firstLineBreak) { firstLineBreak = false; continue; }
+    } else if (part === '&P ') {
+      formatIndents = `      `;
+      if (firstLineBreak) { firstLineBreak = false; continue; }
+    } else if (part === '&B ') {
+      formatIndents = `    `;
+      if (firstLineBreak) { firstLineBreak = false; continue; }
+    } else {
+      const brokenStringArray = splitStringOnWords(part, lineLength, formatIndents);
+      formattedText.push(...brokenStringArray);
+
+      // const partLength = part.length;
+      // if (partLength > lineLength) {
+      //   let miniPartsLen: number = Math.ceil(partLength / lineLength);
+      //   let totalLen = 0;
+      //   for (let ii = 0; ii < miniPartsLen; ii++) {
+      //     if (totalLen+(ii*lineLength) < partLength) {
+      //       totalLen =+ ii*lineLength;
+      //       formattedText.push(part.substring(ii*lineLength,lineLength));
+      //       // new line for next segment
+      //       if (lineIndicator === '&N ') { formattedText.push('\n'); }
+      //       if (lineIndicator === '&P ') { formattedText.push('\n      '); }
+      //       if (lineIndicator === '&B ') { formattedText.push('\n    '); }
+      //     } else {
+      //       formattedText.push(part.substring(ii));
+      //     }
+      //   }
+      // } else {
+      //   formattedText.push(part);
+      // }
+    }
+  }
+
+  return formattedText;
+}
+function splitStringOnWords(text: string, maxLength: number, formatIndents: string): string[] {
+  const words = text.split(' '); // Split the string into an array of words
+  const result: string[] = [];
+  let currentLine = '';
+  let lineIndents = '';
+  let lineCount = 0;
+
+  for (const word of words) {
+    // Check if adding the next word exceeds the maxLength
+    if (currentLine.length + word.length + (currentLine.length > 0 ? 1 : 0) > maxLength) {
+      // If currentLine is not empty, push it to result and start a new line
+      if (currentLine.length > 0) {
+        if (lineCount > 0) {lineIndents='  ';lineCount++;}
+        // When formatting message text, we need to split long lines and indent by proper spaces.
+        result.push(formatIndents+lineIndents+currentLine.trim()); // Trim to remove any leading/trailing spaces
+      }
+      currentLine = word; // Start the new line with the current word
+    } else {
+      // Add the word to the current line
+      if (currentLine.length > 0) {
+        currentLine += ' '; // Add a space if it's not the first word on the line
+      }
+      currentLine += word;
+    }
+  }
+  // Add the last remaining line if it's not empty
+  if (currentLine.length > 0) {
+    result.push(formatIndents+lineIndents+currentLine.trim());
+  }
+
+  return result;
 }

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { FocusOptions, IBMiMessages } from '@halcyontech/vscode-ibmi-types/';
 import fs from "fs";
-import os from "os";
-import path from "path";
+// import os from "os";
+// import path from "path";
 import util from "util";
 import vscode, { l10n, } from 'vscode';
 import { MsgqFS, getUriFromPathMsg, parseFSOptions } from "./filesystem/qsys/MsgQFs";
@@ -455,6 +455,13 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
           value: `${node.contextValue === `message` ? node.parent.filter ? node.parent.filter : `` : node?.filter ? node?.filter : ``}`
         });
       }
+      let msgqMsgNum = 0;
+      if (node.context === 'msgq') {
+        msgqMsgNum = node.messageCount;
+      }
+      else {
+        msgqMsgNum = node.parent.node.messageCount;
+      }
 
       if (searchTerm || inquiryMode) {
         try {
@@ -466,7 +473,8 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
               message: l10n.t(`Filtering messages for {0}, using these words, {1} messages.`, searchMsgq, searchTerm),
             });
             searchTerm = searchTerm?.toLocaleUpperCase();
-            const msgqMsgNum = await IBMiContentMsgq.getMessageQueueCount(searchMsgq, searchMsgqLibrary, searchTerm, undefined, inquiryMode);
+            // const msgqMsgNum = await IBMiContentMsgq.getMessageQueueCount(searchMsgq, searchMsgqLibrary, searchTerm, undefined, inquiryMode);
+
             if (Number(msgqMsgNum) > 0) {
               if (node.contextValue === `message`) {
                 node.parent.setFilter(searchTerm);
@@ -492,9 +500,11 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
         }
       }
       else {
-        node.setFilter(undefined);
-        node.clearToolTip;
-        vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node);
+        if (node.filter) {
+          node.setFilter(undefined);
+          node.clearToolTip;
+          vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node);
+        }
       }
 
     }),

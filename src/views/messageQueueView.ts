@@ -68,15 +68,13 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
               return messageItem;
             })
             );
+            element.setRecordCount(items.length);
 
           } catch (e: any) {
             console.log(e);
             vscode.window.showErrorMessage(e.message);
             items.push(new vscode.TreeItem(l10n.t(`Error loading messages for message queue {0}.`, element.messageQueueLibrary + '/' + element.messageQueue)));
           }
-        case `MSG`:
-          { }
-          break;
         }
 
       } else if (config.messageQueues) {
@@ -155,19 +153,19 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
       }
       item.tooltip = new vscode.MarkdownString(`<table>`
         .concat(`<thead>${item.path.split(`/`)[2]}</thead><hr>`)
-        .concat(item.messageType      ? `<tr><td>${l10n.t(`Message Type:`)} </td><td>&nbsp;${item.messageType}</td></tr>` : ``)
-        .concat(item.severity         ? `<tr><td>${l10n.t(`Severity:`    )} </td><td>&nbsp;${item.severity}</td></tr>` : ``)
+        .concat(item.messageType ? `<tr><td>${l10n.t(`Message Type:`)} </td><td>&nbsp;${item.messageType}</td></tr>` : ``)
+        .concat(item.severity ? `<tr><td>${l10n.t(`Severity:`)} </td><td>&nbsp;${item.severity}</td></tr>` : ``)
         .concat(item.messageTimestamp ? `<tr><td>${l10n.t(`Time Arrived:`)} </td><td>&nbsp;${item.messageTimestamp}</td></tr>` : ``)
-        .concat(item.messageKey       ? `<tr><td>${l10n.t(`Key:`         )} </td><td>&nbsp;${item.messageKey}</td></tr>` : ``)
-        .concat(item.fromUser         ? `<tr><td>${l10n.t(`From User:`   )} </td><td>&nbsp;${item.fromUser}</td></tr>` : ``)
-        .concat(item.fromJob          ? `<tr><td>${l10n.t(`From Job:`    )} </td><td>&nbsp;${item.fromJob}</td></tr>` : ``)
-        .concat(item.fromProgram      ? `<tr><td>${l10n.t(`From Program:`)} </td><td>&nbsp;${item.fromProgram}</td></tr>` : ``)
+        .concat(item.messageKey ? `<tr><td>${l10n.t(`Key:`)} </td><td>&nbsp;${item.messageKey}</td></tr>` : ``)
+        .concat(item.fromUser ? `<tr><td>${l10n.t(`From User:`)} </td><td>&nbsp;${item.fromUser}</td></tr>` : ``)
+        .concat(item.fromJob ? `<tr><td>${l10n.t(`From Job:`)} </td><td>&nbsp;${item.fromJob}</td></tr>` : ``)
+        .concat(item.fromProgram ? `<tr><td>${l10n.t(`From Program:`)} </td><td>&nbsp;${item.fromProgram}</td></tr>` : ``)
       );
       if (item.messageType === 'INQUIRY') {
         item.tooltip.appendMarkdown(``
-          .concat(`<tr><td>${l10n.t(`Message Reply:`     )} </td><td>&nbsp;${item.messageReply    }</td></tr>`)
+          .concat(`<tr><td>${l10n.t(`Message Reply:`)} </td><td>&nbsp;${item.messageReply}</td></tr>`)
           .concat(`<tr><td>${l10n.t(`Message Reply User:`)} </td><td>&nbsp;${item.messageReplyUser}</td></tr>`)
-          .concat(`<tr><td>${l10n.t(`Message Reply Job:` )} </td><td>&nbsp;${item.messageReplyJob }</td></tr>`)
+          .concat(`<tr><td>${l10n.t(`Message Reply Job:`)} </td><td>&nbsp;${item.messageReplyJob}</td></tr>`)
         );
       }
       item.tooltip.appendMarkdown(``
@@ -189,6 +187,7 @@ export class MessageQueue extends vscode.TreeItem implements IBMiMessageQueue {
   text: string;
   filter: string | undefined; // reduces tree items to matching tokens
   inquiryMode: string;
+  messageCount: number;
   readonly sort: SortOptions = { order: "date", ascending: true };
   sortDescription: string;
   constructor(parent: vscode.TreeItem, theMsgq: IBMiMessageQueue) {
@@ -206,6 +205,7 @@ export class MessageQueue extends vscode.TreeItem implements IBMiMessageQueue {
     this.text = theMsgq.text || '';
     this.description = (theMsgq.text ? theMsgq.text : ``) + this.sortDescription;
     this.inquiryMode = '';
+    this.messageCount = 0;
   }
   sortBy(sort: SortOptions) {
     if (this.sort.order !== sort.order) {
@@ -217,11 +217,13 @@ export class MessageQueue extends vscode.TreeItem implements IBMiMessageQueue {
     }
     return ` (sort: ${this.sort.order} ${this.sort.ascending ? `🔼` : `🔽`})`;
   }
-  setProtection(protect: boolean) { this.protected = protect; }
+  clearToolTip() { this.tooltip = undefined; }
+  getRecordCount() { return this.messageCount; }
   setFilter(filter: string | undefined) { this.filter = filter; }
   setInquiryMode(inquiryMode: string) { this.inquiryMode = inquiryMode; }
-  clearToolTip() { this.tooltip = undefined; }
   setDescription(value: string | undefined) { this.description = (value ? value : ``) + this.sortDescription; }
+  setProtection(protect: boolean) { this.protected = protect; }
+  setRecordCount(aNumber: number) { this.messageCount = aNumber; }
 }
 
 export class MessageQueueList extends vscode.TreeItem implements IBMiMessageQueueMessage {
