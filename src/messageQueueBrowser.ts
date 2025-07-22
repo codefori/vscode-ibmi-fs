@@ -29,20 +29,20 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
     vscode.commands.registerCommand(`vscode-ibmi-fs.sortMessagesByID`, (node: MessageQueue | MessageQueueList) => {
       node.sortBy({ order: "name" });
       if (node.contextValue === `message`) {
-        msgqBrowserObj.refresh(node.parent);
+        vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, (node.parent));
       }
       else {
-        msgqBrowserObj.refresh(node);
+        vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, (node));
       }
       msgqBrowserViewer.reveal(node, { expand: true });
     }),
-    vscode.commands.registerCommand(`vscode-ibmi-fs.sortMessageQueueByDate`, (node) => {
+    vscode.commands.registerCommand(`vscode-ibmi-fs.sortMessagesByDate`, (node) => {
       node.sortBy({ order: "date" });
       if (node.contextValue === `message`) {
-        msgqBrowserObj.refresh(node.parent);
+        vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, (node.parent));
       }
       else {
-        msgqBrowserObj.refresh(node);
+        vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, (node));
       }
       msgqBrowserViewer.reveal(node, { expand: true });
     }),
@@ -75,7 +75,8 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
           filter = filter.trim().toUpperCase().toUpperCase();
           const x: string[] = filter.split('/');
           if (x.length === 1) {
-            newMsgq = { messageQueueLibrary: `*LIBL`, messageQueue: filter };
+            const objAttributes = await IBMiContentMsgq.getObjectText([filter], [`*LIBL`], ['*MSGQ']);
+            newMsgq = { messageQueueLibrary: objAttributes[0].library, messageQueue: filter };
           }
           else {
             newMsgq = { messageQueue: x[1], messageQueueLibrary: x[0] };
@@ -497,7 +498,7 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
       }
 
     }),
-    vscode.commands.registerCommand("vscode-ibmi-fs.openMessage", async (item, overrideMode?: MsgOpenOptions) => {
+    vscode.commands.registerCommand("vscode-ibmi-fs.viewMessageDetails", async (item: MessageQueueList, overrideMode?: MsgOpenOptions) => {
       let options: MsgOpenOptions = {};
       options.readonly = item.parent.protected;
       const uri = getUriFromPathMsg(item.path, options);

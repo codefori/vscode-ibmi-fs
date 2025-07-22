@@ -43,7 +43,11 @@ export namespace Code4i {
   export async function runSQL(sqlStatement: string): Promise<Tools.DB2Row[]> {
     return getContent().ibmi.runSQL(sqlStatement);
   }
-
+  export async function getObjectList(filters: 
+                        { library: string; object?: string; types?: string[]; filterType?: FilterType; member?: string; memberType?: string; }
+                        , sortOrder?: SortOrder): Promise<IBMiObject[]> {
+    return getContent().getObjectList(filters, sortOrder);
+  }
   export async function runCommand(command: RemoteCommand): Promise<CommandResult> {
     return await getConnection().runCommand(command);
   }

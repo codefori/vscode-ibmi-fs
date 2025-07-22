@@ -28,9 +28,11 @@ export namespace IBMiContentMsgq {
     queueLibrary = queueLibrary.toUpperCase() !== '*LIBL' ? queueLibrary.toUpperCase() : ``;
     sort.order = sort.order || { order: 'date', ascending: 'asc' };
     messageID = messageID || '';
-    const objQuery3 = `select  MS1.MESSAGE_QUEUE_LIBRARY, MS1.MESSAGE_ID, MS1.MESSAGE_TYPE, MS1.MESSAGE_TEXT
+    const objQuery = `select  MS1.MESSAGE_QUEUE_LIBRARY, MS1.MESSAGE_ID, MS1.MESSAGE_TYPE, MS1.MESSAGE_TEXT
     , MS1.MESSAGE_SUBTYPE, digits(MS1.SEVERITY) SEVERITY
-    , MS1.MESSAGE_TIMESTAMP,  MS1.MESSAGE_KEY,  MS1.ASSOCIATED_MESSAGE_KEY
+    , MS1.MESSAGE_TIMESTAMP
+    , hex(MS1.MESSAGE_KEY) MESSAGE_KEY
+    , hex(MS1.ASSOCIATED_MESSAGE_KEY) ASSOCIATED_MESSAGE_KEY
     , MS1.FROM_USER, MS1.FROM_JOB, MS1.FROM_PROGRAM, MS1.MESSAGE_FILE_LIBRARY, MS1.MESSAGE_FILE_NAME
      from QSYS2.MESSAGE_QUEUE_INFO MS1
      ${!queueLibrary ? `inner join QSYS2.LIBRARY_LIST_INFO on SCHEMA_NAME = MS1.MESSAGE_QUEUE_LIBRARY` : ''}
@@ -39,7 +41,8 @@ export namespace IBMiContentMsgq {
      ${searchWords ? ` and (MESSAGE_TEXT like '%${searchWords}%' or MESSAGE_SECOND_LEVEL_TEXT like '%${searchWords}%')` : ''}
      ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
      order by MS1.MESSAGE_TIMESTAMP ${!sort.ascending ? 'desc' : 'asc'}`.replace(/\n\s*/g, ' ');
-    let results = await Code4i!.runSQL(objQuery3);
+    let results = await Code4i!.runSQL(objQuery);
+
 
     if (results.length === 0) {
       return [];
@@ -66,6 +69,52 @@ export namespace IBMiContentMsgq {
         messageFile: String(object.MESSAGE_FILE_NAME),
       } as IBMiMessageQueueMessage))
       .filter(obj => searchWords_.length === 0 || searchWords_.some(term => Object.values(obj).join(" ").includes(term)))
+      ;
+
+    return returnMsgqList;
+
+  }
+  export async function getMessageQueueMessageFullDetails(queue: string, queueLibrary?: string, messageKey?: string ): Promise<IBMiMessageQueueMessage[]> 
+  {
+
+    queue = queue.toUpperCase();
+    queueLibrary = queueLibrary && queueLibrary.toUpperCase() !== '*LIBL' ? queueLibrary.toUpperCase() : ``;
+    messageKey = messageKey || '';
+    const objQuery = `select MESSAGE_QUEUE_LIBRARY ,MESSAGE_QUEUE_NAME
+      ,MESSAGE_ID ,MESSAGE_TYPE ,MESSAGE_SUBTYPE ,SEVERITY ,MESSAGE_TIMESTAMP ,MESSAGE_KEY ,ASSOCIATED_MESSAGE_KEY
+      ,FROM_USER ,FROM_JOB ,FROM_PROGRAM
+      ,MESSAGE_FILE_LIBRARY ,MESSAGE_FILE_NAME
+      ,MESSAGE_TEXT ,MESSAGE_SECOND_LEVEL_TEXT
+      from QSYS2.MESSAGE_QUEUE_INFO MS1
+      ${!queueLibrary ? `inner join QSYS2.LIBRARY_LIST_INFO on SCHEMA_NAME = MS1.MESSAGE_QUEUE_LIBRARY` : ''}
+      where MS1.MESSAGE_TYPE not in ('REPLY') and MS1.MESSAGE_QUEUE_NAME = '${queue}'
+      ${messageKey ? ` and MESSAGE_KEY = '${messageKey}'` : ''}
+      `.replace(/\n\s*/g, ' ');
+    let results = await Code4i!.runSQL(objQuery);
+
+    if (results.length === 0) {
+      return [];
+    }
+    // return results
+    let returnMsgqList = results
+      .map(object => ({
+        messageQueueLibrary: object.MESSAGE_QUEUE_LIBRARY,
+        messageQueue: queue,
+        messageID: object.MESSAGE_ID,
+        messageType: object.MESSAGE_TYPE,
+        messageKey: object.MESSAGE_KEY,
+        messageSubType: String(object.MESSAGE_SUBTYPE),
+        severity: String(object.SEVERITY),
+        messageTimestamp: String(object.MESSAGE_TIMESTAMP),
+        messageKeyAssociated: String(object.ASSOCIATED_MESSAGE_KEY),
+        fromUser: String(object.FROM_USER),
+        fromJob: String(object.FROM_JOB),
+        fromProgram: String(object.FROM_PROGRAM),
+        messageFile: String(object.MESSAGE_FILE),
+        messageFileLibrary: String(object.MESSAGE_FILE_LIBRARY),
+        messageText: object.MESSAGE_TEXT,
+        messageTextSecondLevel: String(object.MESSAGE_SECOND_LEVEL_TEXT),
+      } as IBMiMessageQueueMessage))
       ;
 
     return returnMsgqList;
@@ -175,12 +224,12 @@ export namespace IBMiContentMsgq {
       : libraries.map(library => `'${library}'`).join(', ');
     const objQuery2 = `select MSR.MESSAGE_QUEUE_LIBRARY, MSR.MESSAGE_QUEUE_NAME
       , MSR.MESSAGE_TEXT MESSAGE_REPLY, MSR.FROM_USER REPLY_FROM_USER, MSR.FROM_JOB REPLY_FROM_JOB
-      , MSR.MESSAGE_KEY, MSR.ASSOCIATED_MESSAGE_KEY
+      , hex(MSR.MESSAGE_KEY) MESSAGE_KEY, hex(MSR.ASSOCIATED_MESSAGE_KEY) ASSOCIATED_MESSAGE_KEY
       from QSYS2.MESSAGE_QUEUE_INFO MSR
       where MESSAGE_TYPE = 'REPLY'
       ${OBJS ? ` and MSR.MESSAGE_QUEUE_NAME in (${OBJS})` : ''}
       ${OBJLIBS ? ` and MSR.MESSAGE_QUEUE_LIBRARY in (${OBJLIBS})` : ''}
-      ${msgKey ? ` and MSR.ASSOCIATED_MESSAGE_KEY = binary(${msgKey})` : ''}
+      ${msgKey ? ` and MSR.ASSOCIATED_MESSAGE_KEY = binary(x'${msgKey}')` : ''}
       `.replace(/\n\s*/g, ' ');
     let results = await Code4i!.runSQL(objQuery2);
     let returnMessageReplies: IBMiMessageQueueMessage[] = [];
@@ -269,8 +318,6 @@ export namespace IBMiContentMsgq {
   }
   export async function answerMessage(item: IBMiMessageQueueMessage, userReply?: string): Promise<boolean> {
     userReply = userReply || '*DFT';
-    //TODO: look for AS400 command
-    // TODO: else look for the SQL function.
     const commandResult = await Code4i.runCommand({
       command: `SNDRPY MSGKEY(${item.messageKey}) MSGQ(${item.messageQueueLibrary}/${item.messageQueue}) RPY(${userReply}) RMV(*NO)          `
       , environment: `ile`

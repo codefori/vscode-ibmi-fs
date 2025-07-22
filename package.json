@@ -255,6 +255,12 @@
         "enablement": "code-for-ibmi:connected",
         "title": "Reveal in User MSGQ Browser",
         "category": "IBM i Messages"
+      },
+      {
+        "command": "vscode-ibmi-fs.viewMessageDetails",
+        "enablement": "code-for-ibmi:connected",
+        "title": "View Message Details",
+        "category": "IBM i Messages"
       }
     ],
     "menus": {
@@ -303,6 +309,11 @@
           "command": "vscode-ibmi-fs.sortMessagesByDate"
         }
       ],
+      "vscode-ibmi-fs.viewMessage": [
+        {
+          "command": "vscode-ibmi-fs.viewMessageDetails"
+        }
+      ],
       "view/item/context": [
         {
           "command": "vscode-ibmi-fs.downloadSavf",
@@ -336,7 +347,7 @@
         },
         {
           "command": "vscode-ibmi-fs.refreshMSGQ",
-          "when": "view == msgqBrowser && viewItem =~ /^msgq.*$/",
+          "when": "view == msgqBrowser && viewItem =~ /^msgqq.*$/",
           "group": "inline@1"
         },
         {
@@ -396,8 +407,8 @@
         },
         {
           "command": "vscode-ibmi-fs.ReplyToUnansweredMessage",
-          "when": "view == msgqBrowser && viewItem =~ /^message.*$/",
-          "group": "1_message@3"
+          "when": "view == msgqBrowser && viewItem == message_INQUIRY_UNANSWERED",
+          "group": "2_message@3"
         },
         {
           "command": "vscode-ibmi-fs.searchMessageQueue",
@@ -412,7 +423,12 @@
         {
           "submenu": "vscode-ibmi-fs.sortMessageQueue",
           "when": "view == msgqBrowser",
-          "group": "0_open@3"
+          "group": "0_message@1"
+        },
+        {
+          "submenu": "vscode-ibmi-fs.viewMessage",
+          "when": "view == msgqBrowser && viewItem =~ /^message.*$/",
+          "group": "0_open@1"
         }
       ],
       "commandPalette": [
@@ -478,6 +494,10 @@
       {
         "id": "vscode-ibmi-fs.sortMessageQueue",
         "label": "Sort Message Queue by"
+      },
+      {
+        "id": "vscode-ibmi-fs.viewMessage",
+        "label": "View"
       }
     ]
   },

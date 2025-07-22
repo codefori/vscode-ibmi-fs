@@ -153,19 +153,28 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
           item.updateIconPath();
         }
       }
-      item.tooltip = ``
-        // .concat(msgAttr.messageType  ? l10n.t(`....+....0....+....0`,msgAttr.messageType):``)
-        .concat(item.messageType ? l10n.t(`Message Type:\t{0}`, item.messageType) : ``)
-        .concat(item.severity ? l10n.t(`\nSeverity:\t\t\t{0}`, item.severity) : ``)
-        .concat(item.messageTimestamp ? l10n.t(`\nTime Arrived:\t\t{0}`, item.messageTimestamp) : ``)
-        .concat(item.messageKey ? l10n.t(`\nKey:\t\t\t\t{0}`, item.messageKey) : ``)
-        .concat(item.fromUser ? l10n.t(`\nFrom User:\t\t{0}`, item.fromUser) : ``)
-        .concat(item.fromJob ? l10n.t(`\nFrom Job:\t\t{0}`, item.fromJob) : ``)
-        .concat(item.fromProgram ? l10n.t(`\nFrom Program:\t{0}`, item.fromProgram) : ``)
-        .concat(item.messageReply ? l10n.t(`\nMessage Reply:\t\t{0}`, item.messageReply) : `<< Unanswered >>`)
-        .concat(item.messageReplyUser ? l10n.t(`\nMessage Reply User:\t{0}`, item.messageReplyUser) : ``)
-        .concat(item.messageReplyJob ? l10n.t(`\nMessage Reply Job:\t\t{0}`, item.messageReplyJob) : ``)
-        ;
+      item.tooltip = new vscode.MarkdownString(`<table>`
+        .concat(`<thead>${item.path.split(`/`)[2]}</thead><hr>`)
+        .concat(item.messageType      ? `<tr><td>${l10n.t(`Message Type:`)} </td><td>&nbsp;${item.messageType}</td></tr>` : ``)
+        .concat(item.severity         ? `<tr><td>${l10n.t(`Severity:`    )} </td><td>&nbsp;${item.severity}</td></tr>` : ``)
+        .concat(item.messageTimestamp ? `<tr><td>${l10n.t(`Time Arrived:`)} </td><td>&nbsp;${item.messageTimestamp}</td></tr>` : ``)
+        .concat(item.messageKey       ? `<tr><td>${l10n.t(`Key:`         )} </td><td>&nbsp;${item.messageKey}</td></tr>` : ``)
+        .concat(item.fromUser         ? `<tr><td>${l10n.t(`From User:`   )} </td><td>&nbsp;${item.fromUser}</td></tr>` : ``)
+        .concat(item.fromJob          ? `<tr><td>${l10n.t(`From Job:`    )} </td><td>&nbsp;${item.fromJob}</td></tr>` : ``)
+        .concat(item.fromProgram      ? `<tr><td>${l10n.t(`From Program:`)} </td><td>&nbsp;${item.fromProgram}</td></tr>` : ``)
+      );
+      if (item.messageType === 'INQUIRY') {
+        item.tooltip.appendMarkdown(``
+          .concat(`<tr><td>${l10n.t(`Message Reply:`     )} </td><td>&nbsp;${item.messageReply    }</td></tr>`)
+          .concat(`<tr><td>${l10n.t(`Message Reply User:`)} </td><td>&nbsp;${item.messageReplyUser}</td></tr>`)
+          .concat(`<tr><td>${l10n.t(`Message Reply Job:` )} </td><td>&nbsp;${item.messageReplyJob }</td></tr>`)
+        );
+      }
+      item.tooltip.appendMarkdown(``
+        .concat(`<tr><td>${l10n.t(`Context Value:`)} </td><td>&nbsp;${item.contextValue}</td></tr>`)
+        .concat(`</table>`)
+      );
+      item.tooltip.supportHtml = true;
     }
     return item;
   }
@@ -225,59 +234,77 @@ export class MessageQueueList extends vscode.TreeItem implements IBMiMessageQueu
   messageText: string;
   messageType: string;
   protected: boolean;
-  messageSubType?: string;
+  // messageSubType?: string;
   severity?: string;
   messageTimestamp?: string;
   messageKeyAssociated?: string;
   fromUser?: string;
   fromJob?: string;
   fromProgram?: string;
-  messageFileLibrary?: string;
-  messageFile?: string;
-  messageTokens?: string;
-  messageTextSecondLevel?: string;
+  // messageFileLibrary?: string;
+  // messageFile?: string;
+  // messageTokens?: string;
+  // messageTextSecondLevel?: string;
   messageReply?: string;
   messageReplyUser?: string;
   messageReplyJob?: string;
+  path: string;
   // icon: string;
   // iconColor: string;
   readonly sort: SortOptions = { order: "date", ascending: true };
   readonly sortBy: (sort: SortOptions) => void;
+  private static nextId: number = 0; // Static and private counter
+  private readonly myId: number; // Readonly ID for instances
+  // public readonly id: string; 
 
   constructor(parent: MessageQueue, object: IBMiMessageQueueMessage) {
 
     super(`${object.messageID} - ${object.messageText}`, vscode.TreeItemCollapsibleState.Collapsed);
     this.collapsibleState = vscode.TreeItemCollapsibleState.None;
-
+    // this.myId = MessageQueueList.nextId++; // Assign and increment the ID
+    this.myId = MessageQueueList.nextId++; // Assign and increment the ID
     this.parent = parent;
-    this.name = object.messageID + ' - ' + object.messageText;
+    if (object.messageID === `null`) {
+      this.messageID = object.messageID;
+      this.name = this.messageID + ' - ' + object.messageText;
+    } else {
+      this.messageID = '';
+      this.name = this.messageID + ' - ' + object.messageText;
+    }
     this.resourceUri = getMessageDetailFileUri(object, parent.protected ? { readonly: true } : undefined);
     this.protected = parent.protected;
     this.contextValue = `message${this.protected ? `_readonly` : ``}`;
+    if (object.messageType === 'INQUIRY') {
+      this.contextValue = this.contextValue.concat(`_INQUIRY`);
+      if (!object.messageReply) {
+        this.contextValue = this.contextValue.concat(`_UNANSWERED`);
+      }
+    }
     this.messageQueueLibrary = object.messageQueueLibrary || parent.messageQueueLibrary;
     this.messageQueue = object.messageQueue || parent.messageQueue;
-    this.messageID = object.messageID || '';
     this.messageKey = object.messageKey || '';
     this.messageText = object.messageText;
     this.messageType = object.messageType || '';
-    this.messageSubType = object.messageSubType;
+    // this.messageSubType = object.messageSubType;
     this.severity = object.severity;
     this.messageTimestamp = object.messageTimestamp;
     this.messageKeyAssociated = object.messageKeyAssociated;
     this.fromUser = object.fromUser;
     this.fromJob = object.fromJob;
     this.fromProgram = object.fromProgram;
-    this.messageFileLibrary = object.messageFileLibrary;
-    this.messageFile = object.messageFile;
-    this.messageTokens = object.messageTokens;
-    this.messageTextSecondLevel = object.messageTextSecondLevel;
+    // this.messageFileLibrary = object.messageFileLibrary;
+    // this.messageFile = object.messageFile;
+    // this.messageTokens = object.messageTokens;
+    // this.messageTextSecondLevel = object.messageTextSecondLevel;
     this.messageReply = object.messageReply;
     this.messageReplyUser = object.messageReplyUser;
     this.messageReplyJob = object.messageReplyJob;
+    this.path = this.resourceUri.path.substring(1); // removes leading slash for QSYS paths
+
     this.command = {
-      command: `vscode.open`,
+      command: `vscode-ibmi-fs.viewMessageDetails`,
       title: `Show Message Details`,
-      arguments: [this.resourceUri]
+      arguments: [this]
     };
     // this.iconColor = ``;
     // this.icon = objectIcons[`${object.messageType === 'INQUIRY' ? 'inquiry' : 'msg'}`] || objectIcons[``];
