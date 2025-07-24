@@ -10,49 +10,43 @@ const readFileAsync = util.promisify(fs.readFile);
 // const writeFileAsync = util.promisify(fs.writeFile);
 
 
-export type SortOptions = {
-  order: "name" | "date" | "?"
-  ascending?: boolean
-};
 export namespace IBMiContentMsgq {
   /**
   * @param {string} messageQueue
   * @param {string} SortOptions
   * @returns {Promise<IBMiMessageQueueMessage[]>}
   */
-  export async function getMessageQueueMessageList(queue: string, queueLibrary: string
-    , sort: SortOptions = { order: "date", ascending: true }
+  export async function getMessageQueueMessageList(caller: string, queue: string, queueLibrary: string
     , searchWords?: string, messageID?: string, messageType?: string
   ): Promise<IBMiMessageQueueMessage[]> {
 
     queue = queue.toUpperCase();
     queueLibrary = queueLibrary.toUpperCase() !== '*LIBL' ? queueLibrary.toUpperCase() : ``;
-    sort.order = sort.order || { order: 'date', ascending: 'asc' };
     messageID = messageID || '';
-    const objQuery = `select  MS1.MESSAGE_QUEUE_LIBRARY, MS1.MESSAGE_ID, MS1.MESSAGE_TYPE, MS1.MESSAGE_TEXT
+    const searchWordsU = searchWords?.toLocaleUpperCase()||'';
+    const objQuery = `/*${caller}*/ select MS1.MESSAGE_QUEUE_LIBRARY, MS1.MESSAGE_ID, MS1.MESSAGE_TYPE, MS1.MESSAGE_TEXT
     , MS1.MESSAGE_SUBTYPE, digits(MS1.SEVERITY) SEVERITY
     , MS1.MESSAGE_TIMESTAMP
     , hex(MS1.MESSAGE_KEY) MESSAGE_KEY
     , hex(MS1.ASSOCIATED_MESSAGE_KEY) ASSOCIATED_MESSAGE_KEY
     , MS1.FROM_USER, MS1.FROM_JOB, MS1.FROM_PROGRAM, MS1.MESSAGE_FILE_LIBRARY, MS1.MESSAGE_FILE_NAME
-     from QSYS2.MESSAGE_QUEUE_INFO MS1
-     ${!queueLibrary ? `inner join QSYS2.LIBRARY_LIST_INFO on SCHEMA_NAME = MS1.MESSAGE_QUEUE_LIBRARY` : ''}
-     where MS1.MESSAGE_TYPE not in ('REPLY') and MS1.MESSAGE_QUEUE_NAME = '${queue}'
-     ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
-     ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
-     ${searchWords ? ` /*and (1=1 or MESSAGE_TEXT like '%${searchWords}%' 
-                        or MESSAGE_SECOND_LEVEL_TEXT like '%${searchWords}%'
-                        or MESSAGE_ID = '${searchWords}'
-                        or MESSAGE_TYPE like '%${searchWords}%'
-                        )*/` : ''}
-     order by MS1.MESSAGE_TIMESTAMP ${!sort.ascending ? 'desc' : 'asc'}`.replace(/\n\s*/g, ' ');
+      from QSYS2.MESSAGE_QUEUE_INFO MS1
+      ${!queueLibrary ? `inner join QSYS2.LIBRARY_LIST_INFO on SCHEMA_NAME = MS1.MESSAGE_QUEUE_LIBRARY` : ''}
+      where MS1.MESSAGE_TYPE not in ('REPLY') and MS1.MESSAGE_QUEUE_NAME = '${queue}'
+      ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
+      ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
+      ${searchWordsU ? ` and (ucase(MESSAGE_TEXT) like '%${searchWordsU}%' 
+                          or ucase(MESSAGE_SECOND_LEVEL_TEXT) like '%${searchWordsU}%'
+                          or ucase(MESSAGE_ID) = '${searchWordsU}'
+                          or ucase(MESSAGE_TYPE) like '%${searchWordsU}%'
+                        )` : ''}
+                        `.replace(/\n\s*/g, ' ');
     let results = await Code4i!.runSQL(objQuery);
-
 
     if (results.length === 0) {
       return [];
     }
-    let searchWords_ = searchWords?.split(' ') || [];
+    let searchWords_ = searchWords?.toLocaleLowerCase().split(' ') || [];
 
     // return results
     let returnMsgqList = results
@@ -73,7 +67,7 @@ export namespace IBMiContentMsgq {
         messageFileLibrary: String(object.MESSAGE_FILE_LIBRARY),
         messageFile: String(object.MESSAGE_FILE_NAME),
       } as IBMiMessageQueueMessage))
-      .filter(obj => searchWords_.length === 0 || searchWords_.some(term => Object.values(obj).join(" ").includes(term)))
+      .filter(obj => searchWords_.length === 0 || searchWords_.some(term => Object.values(obj).join(" ").toLocaleLowerCase().includes(term)))
       ;
 
     return returnMsgqList;
@@ -125,12 +119,12 @@ export namespace IBMiContentMsgq {
         messageFileLibrary: String(result.MESSAGE_FILE_LIBRARY),
         messageText: result.MESSAGE_TEXT,
         messageTextSecondLevel: String(result.MESSAGE_SECOND_LEVEL_TEXT),
-        messageReply: String(result.REPLY_MESSAGE !== null ?result.REPLY_MESSAGE:''),
-        messageReplyJob: String(result.REPLY_MESSAGE !== null ?result.REPLY_FROM_JOB:''),
-        messageReplyUser: String(result.REPLY_MESSAGE !== null ?result.REPLY_FROM_USER:''),
-        messageReplyProgram: String(result.REPLY_MESSAGE !== null ?result.REPLY_FROM_PROGRAM:''),
-        messageKeyAssociated: String(result.REPLY_MESSAGE !== null ?result.ASSOCIATED_MESSAGE_KEY:''), // answered INQUIRY message key
-        messageReplyTimestamp: String(result.REPLY_MESSAGE !== null ?result.REPLY_TIMESTAMP:'')
+        messageReply: String(result.REPLY_MESSAGE !== null ? result.REPLY_MESSAGE : ''),
+        messageReplyJob: String(result.REPLY_MESSAGE !== null ? result.REPLY_FROM_JOB : ''),
+        messageReplyUser: String(result.REPLY_MESSAGE !== null ? result.REPLY_FROM_USER : ''),
+        messageReplyProgram: String(result.REPLY_MESSAGE !== null ? result.REPLY_FROM_PROGRAM : ''),
+        messageKeyAssociated: String(result.REPLY_MESSAGE !== null ? result.ASSOCIATED_MESSAGE_KEY : ''), // answered INQUIRY message key
+        messageReplyTimestamp: String(result.REPLY_MESSAGE !== null ? result.REPLY_TIMESTAMP : '')
       } as IBMiMessageQueueMessage))
       ;
 
@@ -171,7 +165,7 @@ export namespace IBMiContentMsgq {
           const mdFromJobParts = md.fromJob!.split('/');
           // console.log(...formatMessageSecondText(md.messageTextSecondLevel||''));
           if (md) {
-            const fmtMsgArray = formatMessageSecondText(md.messageTextSecondLevel||'');
+            const fmtMsgArray = formatMessageSecondText(md.messageTextSecondLevel || '');
             mdContent = [
               `                Message Information`,
               ` Message ID . . . . . . :   ${md.messageID}         Severity . . . . . . . :   ${md.severity}`,
@@ -221,22 +215,21 @@ export namespace IBMiContentMsgq {
   * @param {string} messageQueueLibrary
   * @returns {Promise<String>} a string with the count of messages in message queue
   */
-  export async function getMessageQueueCount(messageQueue: string, messageQueueLibrary: string, searchWords?: string, messageID?: string, messageType?: string): Promise<string> {
+  export async function getMessageQueueCount(caller: string, messageQueue: string, messageQueueLibrary: string
+    , searchWords?: string, messageID?: string, messageType?: string): Promise<string> {
     messageQueue = messageQueue.toUpperCase();
     messageQueueLibrary = messageQueueLibrary.toUpperCase();
 
-    // let results: Tools.DB2Row[];
-
-    const objQuery = `select count(*) MSGQ_COUNT
-    from table (QSYS2.MESSAGE_QUEUE_INFO(QUEUE_LIBRARY => '${messageQueueLibrary}', QUEUE_NAME=>'${messageQueue}') ) MSGQ 
-    where 1=1
-    ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
-    ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
-    ${searchWords ? ` and (MESSAGE_TEXT like '%${searchWords}%' 
-                        or MESSAGE_SECOND_LEVEL_TEXT like '%${searchWords}%'
-                        or MESSAGE_ID like '%${searchWords}%'
-                        or MESSAGE_ID like '%${searchWords}%'
-                        )` : ''}
+    const objQuery = `/*${caller}*/ select count(*) MSGQ_COUNT
+      from table (QSYS2.MESSAGE_QUEUE_INFO(QUEUE_LIBRARY => '${messageQueueLibrary}', QUEUE_NAME=>'${messageQueue}') ) MSGQ 
+      where MSGQ.MESSAGE_TYPE not in ('REPLY') 
+      ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
+      ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
+      ${searchWords ? ` and (ucase(MESSAGE_TEXT) like '%${searchWords}%' 
+                          or ucase(MESSAGE_SECOND_LEVEL_TEXT) like '%${searchWords}%'
+                          or ucase(MESSAGE_ID) like '%${searchWords}%'
+                          or ucase(MESSAGE_TYPE) like '%${searchWords}%'
+                          )` : ''}
     `.replace(/\n\s*/g, ' ');
     let results = await Code4i!.runSQL(objQuery);
     if (results.length === 0) {
@@ -249,37 +242,42 @@ export namespace IBMiContentMsgq {
   * @param {string} messageQueueLibrary
   * @returns {Promise<String>} an object of message attributes
   */
-  export async function getMessageReplies(queues: string[], libraries: string[], msgKey?: string): Promise<IBMiMessageQueueMessage[]> {
-    const OBJS = queues.map(queue => `'${queue}'`).join(', ');
-    const OBJLIBS = (libraries.length === 0 || libraries.length === 1 && libraries[0] === '*LIBL')
-      ? 'select LL.SCHEMA_NAME from QSYS2.LIBRARY_LIST_INFO LL where LL.SCHEMA_NAME = B.OBJLONGSCHEMA'
-      : libraries.map(library => `'${library}'`).join(', ');
-    const objQuery2 = `select MSR.MESSAGE_QUEUE_LIBRARY, MSR.MESSAGE_QUEUE_NAME
-      , MSR.MESSAGE_TEXT MESSAGE_REPLY, MSR.FROM_USER REPLY_FROM_USER, MSR.FROM_JOB REPLY_FROM_JOB
-      , MSR.FROM_PROGRAM REPLY_FROM_PROGRAM
-      , hex(MSR.MESSAGE_KEY) MESSAGE_KEY, hex(MSR.ASSOCIATED_MESSAGE_KEY) ASSOCIATED_MESSAGE_KEY
-      from QSYS2.MESSAGE_QUEUE_INFO MSR
-      where MESSAGE_TYPE = 'REPLY'
-      ${OBJS ? ` and MSR.MESSAGE_QUEUE_NAME in (${OBJS})` : ''}
-      ${OBJLIBS ? ` and MSR.MESSAGE_QUEUE_LIBRARY in (${OBJLIBS})` : ''}
-      ${msgKey ? ` and MSR.ASSOCIATED_MESSAGE_KEY = binary(x'${msgKey}')` : ''}
-      `.replace(/\n\s*/g, ' ');
-    let results = await Code4i!.runSQL(objQuery2);
+  export async function getMessageReplies(caller: string, queues: string[], libraries: string[], msgKey?: string, searchWords?: string, messageID?: string, messageType?: string): Promise<IBMiMessageQueueMessage[]> {
     let returnMessageReplies: IBMiMessageQueueMessage[] = [];
-    let err: ErrorDS[] = [];
-    if (results.length > 0) {
-      returnMessageReplies = results.map((result) =>
-      ({
-        messageQueueLibrary: String(result.MESSAGE_QUEUE_LIBRARY),
-        messageQueue: String(result.MESSAGE_QUEUE),
-        messageReply: String(result.MESSAGE_REPLY),
-        messageReplyJob: String(result.REPLY_FROM_JOB),
-        messageReplyUser: String(result.REPLY_FROM_USER),
-        messageReplyProgram: String(result.REPLY_FROM_PROGRAM),
-        messageKey: String(result.MESSAGE_KEY), // Reply message key
-        messageKeyAssociated: String(result.ASSOCIATED_MESSAGE_KEY) // answered INQUIRY message key
-      } as IBMiMessageQueueMessage)
-      );
+    if (queues.length > 0) {
+      const OBJS = queues.map(queue => `'${queue}'`).join(', ');
+      const OBJLIBS = (libraries.length === 0 || libraries.length === 1 && libraries[0] === '*LIBL')
+        ? 'select LL.SCHEMA_NAME from QSYS2.LIBRARY_LIST_INFO LL'
+        : libraries.map(library => `'${library}'`).join(', ');
+
+      const objQuery2 = `/*${caller}*/ select MSR.MESSAGE_QUEUE_LIBRARY, MSR.MESSAGE_QUEUE_NAME
+        , substr(MSR.MESSAGE_TEXT,1,25) MESSAGE_REPLY, MSR.FROM_USER REPLY_FROM_USER, MSR.FROM_JOB REPLY_FROM_JOB
+        , MSR.FROM_PROGRAM REPLY_FROM_PROGRAM
+        , hex(MSR.MESSAGE_KEY) MESSAGE_KEY, hex(MSR.ASSOCIATED_MESSAGE_KEY) ASSOCIATED_MESSAGE_KEY
+        from QSYS2.MESSAGE_QUEUE_INFO MSR
+        where MESSAGE_TYPE = 'REPLY'
+        ${OBJS ? ` and MSR.MESSAGE_QUEUE_NAME in (${OBJS})` : ''}
+        ${OBJLIBS ? ` and MSR.MESSAGE_QUEUE_LIBRARY in (${OBJLIBS})` : ''}
+        ${msgKey ? ` and MSR.ASSOCIATED_MESSAGE_KEY = binary(x'${msgKey}')` : ''}
+        ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
+        ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
+        `.replace(/\n\s*/g, ' ');
+      let results = await Code4i!.runSQL(objQuery2);
+
+      if (results.length > 0) {
+        returnMessageReplies = results.map((result) =>
+        ({
+          messageQueueLibrary: String(result.MESSAGE_QUEUE_LIBRARY),
+          messageQueue: String(result.MESSAGE_QUEUE),
+          messageReply: String(result.MESSAGE_REPLY),
+          messageReplyJob: String(result.REPLY_FROM_JOB),
+          messageReplyUser: String(result.REPLY_FROM_USER),
+          messageReplyProgram: String(result.REPLY_FROM_PROGRAM),
+          messageKey: String(result.MESSAGE_KEY), // Reply message key
+          messageKeyAssociated: String(result.ASSOCIATED_MESSAGE_KEY) // answered INQUIRY message key
+        } as IBMiMessageQueueMessage)
+        );
+      }
     }
     return returnMessageReplies;
   }
@@ -294,12 +292,11 @@ export namespace IBMiContentMsgq {
       : '*ALL';
     const TYPES = types?.map(type => `${type}`).join(', ') || '';
 
-    // Note: this line does not work for most *USRPRFs because as a regular programmer I dont have access to see the profile
     const objQuery = `/*GETOBJECTTEXT*/ select OBJLONGSCHEMA SCHEMA_NAME, OBJNAME OBJECT_NAME, OBJTEXT OBJECT_TEXT
-    from table ( QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library}', OBJTYPELIST => '${TYPES}', OBJECT_NAME => '*ALL') ) OB 
-    where 1=1
-    ${OBJLIBS ? `OBJLONGSCHEMA in (${OBJLIBS})` : ''}
-    ${OBJS ? `and OBJNAME in (${OBJS})` : ``}
+      from table ( QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library}', OBJTYPELIST => '${TYPES}', OBJECT_NAME => '*ALL') ) OB 
+      where 1=1
+      ${OBJLIBS ? ` and OBJLONGSCHEMA in (${OBJLIBS})` : ''}
+      ${OBJS ? `and OBJNAME in (${OBJS})` : ``}
     `.replace(/\n\s*/g, ' ');
     let results = await Code4i!.runSQL(objQuery);
     let objAttributes: ObjAttributes[] = [];
@@ -322,8 +319,7 @@ export namespace IBMiContentMsgq {
     const TYPESA = types?.map(type => `'${type}'`).join(', ') || '';// comma list for IN() clause
     const TYPESB = types?.map(type => `${type}`).join(', ') || '';// comma list without quote of each item
 
-    // Note: this line does not work for most *USRPRFs because as a regular programmer I dont have access to see the profile
-    const objQuery = `/*GETOBJECTLOCKS*/with T1 as (select B.OBJLONGSCHEMA SCHEMA_NAME, B.OBJNAME OBJECT_NAME, B.OBJTYPE OBJECT_TYPE
+    const objQuery = `/*GETOBJECTLOCKS*/ with T1 as (select B.OBJLONGSCHEMA SCHEMA_NAME, B.OBJNAME OBJECT_NAME, B.OBJTYPE OBJECT_TYPE
       , LOCK_STATE, LOCK_STATUS, LOCK_SCOPE, JOB_NAME
       , row_number() over( partition by b.OBJNAME) QUEUE_NUMBER
       from table(QSYS2.OBJECT_STATISTICS('*ALL', '${TYPESB}', '*ALL')) B
@@ -352,18 +348,21 @@ export namespace IBMiContentMsgq {
   }
   export async function answerMessage(item: IBMiMessageQueueMessage, userReply?: string): Promise<boolean> {
     userReply = userReply || '*DFT';
+    let actionCompleteGood: boolean = true;
+    const command = `SNDRPY MSGKEY(x'${item.messageKey}') MSGQ(${item.messageQueueLibrary}/${item.messageQueue}) RPY('${userReply}') RMV(*NO)`;
     const commandResult = await Code4i.runCommand({
-      command: `SNDRPY MSGKEY(${item.messageKey}) MSGQ(${item.messageQueueLibrary}/${item.messageQueue}) RPY(${userReply}) RMV(*NO)          `
+      command: command
       , environment: `ile`
     });
     if (commandResult) {
       // vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
       if (commandResult.code === 0 || commandResult.code === null) {
       } else {
+        actionCompleteGood = false;
       }
     }
 
-    return true;
+    return actionCompleteGood;
   }
 }
 function formatMessageSecondText(text: string): string[] {
@@ -388,26 +387,6 @@ function formatMessageSecondText(text: string): string[] {
     } else {
       const brokenStringArray = splitStringOnWords(part, lineLength, formatIndents);
       formattedText.push(...brokenStringArray);
-
-      // const partLength = part.length;
-      // if (partLength > lineLength) {
-      //   let miniPartsLen: number = Math.ceil(partLength / lineLength);
-      //   let totalLen = 0;
-      //   for (let ii = 0; ii < miniPartsLen; ii++) {
-      //     if (totalLen+(ii*lineLength) < partLength) {
-      //       totalLen =+ ii*lineLength;
-      //       formattedText.push(part.substring(ii*lineLength,lineLength));
-      //       // new line for next segment
-      //       if (lineIndicator === '&N ') { formattedText.push('\n'); }
-      //       if (lineIndicator === '&P ') { formattedText.push('\n      '); }
-      //       if (lineIndicator === '&B ') { formattedText.push('\n    '); }
-      //     } else {
-      //       formattedText.push(part.substring(ii));
-      //     }
-      //   }
-      // } else {
-      //   formattedText.push(part);
-      // }
     }
   }
 
@@ -425,9 +404,9 @@ function splitStringOnWords(text: string, maxLength: number, formatIndents: stri
     if (currentLine.length + word.length + (currentLine.length > 0 ? 1 : 0) > maxLength) {
       // If currentLine is not empty, push it to result and start a new line
       if (currentLine.length > 0) {
-        if (lineCount > 0) {lineIndents='  ';lineCount++;}
+        if (lineCount > 0) { lineIndents = '  '; lineCount++; }
         // When formatting message text, we need to split long lines and indent by proper spaces.
-        result.push(formatIndents+lineIndents+currentLine.trim()); // Trim to remove any leading/trailing spaces
+        result.push(formatIndents + lineIndents + currentLine.trim()); // Trim to remove any leading/trailing spaces
       }
       currentLine = word; // Start the new line with the current word
     } else {
@@ -440,8 +419,37 @@ function splitStringOnWords(text: string, maxLength: number, formatIndents: stri
   }
   // Add the last remaining line if it's not empty
   if (currentLine.length > 0) {
-    result.push(formatIndents+lineIndents+currentLine.trim());
+    result.push(formatIndents + lineIndents + currentLine.trim());
   }
 
   return result;
+}
+
+export function sortObjectArrayByProperty(
+  array: any[],
+  key: keyof any,
+  order: 'asc' | 'desc' = 'asc'
+): any[] {
+  return [...array].sort((a, b) => {
+    const valA = a[key];
+    const valB = b[key];
+
+    if (valA === undefined || valA === null) {
+      return valB === undefined || valB === null ? 0 : (order === 'asc' ? 1 : -1);
+    }
+    if (valB === undefined || valB === null) {
+      return order === 'asc' ? -1 : 1;
+    }
+
+    if (typeof valA === 'number' && typeof valB === 'number') {
+      return order === 'asc' ? valA - valB : valB - valA;
+    }
+
+    if (typeof valA === 'string' && typeof valB === 'string') {
+      return order === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    }
+
+    // Handle other types or provide a default sorting
+    return 0;
+  });
 }

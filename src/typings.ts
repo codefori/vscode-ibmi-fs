@@ -1,5 +1,6 @@
 import { QsysFsOptions } from "@halcyontech/vscode-ibmi-types";
 import { Range } from "vscode";
+import { SortOptions } from '@halcyontech/vscode-ibmi-types/api/IBMiContent';
 
 export interface ErrorDS {
   errorID?: string

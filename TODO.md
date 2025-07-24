@@ -10,6 +10,8 @@
 *  Clear message queue messages
     *  ✔ All 
         *  Refresh afterwards
+    *  ✔ All unanswered
+        *  Refresh afterwards
     *  Selected
         *  Refresh afterwards
     *  Filtered
@@ -33,8 +35,14 @@
     *  ✔ First level text
     *  ✔ Second level text
         *  ✔ Formatting text as seen in DSPMSG 5250 tool
+
+*  Ordering / Sorting
+    *   Do I create a package command for each order by to allow the menu labels to reflect possible action?
+    *   Ordering by "Name" is that by MESSAGE_ID or MESSAGE_TEXT?
+    
 *  Show Inquiry Messages
-    *  Option to send reply to Inqury Message
+    *  command to filter to INQUIRY messages only
+    *  Option to send reply to INQURY Message
 
 *  Message queue security
     *   How to do I reliably protect some MSGQs?
@@ -44,7 +52,4 @@
 
 *  System object management for MSGQS
     *  Verify authority to MSGQ and lock if not authorized to edit
-    *  CRTMSGQ (should also add a filter for the same Q name)
     *  CLRMSGQ (for remove all messages above)
-    *  DLTMSGQ (should also remove the filter of the same Q name)
-    *  CHGMSGQ (uncertain how this command prompt interface would work.  Could an action be added and then triggered to run???)

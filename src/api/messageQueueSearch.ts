@@ -4,7 +4,7 @@ import fs from "fs";
 import tmp from "tmp";
 import { Code4i } from "../tools";
 import { isProtectedFilter } from '../filesystem/qsys/MsgQFs';
-import { IBMiContentMsgq } from "./IBMiContentMsgq";
+import { IBMiContentMsgq,sortObjectArrayByProperty } from "./IBMiContentMsgq";
 import { IBMiMessageQueue } from '../typings';
 
 const tmpFile = util.promisify(tmp.file);
@@ -38,7 +38,9 @@ export namespace MessageQueueSearch {
       if (tempRmt) {
         const tmpobj = await tmpFile();
         const setccsid = connection.remoteFeatures.setccsid;
-        const objects = await IBMiContentMsgq.getMessageQueueMessageList(filter.messageQueue, filter.messageQueueLibrary, { order: "date", ascending: true }, searchWords, messageID);
+        let objects = await IBMiContentMsgq.getMessageQueueMessageList(`MessageQueueSearch.searchMessageQueue`
+                                      , filter.messageQueue, filter.messageQueueLibrary, searchWords, messageID);
+        objects = sortObjectArrayByProperty(objects, `messageTimestamp`, `asc`);
 
         // const workFileFormat = {
         //   messageQueueLibrary: objects[0].messageQueueLibrary,
@@ -56,60 +58,8 @@ export namespace MessageQueueSearch {
            where 1=1
           ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
           ${searchWords ? ` and (MESSAGE_TEXT like '%${searchWords}%' or MESSAGE_SECOND_LEVEL_TEXT like '%${searchWords}%')` : ''}
-          )  with no data`.replace(/\n\s*/g, ' ');
+          )  with no data`.replace(/\n\s*/g, '');
         const rs = await Code4i!.runSQL(query);
-        // const recordLength = `{"user":"ABCDEFGHIJ","queue":"ABCDEFGHIJ","qjob":"591022/ABCDEFGHIJ/ABCDEFGHIJ","number":"00001"}`.length;
-        // const decimalSequence = objects.length;
-        // let insRows: string[] = [],
-        //   sequence = 0;
-        // for (let i = 0; i < objects.length; i++) {
-        //   sequence = decimalSequence ? ((i + 1) / 100) : i + 1;
-        //   insRows.push(
-        //     `('${objects[i].user}', '${objects[i].queue}', '${objects[i].qualifiedJobName}', '${objects[i].name}', '${objects[i].number}')`
-        //   );
-        // }
-
-        //     // Row length is the length of the SQL string used to insert each row
-        //     const rowLength = recordLength + 55;
-        //     // 450000 is just below the maxiumu length for each insert.
-        //     const perInsert = Math.floor(400000 / rowLength);
-        //     const insRowGroups = sliceUp(insRows, perInsert);
-        //     insRowGroups.forEach(insRowGroup => {
-        //       query.push(`insert into ${tempLib}.${tempName} values ${insRowGroup.join(`,`)};`);
-        //     });
-        //     await writeFileAsync(tmpobj, query.join(`\n`), `utf8`);
-        //     await client.putFile(tmpobj, tempRmt);
-        //     if (setccsid) {await connection.sendCommand({ command: `${setccsid} 1208 ${tempRmt}` });}
-        //     await connection.runCommand({
-        //       command: `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`
-        //       , environment: `ile`
-        //     });
-        //     // on-server list of spooled files to search is built, now use in conjunction with searching that list of report data
-        //     const sqlStatement =
-        //       `with ALL_USER_SPOOLED_FILE_DATA (SFUSER,OUTQ,QJOB,SFILE,SFNUMBER,SPOOL_DATA,ORDINAL_POSITION) as (
-        //     select SFUSER,OUTQ,QJOB,SFILE,SFNUMBER,SPOOLED_DATA,SD.ORDINAL_POSITION
-        //       from ${tempLib}.${tempName}
-        //       ,table (SPOOLED_FILE_DATA(trim(QJOB),SFILE,SFNUMBER,'NO')) SD )
-        // select trim(SFUSER)||'/'||trim(OUTQ)||'/'||trim(SFILE)||'~'||trim(regexp_replace(QJOB,'(\\w*)/(\\w*)/(\\w*)','$3~$2~$1'))||'~'||trim(SFNUMBER)||'.splf'||':'||char(ORDINAL_POSITION)||':'||varchar(trim(SPOOL_DATA),132) SEARCH_RESULT
-        //   from ALL_USER_SPOOLED_FILE_DATA AMD
-        //   where upper(SPOOL_DATA) like upper('%${sanitizeSearchTerm(searchTerm)}%');`.replace(/\n\s*/g, ' ') ;
-        // const rs = await Code4i!.runSQL(sqlStatement);
-        // var resultString = rs.map(function (rsElem) { return rsElem.SEARCH_RESULT; }).join("\n");
-        // var result = {
-        //   code: 0,
-        //   stdout: `${resultString}`,
-        //   stderr: ``,
-        //   command: ``
-        // } as CommandResult;
-        // if (!result.stderr) {
-        //   // path: "/${user}/QEZJOBLOG/QPJOBLOG~D000D2034A~[USERPROFILE]~849412~1.splf" <- path should be like this
-        //   // NOTE: Path issue with part names with underscores in them.  Need a different job separator token or can we use more sub parts to the path??
-        //   return parseGrepOutput(result.stdout || '', filter,
-        //     path => connection.sysNameInLocal(path)); // TODO: add the scheme context of spooledfile_readonly: to path
-        // }
-        // else {
-        //   throw new Error(result.stderr);
-        // }
       }
       else { return []; }
     }

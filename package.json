@@ -122,7 +122,7 @@
       {
         "command": "vscode-ibmi-fs.filterMessageQueueInquiry",
         "enablement": "code-for-ibmi:connected",
-        "title": "Filter Message Queue to Inquiry",
+        "title": "Toggle to/from INQUIRY Messages",
         "category": "IBM i FS",
         "icon": "$(question)"
       },

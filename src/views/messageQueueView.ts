@@ -2,7 +2,7 @@
 import { SortOptions } from '@halcyontech/vscode-ibmi-types/api/IBMiContent';
 import vscode, { l10n, TreeDataProvider } from 'vscode';
 import { Code4i } from '../tools';
-import { IBMiContentMsgq } from "../api/IBMiContentMsgq";
+import { IBMiContentMsgq, sortObjectArrayByProperty } from "../api/IBMiContentMsgq";
 import { IBMiMessageQueue, IBMiMessageQueueMessage, ObjAttributes } from '../typings';
 import { getMessageDetailFileUri } from '../filesystem/qsys/MsgQFs';
 
@@ -16,20 +16,34 @@ const objectIcons: Record<string, string> = {
 };
 
 export default class MSGQBrowser implements TreeDataProvider<any> {
-  private emitter: vscode.EventEmitter<any>;
-  public onDidChangeTreeData: vscode.Event<any>;
+  private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void>;
+  public onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void>;
 
-  constructor(private context: vscode.ExtensionContext) {
-    this.emitter = new vscode.EventEmitter();
-    this.onDidChangeTreeData = this.emitter.event;
+  constructor() {
+    this._onDidChangeTreeData = new vscode.EventEmitter();
+    this.onDidChangeTreeData = this._onDidChangeTreeData.event;
   }
 
 
-  refresh(target?: any) {
-    this.emitter.fire(target);
+  refresh(target?: any): void {
+    this._onDidChangeTreeData.fire(target);
   }
 
-  getTreeItem(element: vscode.TreeItem) {
+  async getTreeItem(element: MessageQueue | MessageQueueList) {
+    if (element instanceof MessageQueue) {
+      // if (!element.messageCount || element.messageCount === 0) {
+      //   const msgqNum = await IBMiContentMsgq.getMessageQueueCount(`MSGQBrowser.getTreeItem`, element.messageQueue, element.messageQueueLibrary, element.filter
+      //     , undefined, element.inquiryMode);
+      //   element.messageCount = Number(msgqNum);
+      //   element.setRecordCount(element.messageCount);
+      // }
+      // if (!element.text) {
+      //   const objAttributes = await IBMiContentMsgq.getObjectText([element.messageQueue], [element.messageQueueLibrary], [`*MSGQ`]) || '';
+      //   element.text = objAttributes[0].text;
+      // }
+      // element.setDescription('');
+    } else if (element instanceof MessageQueueList) {
+    }
     return element;
   }
 
@@ -37,34 +51,43 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
    * @param {vscode.TreeItem} element
    * @returns {Promise<vscode.TreeItem[]>};
    */
-  async getChildren(element: any) {
+  async getChildren(element: any): Promise<vscode.TreeItem[]> {
     const items = [];
     const connection = Code4i.getConnection();
     if (connection) {
       const config = Code4i.getConfig();
 
-      if (element) { //Chosen USER??
+      if (element) { //Chosen MSGQ filter??
         // let filter;
         switch (element.contextValue.split(`_`)[0]) {
         case `msgq`:
           //Fetch messages from message queue
           try {
-            const objects = await IBMiContentMsgq.getMessageQueueMessageList(element.messageQueue, element.messageQueueLibrary
-              , element.sort, element.filter
+            let messages = await IBMiContentMsgq.getMessageQueueMessageList(`MSGQBrowser.getChildren`
+              ,element.messageQueue, element.messageQueueLibrary
+              // , element.sort
+              , element.filter
               , undefined, element.inquiryMode);
-            const distinctNames: string[] = [...new Set(objects.map(item => item.messageQueue || ''))];
-            const distinctLibraries: string[] = [...new Set(objects.map(item => item.messageQueueLibrary || ''))];
-            const msgReplies = await IBMiContentMsgq.getMessageReplies(distinctNames, distinctLibraries);
-            items.push(...objects.map((object: IBMiMessageQueueMessage) => {
+            messages = sortObjectArrayByProperty(messages
+              , element.sort.order === 'date' ?`messageTimestamp`: element.sort.order === 'name' ?'messageText':''
+              , element.sort.ascending ? 'asc' : 'desc');
+
+            const distinctNames: string[] = [...new Set(messages.map(item => item.messageQueue || ''))];
+            const distinctLibraries: string[] = [...new Set(messages.map(item => item.messageQueueLibrary || ''))];
+            const msgReplies = await IBMiContentMsgq.getMessageReplies(`MSGQBrowser.getChildren`, distinctNames, distinctLibraries
+              , undefined, element.filter
+              , undefined, element.inquiryMode
+            );
+            items.push(...messages.map((message: IBMiMessageQueueMessage) => {
               let index = 0;
-              index = msgReplies.findIndex(f => (f.messageKeyAssociated === object.messageKey));
+              index = msgReplies.findIndex(f => (f.messageKeyAssociated === message.messageKey));
               if (index >= 0) {
-                object.messageKeyAssociated = msgReplies[index].messageKey; // Associate to INQUIRY message its answer
-                object.messageReply = msgReplies[index].messageReply;
-                object.messageReplyUser = msgReplies[index].messageReplyUser;
-                object.messageReplyJob = msgReplies[index].messageReplyJob;
+                message.messageKeyAssociated = msgReplies[index].messageKey; // Associate to INQUIRY message its answer
+                message.messageReply = msgReplies[index].messageReply;
+                message.messageReplyUser = msgReplies[index].messageReplyUser;
+                message.messageReplyJob = msgReplies[index].messageReplyJob;
               }
-              const messageItem = new MessageQueueList(element, object);
+              const messageItem = new MessageQueueList(element, message);
               return messageItem;
             })
             );
@@ -111,38 +134,41 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
    * required implementation for TreeDataProvider
    *
    */
-  getParent(element: any) {
+  getParent(element: any): any {
     return element.parent;
   }
   /**
    * @param item Undefined properties of `item` should be set then `item` should be returned.
    * @param element The object associated with the TreeItem.
-   * @param token A cancellation token.
+   * @param _token A cancellation token.
    * @return The resolved tree item or a thenable that resolves to such. It is OK to return the given
    * `item`. When no result is returned, the given `item` will be used.
    */
-  async resolveTreeItem(item: MessageQueue | MessageQueueList, element: any, token: vscode.CancellationToken): Promise<vscode.TreeItem> {
+  async resolveTreeItem(item: MessageQueue | MessageQueueList, element: any, _token: vscode.CancellationToken): Promise<vscode.TreeItem> {
     if (item instanceof MessageQueue) {
-      const msgqNum = await IBMiContentMsgq.getMessageQueueCount(element.messageQueue, element.messageQueueLibrary, element.filter
-        , undefined, element.inquiryMode);
-      item.tooltip = ``
-        .concat(item.description ? l10n.t(`Queue Text:\t  {0}`, item.description) : ``)
-        .concat(msgqNum ? l10n.t(`\nMessage Count: {0}`, msgqNum) : ``)
-        .concat(item.protected ? l10n.t(`\n\nRead Only:\t  {0}`, item.protected) : ``)
-        ;
+      let msgqNum = ``;
+      if (!item.messageCount || item.messageCount === 0) {
+        msgqNum = await IBMiContentMsgq.getMessageQueueCount(`MSGQBrowser.resolveTreeItem`, element.messageQueue, element.messageQueueLibrary, element.filter
+          , undefined, element.inquiryMode);
+        item.messageCount = Number(msgqNum);
+        item.setRecordCount(item.messageCount);
+      }
       if (!item.text) {
         const objAttributes = await IBMiContentMsgq.getObjectText([element.messageQueue], [element.messageQueueLibrary], [`*MSGQ`]) || '';
         item.text = objAttributes[0].text;
-        item.setDescription(item.text);
+        item.setDescription('');
       }
-      item.tooltip = ``
-        .concat(item.description ? l10n.t(`Queue Text:\t  {0}`, item.description) : ``)
-        .concat(msgqNum ? l10n.t(`\nMessage Count: {0}`, msgqNum) : ``)
-        .concat(l10n.t(`\n\nRead Only:\t  {0}`, item.protected))
-        ;
+      item.tooltip = new vscode.MarkdownString(`<table>`
+        .concat(`<thead>${item.messageQueue}/${item.messageQueue}</thead><hr>`)
+        .concat(item.description ? `<tr><td>${l10n.t(`Queue Text:`)} </td><td>&nbsp;${l10n.t(String(item.description))}</td></tr>` : ``)
+        .concat(item.messageCount ? `<tr><td>${l10n.t(`Message Count:`)} </td><td>&nbsp;${l10n.t(String(item.messageCount))}</td></tr>` : ``)
+        .concat(`<tr><td>${l10n.t(`Read Only:`)} </td><td>&nbsp;${l10n.t(String(item.protected))}</td></tr>`)
+      );
+      item.tooltip.supportHtml = true;
+
     } else if (item instanceof MessageQueueList) {
-      if (!item.messageReply) {
-        const msgReplies = await IBMiContentMsgq.getMessageReplies([element.messageQueue], [element.messageQueueLibrary], element.messageKey);
+      if (item.messageType === 'INQUIRY' && !item.messageReply) {
+        const msgReplies = await IBMiContentMsgq.getMessageReplies(`MSGQBrowser.resolveTreeItem`, [element.messageQueue], [element.messageQueueLibrary], element.messageKey);
         if (msgReplies.length > 0) {
           item.messageReply = msgReplies[0].messageReply;
           item.messageReplyUser = msgReplies[0].messageReplyUser;
@@ -153,13 +179,13 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
       }
       item.tooltip = new vscode.MarkdownString(`<table>`
         .concat(`<thead>${item.path.split(`/`)[2]}</thead><hr>`)
-        .concat(item.messageType ? `<tr><td>${l10n.t(`Message Type:`)} </td><td>&nbsp;${item.messageType}</td></tr>` : ``)
-        .concat(item.severity ? `<tr><td>${l10n.t(`Severity:`)} </td><td>&nbsp;${item.severity}</td></tr>` : ``)
-        .concat(item.messageTimestamp ? `<tr><td>${l10n.t(`Time Arrived:`)} </td><td>&nbsp;${item.messageTimestamp}</td></tr>` : ``)
-        .concat(item.messageKey ? `<tr><td>${l10n.t(`Key:`)} </td><td>&nbsp;${item.messageKey}</td></tr>` : ``)
-        .concat(item.fromUser ? `<tr><td>${l10n.t(`From User:`)} </td><td>&nbsp;${item.fromUser}</td></tr>` : ``)
-        .concat(item.fromJob ? `<tr><td>${l10n.t(`From Job:`)} </td><td>&nbsp;${item.fromJob}</td></tr>` : ``)
-        .concat(item.fromProgram ? `<tr><td>${l10n.t(`From Program:`)} </td><td>&nbsp;${item.fromProgram}</td></tr>` : ``)
+        .concat(item.messageType ? `<tr><td>${l10n.t(`Message Type:`)} </td><td>&nbsp;${l10n.t(item.messageType)}</td></tr>` : ``)
+        .concat(item.severity ? `<tr><td>${l10n.t(`Severity:`)} </td><td>&nbsp;${l10n.t(item.severity)}</td></tr>` : ``)
+        .concat(item.messageTimestamp ? `<tr><td>${l10n.t(`Time Arrived:`)} </td><td>&nbsp;${l10n.t(item.messageTimestamp)}</td></tr>` : ``)
+        .concat(item.messageKey ? `<tr><td>${l10n.t(`Key:`)} </td><td>&nbsp;${l10n.t(item.messageKey)}</td></tr>` : ``)
+        .concat(item.fromUser ? `<tr><td>${l10n.t(`From User:`)} </td><td>&nbsp;${l10n.t(item.fromUser)}</td></tr>` : ``)
+        .concat(item.fromJob ? `<tr><td>${l10n.t(`From Job:`)} </td><td>&nbsp;${l10n.t(item.fromJob)}</td></tr>` : ``)
+        .concat(item.fromProgram ? `<tr><td>${l10n.t(`From Program:`)} </td><td>&nbsp;${l10n.t(item.fromProgram)}</td></tr>` : ``)
       );
       if (item.messageType === 'INQUIRY') {
         item.tooltip.appendMarkdown(``
@@ -183,13 +209,12 @@ export class MessageQueue extends vscode.TreeItem implements IBMiMessageQueue {
   parent: vscode.TreeItem;
   messageQueue: string;
   messageQueueLibrary: string;
-  description: string;
   text: string;
   filter: string | undefined; // reduces tree items to matching tokens
   inquiryMode: string;
-  messageCount: number;
+  messageCount: number | undefined;
   readonly sort: SortOptions = { order: "date", ascending: true };
-  sortDescription: string;
+  sortDescription: string | undefined;
   constructor(parent: vscode.TreeItem, theMsgq: IBMiMessageQueue) {
     super(theMsgq.messageQueueLibrary + `/` + theMsgq.messageQueue, vscode.TreeItemCollapsibleState.Collapsed);
     this.messageQueue = theMsgq.messageQueue;
@@ -201,11 +226,10 @@ export class MessageQueue extends vscode.TreeItem implements IBMiMessageQueue {
     this.parent = parent;
     this.iconPath = new vscode.ThemeIcon(this.protected ? `lock-small` : icon
       , (this.protected ? new vscode.ThemeColor(`list.errorForeground`) : undefined));
-    this.sortDescription = this.sortBy(this.sort);
+    this.sortBy(this.sort);
     this.text = theMsgq.text || '';
-    this.description = (theMsgq.text ? theMsgq.text : ``) + this.sortDescription;
+    this.setDescription('');
     this.inquiryMode = '';
-    this.messageCount = 0;
   }
   sortBy(sort: SortOptions) {
     if (this.sort.order !== sort.order) {
@@ -213,15 +237,22 @@ export class MessageQueue extends vscode.TreeItem implements IBMiMessageQueue {
       this.sort.ascending = true;
     }
     else {
-      this.sort.ascending = !this.sort.ascending;
+      this.sort.ascending = !this.sort.ascending; 
     }
-    return ` (sort: ${this.sort.order} ${this.sort.ascending ? `🔼` : `🔽`})`;
+    this.sortDescription = `(sort: ${this.sort.order} ${this.sort.ascending ? `🔺` : `🔻`})`;
+    // this.sortDescription = ` (sort: ${this.sort.order} ${this.sort.ascending ? `🔼` : `🔽`})`;
   }
   clearToolTip() { this.tooltip = undefined; }
+  clearDescription() { this.description = undefined; }
   getRecordCount() { return this.messageCount; }
   setFilter(filter: string | undefined) { this.filter = filter; }
   setInquiryMode(inquiryMode: string) { this.inquiryMode = inquiryMode; }
-  setDescription(value: string | undefined) { this.description = (value ? value : ``) + this.sortDescription; }
+  setDescription(value: string | undefined) {
+    this.description =
+      (this.text? this.text : '')
+        + (value ? ` ` + value : ``) 
+        + (this.sortDescription ? ` ` + this.sortDescription:'');
+  }
   setProtection(protect: boolean) { this.protected = protect; }
   setRecordCount(aNumber: number) { this.messageCount = aNumber; }
 }
@@ -255,6 +286,7 @@ export class MessageQueueList extends vscode.TreeItem implements IBMiMessageQueu
   // iconColor: string;
   readonly sort: SortOptions = { order: "date", ascending: true };
   readonly sortBy: (sort: SortOptions) => void;
+  readonly setDescription: (value: string | undefined) => void;
   private static nextId: number = 0; // Static and private counter
   private readonly myId: number; // Readonly ID for instances
   // public readonly id: string; 
@@ -315,6 +347,7 @@ export class MessageQueueList extends vscode.TreeItem implements IBMiMessageQueu
     this.updateIconPath();
     // this.iconPath = new vscode.ThemeIcon(this.protected ? `lock-small` : icon, new vscode.ThemeColor(this.iconColor));
     this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
+    this.setDescription = (value: string | undefined) => parent.setDescription(value);
   }
   setIcon(): string {
     let choosenIcon = '';
@@ -342,7 +375,7 @@ export class MessageQueueList extends vscode.TreeItem implements IBMiMessageQueu
       }
     }
     else {
-      choosenColor = `terminal.ansiRed`;
+      choosenColor = ``;
     }
     return choosenColor;
   }

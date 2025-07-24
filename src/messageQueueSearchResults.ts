@@ -58,7 +58,7 @@ export async function initializeMessageQueueSearchView(context: vscode.Extension
             progress.report({
               message: l10n.t(`'{0}' in {1}, messages.`, String(search.term), String(search.messageQueue))
             });
-            const msgqMsgNum = await IBMiContentMsgq.getMessageQueueCount(String(search.messageQueue), String(search.messageQueueLibrary));
+            const msgqMsgNum = await IBMiContentMsgq.getMessageQueueCount(`vscode-ibmi-fs.searchMessageQueue`,String(search.messageQueue), String(search.messageQueueLibrary));
             if (Number(msgqMsgNum) > 0) {
               // NOTE: if more messages are added, lower the timeout interval
               const timeoutInternal = 9000;
