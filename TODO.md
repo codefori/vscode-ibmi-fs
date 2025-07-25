@@ -53,3 +53,9 @@
 *  System object management for MSGQS
     *  Verify authority to MSGQ and lock if not authorized to edit
     *  CLRMSGQ (for remove all messages above)
+
+*  Add filtering based on user of messages
+    *  All features for working with a message should be the same as with MSGQ name
+    *  Add optional parameters to certain functions to load based on MSGQ or USER.
+        *  Do I need to know if the filter is a MSGQ or USER filter type??
+            *  If so, copy code from the SPOOLED FILE BROWSER extension to accomplish

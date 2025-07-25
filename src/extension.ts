@@ -8,10 +8,13 @@ import { DataQueueActions } from './types/dataqueue';
 import { SaveFileActions } from './types/saveFile';
 import { initializeMessageQueueBrowser } from './messageQueueBrowser';
 import { initializeMessageQueueSearchView } from './messageQueueSearchResults';
+import { TempFileManager } from './tools/tempFileManager'; // Adjust path as needed
 
+let tempFileManager: TempFileManager;
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
+	tempFileManager = new TempFileManager();
 	await Code4i.initialize(context);
 
 	initializeMessageQueueBrowser(context);
@@ -28,14 +31,12 @@ export async function activate(context: vscode.ExtensionContext) {
 	DataQueueActions.register(context);
 
 	console.log(`Congratulations, your extension "vscode-ibmi-fs" "Version" :"${context.extension.packageJSON.version}" is now active!`);
-	// Code4i.getInstance()?.subscribe(
-  //   context,
-  //   'connected',
-  //   `Refresh views`,
-  //   () => {
-  //     vscode.commands.executeCommand("vscode-ibmi-fs.refreshMSGQBrowser");
-  //   });
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() { }
+export function deactivate() {
+	// Clean up temporary files when the extension deactivates
+	if (tempFileManager) {
+		tempFileManager.cleanUpTempFiles();
+	}
+}

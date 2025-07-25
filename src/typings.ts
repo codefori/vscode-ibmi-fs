@@ -36,11 +36,49 @@ export interface IBMiMessageQueue {
   text?: string
   protected?: boolean
 }  
-
+export interface IBMiMessageFile{
+  messageFileLibrary?: string
+  messageFile?: string
+  messageText?: string
+  messageIDCount?: number
+}
+export interface IBMiMessageIDDetails{
+  messageFileLibrary?: string
+  messageFile?: string
+  messageId?: string
+  messageText?: string
+  messageSecondLevelText?: string
+  severity?: number
+  messageDataCount?: number
+  messageData?: string
+  logProblem?: string
+  creationDate?: Date
+  creationLevel?: number
+  modificationDate?: Date
+  modificationLevel?: number
+  messageidccsid?: number
+  defaultProgramLibrary?: string
+  defaultProgram?: string
+  replyType?: string
+  replyLength?: number
+  replyDecimalPositions?: number
+  defaultReply?: string
+  validReplyValuesCount?: number
+  validReplyValues?: string
+  validReplyLowerLimit?: string
+  validReplyUpperLimit?: string
+  validReplyRelationshipOperator?: string
+  validReplyRelationshipValue?: string
+  specialReplyValuesCount?: number
+  spec96ialReplyValues?: string
+  dumpListCount?: number
+  dumpList?: string
+  alertOption?: string
+  alertIndex?: number
+}
 export interface MsgOpenOptions {
   readonly?: boolean;
 }
-
 export interface FuncInfo {
   funcSysLib: string
   funcSysName: string

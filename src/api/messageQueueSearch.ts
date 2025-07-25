@@ -3,7 +3,7 @@ import util from "util";
 import fs from "fs";
 import tmp from "tmp";
 import { Code4i } from "../tools";
-import { isProtectedFilter } from '../filesystem/qsys/MsgQFs';
+import { isProtectedFilter } from '../filesystem/qsys/MsgqFs';
 import { IBMiContentMsgq,sortObjectArrayByProperty } from "./IBMiContentMsgq";
 import { IBMiMessageQueue } from '../typings';
 

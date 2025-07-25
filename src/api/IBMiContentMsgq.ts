@@ -1,13 +1,5 @@
-import fs from 'fs';
-import tmp from 'tmp';
-import util from 'util';
-import vscode, { l10n, } from 'vscode';
 import { Code4i } from '../tools';
-import { ErrorDS, IBMiMessageQueueMessage, MsgOpenOptions, ObjAttributes, ObjLockState } from '../typings';
-import { CommandResult } from '@halcyontech/vscode-ibmi-types';
-const tmpFile = util.promisify(tmp.file);
-const readFileAsync = util.promisify(fs.readFile);
-// const writeFileAsync = util.promisify(fs.writeFile);
+import { IBMiMessageQueueMessage, MsgOpenOptions, ObjAttributes, ObjLockState } from '../typings';
 
 
 export namespace IBMiContentMsgq {
@@ -138,21 +130,12 @@ export namespace IBMiContentMsgq {
   * @param {string=} additionalPath 
   */
   export async function downloadMessageContent(uriPath: string, fileExtension: string, options?: MsgOpenOptions) {
-    const connection = Code4i.getConnection();
-    const tempRmt = connection.getTempRemote(uriPath);
-    const tmplclfile = await tmpFile();
 
-    const client = connection.client;
     if (options) {
     }
 
     let mdContent = ``;
-    let retried = false;
     let retry = 1;
-    // let fileEncoding: BufferEncoding | null = "utf8";
-    // let fileEncoding = `utf8`;
-    // let cpymsgCompleted: CommandResult = { code: -1, stdout: ``, stderr: `` };
-    // let results: string;
     while (retry > 0) {
       retry--;
       try {
@@ -160,10 +143,8 @@ export namespace IBMiContentMsgq {
         switch (fileExtension.toLowerCase()) {
         default:
           const thePathParts: string[] = uriPath.split(/[/~.]/);
-          // console.log(thePathParts);
           const md = await getMessageQueueMessageFullDetails(thePathParts[1], thePathParts[0], thePathParts[3]);
           const mdFromJobParts = md.fromJob!.split('/');
-          // console.log(...formatMessageSecondText(md.messageTextSecondLevel||''));
           if (md) {
             const fmtMsgArray = formatMessageSecondText(md.messageTextSecondLevel || '');
             mdContent = [
@@ -198,16 +179,11 @@ export namespace IBMiContentMsgq {
               `              * * * * *   E N D   O F   D E T A I L S   * * * * *`
             ].join("\n");
           } else { }
-        // vscode.workspace.openTextDocument({ content: mdContent, language: `plaintext` }).then(doc => vscode.window.showTextDocument(doc));
         }
       } catch (e) {
       }
     }
 
-    // await client.getFile(tmplclfile, tempRmt);
-    // const results = await readFileAsync(tmplclfile, fileEncoding);
-    // if (cpymsgCompleted.code === 0) {
-    // }
     return mdContent;
   }
   /**

@@ -5,7 +5,7 @@ import fs from "fs";
 // import path from "path";
 import util from "util";
 import vscode, { l10n, } from 'vscode';
-import { MsgqFS, getUriFromPathMsg, parseFSOptions } from "./filesystem/qsys/MsgQFs";
+import { MsgqFS, getUriFromPathMsg, parseFSOptions } from "./filesystem/qsys/MsgqFs";
 import { IBMiContentMsgq, sortObjectArrayByProperty } from "./api/IBMiContentMsgq";
 import { Code4i } from "./tools";
 import { IBMiMessageQueue, IBMiMessageQueueMessage, MsgOpenOptions, SearchParms } from './typings';
@@ -283,7 +283,7 @@ const msgqBrowserViewer = vscode.window.createTreeView(
         //Running from command.
       }
     }),
-    vscode.commands.registerCommand(`vscode-ibmi-fs.deleteMessagesNamed`, async (node: MessageQueueList) => {
+    vscode.commands.registerCommand(`vscode-ibmi-fs.deleteMessagesByID`, async (node: MessageQueueList) => {
       if (node) {
         if (node.protected) {
           vscode.window.showErrorMessage(l10n.t(`You dont have authority to remove messages from {0}.`, node.messageQueue));
@@ -305,7 +305,7 @@ const msgqBrowserViewer = vscode.window.createTreeView(
           let objects: IBMiMessageQueueMessage[] = [];
 
           if (result === `Yes`) {
-            objects = await IBMiContentMsgq.getMessageQueueMessageList(`vscode-ibmi-fs.deleteMessagesNamed`
+            objects = await IBMiContentMsgq.getMessageQueueMessageList(`vscode-ibmi-fs.deleteMessagesByID`
                                                                     , node.messageQueue, node.messageQueueLibrary, undefined, node.messageID);
             objects = sortObjectArrayByProperty(objects, `messageTimestamp`, `asc`);
           }

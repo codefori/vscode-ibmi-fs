@@ -190,7 +190,7 @@
         "icon": "$(delete)"
       },
       {
-        "command": "vscode-ibmi-fs.deleteMessagesNamed",
+        "command": "vscode-ibmi-fs.deleteMessagesByID",
         "title": "Delete messages like Message ID",
         "enablement": "code-for-ibmi:connected",
         "category": "IBM i Messages",
@@ -396,7 +396,7 @@
           "group": "3_message@0"
         },
         {
-          "command": "vscode-ibmi-fs.deleteMessagesNamed",
+          "command": "vscode-ibmi-fs.deleteMessagesByID",
           "when": "view == msgqBrowser && viewItem =~ /^message$/ ",
           "group": "3_message@1"
         },
@@ -457,7 +457,7 @@
           "when": "never"
         },
         {
-          "command": "vscode-ibmi-fs.deleteMessagesNamed",
+          "command": "vscode-ibmi-fs.deleteMessagesByID",
           "when": "never"
         },
         {
