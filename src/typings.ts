@@ -30,9 +30,12 @@ export interface IBMiMessageQueueMessage {
   messageReplyProgram?: string
   messageReplyTimestamp?: string
 }   
-export interface IBMiMessageQueue {
+export interface IBMiMessageQueueFilter {
   messageQueueLibrary: string
   messageQueue: string
+  type: string
+}   
+export interface IBMiMessageQueue extends IBMiMessageQueueFilter {
   text?: string
   protected?: boolean
 }  

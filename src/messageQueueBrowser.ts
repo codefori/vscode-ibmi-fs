@@ -1,26 +1,20 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import { FocusOptions, IBMiMessages } from '@halcyontech/vscode-ibmi-types/';
-import fs from "fs";
-// import os from "os";
-// import path from "path";
-import util from "util";
+import { FocusOptions } from '@halcyontech/vscode-ibmi-types/';
 import vscode, { l10n, } from 'vscode';
 import { MsgqFS, getUriFromPathMsg, parseFSOptions } from "./filesystem/qsys/MsgqFs";
 import { IBMiContentMsgq, sortObjectArrayByProperty } from "./api/IBMiContentMsgq";
-import { Code4i } from "./tools";
-import { IBMiMessageQueue, IBMiMessageQueueMessage, MsgOpenOptions, SearchParms } from './typings';
+import { Code4i, saveFilterValues } from "./tools";
+import { IBMiMessageQueue, IBMiMessageQueueFilter, IBMiMessageQueueMessage, MsgOpenOptions, SearchParms } from './typings';
 import MSGQBrowser, { MessageQueue, MessageQueueList } from './views/messageQueueView';
-
-// const writeFileAsync = util.promisify(fs.writeFile);
 
 const msgqBrowserObj = new MSGQBrowser();
 const msgqBrowserViewer = vscode.window.createTreeView(
   `msgqBrowser`, {
-    treeDataProvider: msgqBrowserObj,
-    showCollapseAll: true,
-    canSelectMany: true,
-  });
-  export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) {
+  treeDataProvider: msgqBrowserObj,
+  showCollapseAll: true,
+  canSelectMany: true,
+});
+export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     msgqBrowserViewer,
     vscode.workspace.registerFileSystemProvider(`message`, new MsgqFS(context), {
@@ -29,7 +23,7 @@ const msgqBrowserViewer = vscode.window.createTreeView(
     vscode.commands.registerCommand(`vscode-ibmi-fs.sortMessagesByID`, (node: MessageQueue | MessageQueueList) => {
       // NOTE: repeated calls will cause asc to desc change in order
       node.sortBy({ order: "name" });
-      node.setDescription('');
+      node.setDescription();
       if (node.contextValue === `message`) {
         vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, (node.parent));
       }
@@ -41,7 +35,7 @@ const msgqBrowserViewer = vscode.window.createTreeView(
     vscode.commands.registerCommand(`vscode-ibmi-fs.sortMessagesByDate`, (node) => {
       // NOTE: repeated calls will cause asc to desc change in order
       node.sortBy({ order: "date" });
-      node.setDescription('');
+      node.setDescription();
       if (node.contextValue === `message`) {
         vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, (node.parent));
       }
@@ -56,42 +50,56 @@ const msgqBrowserViewer = vscode.window.createTreeView(
       msgqBrowserViewer.reveal(item, options);
     }),
     vscode.commands.registerCommand(`vscode-ibmi-fs.addMessageQueueFilter`, async (node) => {
-      const config = Code4i.getConfig();
-      const connection = Code4i.getConnection();
 
-      let filter;
-      let newMsgq: IBMiMessageQueue;
+      let newEntry;
+      let newFilter: IBMiMessageQueue;
 
-      let messageQueues: IBMiMessageQueue[] = config[`messageQueues`] || [];
-      if (config.messageQueues) {
-        messageQueues = config.messageQueues;
-      }
-
-      filter = await vscode.window.showInputBox({
+      newEntry = await vscode.window.showInputBox({
         title: l10n.t(`MSGQ to show Messages`),
         prompt: l10n.t(`If no library given then assumed *LIBL.`),
         placeHolder: `Library/MSGQ`,
-        value: connection.currentUser
+        value: Code4i.getConnection().currentUser
       });
 
       try {
-        if (filter) {
-          filter = filter.trim().toUpperCase().toUpperCase();
-          const x: string[] = filter.split('/');
+        if (newEntry) {
+          const x: string[] = newEntry.trim().toUpperCase().toUpperCase().split('/');
           if (x.length === 1) {
-            const objAttributes = await IBMiContentMsgq.getObjectText([filter], [`*LIBL`], ['*MSGQ']);
-            newMsgq = { messageQueueLibrary: objAttributes[0].library, messageQueue: filter };
+            const objAttributes = await IBMiContentMsgq.getObjectText([newEntry], [`*LIBL`], ['*MSGQ']);
+            newFilter = { messageQueueLibrary: objAttributes[0].library, messageQueue: newEntry, type: 'MSGQ' };
           }
           else {
-            newMsgq = { messageQueue: x[1], messageQueueLibrary: x[0] };
+            newFilter = { messageQueue: x[1], messageQueueLibrary: x[0], type: 'MSGQ' };
           }
+          if (saveFilterValues(newFilter)) { vscode.commands.executeCommand(`vscode-ibmi-fs.sortMessageQueueFilter`, node); }
+        }
+      } catch (e) {
+        console.log(e);
+      }
+    }),
+    vscode.commands.registerCommand(`vscode-ibmi-fs.addUserMessageFilter`, async (node) => {
 
-          if (!messageQueues.includes(newMsgq)) {
-            messageQueues.push(newMsgq);
-            config.messageQueues = messageQueues;
-            Code4i.getInstance()!.setConfig(config);
-            vscode.commands.executeCommand(`vscode-ibmi-fs.sortMessageQueueFilter`, node);
+      let newEntry;
+      let newFilter: IBMiMessageQueue;
+
+      newEntry = await vscode.window.showInputBox({
+        title: l10n.t(`Select User To Show Messages For.`),
+        prompt: l10n.t(`If no library given then assumed *LIBL.`),
+        placeHolder: `Library/USERPROFILE`,
+        value: Code4i.getConnection().currentUser
+      });
+
+      try {
+        if (newEntry) {
+          const x: string[] = newEntry.trim().toUpperCase().toUpperCase().split('/');
+          if (x.length === 1) { // no library given
+            const objAttributes = await IBMiContentMsgq.getObjectText([newEntry], [`*LIBL`], ['*USRPRF']);
+            newFilter = { messageQueueLibrary: objAttributes[0].library, messageQueue: newEntry, type: '*USRPRF' };
           }
+          else {
+            newFilter = { messageQueue: x[1], messageQueueLibrary: x[0], type: '*USRPRF' };
+          }
+          if (saveFilterValues(newFilter)) { vscode.commands.executeCommand(`vscode-ibmi-fs.sortMessageQueueFilter`, node); }
         }
       } catch (e) {
         console.log(e);
@@ -99,13 +107,24 @@ const msgqBrowserViewer = vscode.window.createTreeView(
     }),
     vscode.commands.registerCommand(`vscode-ibmi-fs.sortMessageQueueFilter`, async (node) => {
       const config = Code4i.getConfig();
-      let messageQueues: IBMiMessageQueue[] = config.messageQueues;
+      let messageQueues: IBMiMessageQueueFilter[] = config[`messageQueues`] || [];
       try {
-        // config.objectFilters.sort((filter1, filter2) => filter1.name.toLowerCase().localeCompare(filter2.name.toLowerCase()));
-        // await ConnectionConfiguration.update(config);
-        messageQueues.sort((filter1, filter2) => filter1.messageQueue.toLowerCase().localeCompare(filter2.messageQueue.toLowerCase()));
+        // messageQueues.sort((filter1, filter2) => filter1.messageQueue.toLowerCase().localeCompare(filter2.messageQueue.toLowerCase()));
+        messageQueues.sort((filter1, filter2) => {
+          const primarySort = filter1.messageQueueLibrary.toLowerCase().localeCompare(filter2.messageQueueLibrary.toLowerCase());
+
+          // If the primary sort results in a difference (not equal)
+          if (primarySort !== 0) {
+            return primarySort;
+          }
+
+          // If the primary sort is equal (primarySort === 0), then sort by the second condition
+          // Assuming 'priority' is a number, for descending order
+          return filter1.messageQueue.toLowerCase().localeCompare(filter2.messageQueue.toLowerCase());
+        });
         config.messageQueues = messageQueues;
         Code4i.getInstance()!.setConfig(config);
+        msgqBrowserObj.populateData(messageQueues);
         vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQBrowser`);
       } catch (e) {
         // console.log(e);
@@ -115,7 +134,7 @@ const msgqBrowserViewer = vscode.window.createTreeView(
       const config = Code4i.getConfig();
 
       let removeMsgq: string | undefined;
-      let messageQueues: IBMiMessageQueue[] = config.messageQueues;
+      let messageQueues: IBMiMessageQueue[] = config[`messageQueues`] || [];;
       let msgBoxList: string[] = [``];
 
       if (node) {
@@ -137,8 +156,6 @@ const msgqBrowserViewer = vscode.window.createTreeView(
             .then(async result => {
               if (result === l10n.t(`Yes`)) {
 
-                // const index = -5;
-                // const inx = messageQueues.indexOf(removeMsgq);
                 const index = messageQueues.findIndex(f => f.messageQueueLibrary + '/' + f.messageQueue === removeMsgq);
                 if (index > -1) {
                   messageQueues.splice(index, 1);
@@ -171,7 +188,7 @@ const msgqBrowserViewer = vscode.window.createTreeView(
           try {
             //TODO: Needs to have write access to QUEUE to remove message
             const commandResult = await connection.runCommand({
-              command: `CLRMSGQ MSGQ(${node.messageQueue}) CLEAR(*ALL)`
+              command: `CLRMSGQ MSGQ(${node.messageQueueLibrary}/${node.messageQueue}) CLEAR(*ALL)`
               , environment: `ile`
             });
             if (commandResult) {
@@ -187,7 +204,7 @@ const msgqBrowserViewer = vscode.window.createTreeView(
               vscode.window.showErrorMessage(l10n.t(`Error deleting ALL message queue messages! {0}.`, e));
             }
           }
-
+          vscode.window.showInformationMessage(l10n.t(`All messsages for ${node.messageQueueLibrary}/${node.messageQueue}.`));
         }
         else {
           vscode.window.showInformationMessage(l10n.t('Deletion canceled.'));
@@ -214,7 +231,7 @@ const msgqBrowserViewer = vscode.window.createTreeView(
           try {
             //TODO: Needs to have write access to QUEUE to remove message
             const commandResult = await connection.runCommand({
-              command: `CLRMSGQ MSGQ(${node.messageQueue}) CLEAR(*KEEPUNANS)`
+              command: `CLRMSGQ MSGQ(${node.messageQueueLibrary}/${node.messageQueue}) CLEAR(*KEEPUNANS)`
               , environment: `ile`
             });
             if (commandResult) {
@@ -231,6 +248,7 @@ const msgqBrowserViewer = vscode.window.createTreeView(
             }
           }
 
+          vscode.window.showInformationMessage(l10n.t(`All messsages for ${node.messageQueueLibrary}/${node.messageQueue} remove exccept for unanswered messages.`));
         }
         else {
           vscode.window.showInformationMessage(l10n.t('Deletion canceled.'));
@@ -306,7 +324,7 @@ const msgqBrowserViewer = vscode.window.createTreeView(
 
           if (result === `Yes`) {
             objects = await IBMiContentMsgq.getMessageQueueMessageList(`vscode-ibmi-fs.deleteMessagesByID`
-                                                                    , node.messageQueue, node.messageQueueLibrary, undefined, node.messageID);
+              , node.messageQueue, node.messageQueueLibrary, undefined, node.messageID);
             objects = sortObjectArrayByProperty(objects, `messageTimestamp`, `asc`);
           }
           try {
@@ -383,7 +401,7 @@ const msgqBrowserViewer = vscode.window.createTreeView(
 
           if (result === `Yes`) {
             objects = await IBMiContentMsgq.getMessageQueueMessageList(`vscode-ibmi-fs.deleteMessagesFiltered`,
-                                                                    node.messageQueue, node.messageQueueLibrary, node.parent.filter);
+              node.messageQueue, node.messageQueueLibrary, node.parent.filter);
             objects = sortObjectArrayByProperty(objects, `messageTimestamp`, `asc`);
           }
           try {
@@ -423,7 +441,7 @@ const msgqBrowserViewer = vscode.window.createTreeView(
           }
           if (deleteCount > 0) {
             node.parent.setFilter(undefined);
-            node.parent.setDescription(``); // turn off item description
+            node.parent.setDescription(); // turn off item description
             vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node);
             vscode.window.showInformationMessage(l10n.t(`Deleted {0} messages.`, deleteCount));
           }
@@ -444,8 +462,9 @@ const msgqBrowserViewer = vscode.window.createTreeView(
         node.setInquiryMode(``);
         node.clearToolTip();
         node.clearDescription();
+        vscode.commands.executeCommand(`vscode-ibmi-fs.revealMSGQBrowser`, node, { expand: false, focus: true, select: true });
         vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node);
-        // vscode.commands.executeCommand('vscode-ibmi-fs.filterMessageQueue', node);
+
       } else {
         vscode.commands.executeCommand('vscode-ibmi-fs.filterMessageQueue', node, 'INQUIRY');
       }
@@ -491,7 +510,8 @@ const msgqBrowserViewer = vscode.window.createTreeView(
             // searchTerm = searchTerm?.toLocaleUpperCase();
 
             if (!msgqMsgNum || msgqMsgNum === 0) {
-              const msgqMsgNumAnswer = await IBMiContentMsgq.getMessageQueueCount(`vscode-ibmi-fs.filterMessageQueue`, searchMsgq, searchMsgqLibrary, searchTerm, undefined, inquiryMode);
+              const treeFilter = {...node};
+              const msgqMsgNumAnswer = await IBMiContentMsgq.getMessageQueueCount(`vscode-ibmi-fs.filterMessageQueue`, treeFilter, searchTerm, undefined, inquiryMode);
               if (Number.isFinite(Number(msgqMsgNumAnswer))) { msgqMsgNum = Number(msgqMsgNumAnswer); }
             }
             if (msgqMsgNum > 0) {
@@ -499,16 +519,18 @@ const msgqBrowserViewer = vscode.window.createTreeView(
                 node.parent.setFilter(searchTerm);
                 node.parent.setInquiryMode(inquiryMode);
                 node.parent.clearToolTip();
-                node.parent.setDescription(`Filtered by: ${searchTerm ? searchTerm : inquiryMode}`);
+                node.parent.setFilterDescription(`Filtered by: ${searchTerm ? searchTerm : inquiryMode}`);
+                node.parent.setDescription();
                 vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node.parent);
               } else {
                 node.setFilter(searchTerm);
                 node.setInquiryMode(inquiryMode);
                 node.clearToolTip();
-                node.setDescription(`Filtered by: ${searchTerm ? searchTerm : inquiryMode}`);
+                node.setFilterDescription(`Filtered by: ${searchTerm ? searchTerm : inquiryMode}`);
+                node.setDescription();
                 // await msgqBrowserObj.getChildren(node);
                 vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node);
-                vscode.commands.executeCommand(`vscode-ibmi-fs.revealMSGQBrowser`, node, { focus: true, select: true });
+                vscode.commands.executeCommand(`vscode-ibmi-fs.revealMSGQBrowser`, node, { expand: true, focus: true, select: true });
               }
             } else {
               vscode.window.showErrorMessage(l10n.t(`No messages to filter.`));
@@ -574,9 +596,9 @@ const msgqBrowserViewer = vscode.window.createTreeView(
 
           if (userReply) {
             if (!await IBMiContentMsgq.answerMessage(item, userReply)) {
-              
+
             }
-            vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node);
+            vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node.parent);
           }
         } else {
           vscode.window.showInformationMessage(l10n.t(`Message not in a state to reply with an answer.`));
@@ -592,7 +614,8 @@ const msgqBrowserViewer = vscode.window.createTreeView(
   Code4i.getInstance().subscribe(context, `disconnected`, "clear message queue browser", run_on_disconnection);
 }
 function run_on_connection() {
+  msgqBrowserObj.populateData(Code4i.getConfig().messageQueues);
 }
-function run_on_disconnection() {
+async function run_on_disconnection() {
   vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQBrowser`);
 }

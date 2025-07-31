@@ -1,5 +1,5 @@
-import { Code4i } from '../tools';
-import { IBMiMessageQueueMessage, MsgOpenOptions, ObjAttributes, ObjLockState } from '../typings';
+import { breakUpPathFileName, Code4i } from '../tools';
+import { IBMiMessageQueue, IBMiMessageQueueMessage, MsgOpenOptions, ObjAttributes, ObjLockState } from '../typings';
 
 
 export namespace IBMiContentMsgq {
@@ -8,23 +8,25 @@ export namespace IBMiContentMsgq {
   * @param {string} SortOptions
   * @returns {Promise<IBMiMessageQueueMessage[]>}
   */
-  export async function getMessageQueueMessageList(caller: string, queue: string, queueLibrary: string
-    , searchWords?: string, messageID?: string, messageType?: string
+  export async function getMessageQueueMessageList(caller: string, treeFilter: IBMiMessageQueue , searchWords?: string, messageID?: string, messageType?: string
   ): Promise<IBMiMessageQueueMessage[]> {
 
-    queue = queue.toUpperCase();
-    queueLibrary = queueLibrary.toUpperCase() !== '*LIBL' ? queueLibrary.toUpperCase() : ``;
+    treeFilter.messageQueue = treeFilter.messageQueue.toUpperCase();
+    treeFilter.messageQueueLibrary = treeFilter.messageQueueLibrary !== '*LIBL' ? treeFilter.messageQueueLibrary.toUpperCase() : ``;
     messageID = messageID || '';
-    const searchWordsU = searchWords?.toLocaleUpperCase()||'';
-    const objQuery = `/*${caller}*/ select MS1.MESSAGE_QUEUE_LIBRARY, MS1.MESSAGE_ID, MS1.MESSAGE_TYPE, MS1.MESSAGE_TEXT
+    const searchWordsU = searchWords?.toLocaleUpperCase() || '';
+
+    const objQuery = `/*${caller}*/ select MS1.MESSAGE_QUEUE_LIBRARY, MS1.MESSAGE_QUEUE_NAME, MS1.MESSAGE_ID, MS1.MESSAGE_TYPE, MS1.MESSAGE_TEXT
     , MS1.MESSAGE_SUBTYPE, digits(MS1.SEVERITY) SEVERITY
     , MS1.MESSAGE_TIMESTAMP
     , hex(MS1.MESSAGE_KEY) MESSAGE_KEY
     , hex(MS1.ASSOCIATED_MESSAGE_KEY) ASSOCIATED_MESSAGE_KEY
     , MS1.FROM_USER, MS1.FROM_JOB, MS1.FROM_PROGRAM, MS1.MESSAGE_FILE_LIBRARY, MS1.MESSAGE_FILE_NAME
       from QSYS2.MESSAGE_QUEUE_INFO MS1
-      ${!queueLibrary ? `inner join QSYS2.LIBRARY_LIST_INFO on SCHEMA_NAME = MS1.MESSAGE_QUEUE_LIBRARY` : ''}
-      where MS1.MESSAGE_TYPE not in ('REPLY') and MS1.MESSAGE_QUEUE_NAME = '${queue}'
+      ${!treeFilter.messageQueueLibrary ? `inner join QSYS2.LIBRARY_LIST_INFO on SCHEMA_NAME = MS1.MESSAGE_QUEUE_LIBRARY` : ''}
+      where MS1.MESSAGE_TYPE not in ('REPLY') 
+      ${treeFilter.type === '*MSGQ' ?`and MS1.MESSAGE_QUEUE_NAME = '${treeFilter.messageQueue}'`:''}
+      ${treeFilter.type === '*USRPRF' ?`and MS1.FROM_USER = '${treeFilter.messageQueue}'`:''}
       ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
       ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
       ${searchWordsU ? ` and (ucase(MESSAGE_TEXT) like '%${searchWordsU}%' 
@@ -45,7 +47,7 @@ export namespace IBMiContentMsgq {
       .map(object => ({
         messageType: object.MESSAGE_TYPE,
         messageQueueLibrary: object.MESSAGE_QUEUE_LIBRARY,
-        messageQueue: queue,
+        messageQueue: object.MESSAGE_QUEUE_NAME,
         messageID: object.MESSAGE_ID,
         messageKey: object.MESSAGE_KEY,
         messageText: object.MESSAGE_TEXT,
@@ -65,11 +67,17 @@ export namespace IBMiContentMsgq {
     return returnMsgqList;
 
   }
-  export async function getMessageQueueMessageFullDetails(queue: string, queueLibrary?: string, messageKey?: string): Promise<IBMiMessageQueueMessage> {
+  /**
+  * @param {string} queue - Message Queue
+  * @param {string} queueLibrary - Message Queue Library
+  * @param {string} messageKey - optional
+  * @returns {Promise<IBMiMessageQueueMessage[]>}
+  */
+  export async function getMessageQueueMessageFullDetails(treeFilter: IBMiMessageQueueMessage, type: string): Promise<IBMiMessageQueueMessage> {
 
-    queue = queue.toUpperCase();
-    queueLibrary = queueLibrary && queueLibrary.toUpperCase() !== '*LIBL' ? queueLibrary.toUpperCase() : ``;
-    messageKey = messageKey || '';
+    treeFilter.messageQueue = treeFilter.messageQueue!.toUpperCase()||'';
+    treeFilter.messageQueueLibrary = treeFilter.messageQueueLibrary !== '*LIBL' ? treeFilter.messageQueueLibrary!.toUpperCase() : ``;
+    treeFilter.messageKey = treeFilter.messageKey ||'';
     const objQuery = `select MS1.MESSAGE_QUEUE_LIBRARY ,MS1.MESSAGE_QUEUE_NAME
       ,MS1.MESSAGE_ID ,MS1.MESSAGE_TYPE ,MS1.MESSAGE_SUBTYPE ,MS1.MESSAGE_TEXT ,MS1.SEVERITY ,MS1.MESSAGE_TIMESTAMP
       ,hex(MS1.MESSAGE_KEY) MESSAGE_KEY ,hex(MS1.ASSOCIATED_MESSAGE_KEY) ASSOCIATED_MESSAGE_KEY
@@ -84,9 +92,11 @@ export namespace IBMiContentMsgq {
       left join QSYS2.MESSAGE_QUEUE_INFO MSR on MSR.MESSAGE_QUEUE_LIBRARY = MS1.MESSAGE_QUEUE_LIBRARY 
                                             and MSR.MESSAGE_QUEUE_NAME = MS1.MESSAGE_QUEUE_NAME 
                                             and MSR.ASSOCIATED_MESSAGE_KEY = MS1.MESSAGE_KEY
-      ${!queueLibrary ? `inner join QSYS2.LIBRARY_LIST_INFO on SCHEMA_NAME = MS1.MESSAGE_QUEUE_LIBRARY` : ''}
-      where MS1.MESSAGE_TYPE not in ('REPLY') and MS1.MESSAGE_QUEUE_NAME = '${queue}'
-      ${messageKey ? ` and MS1.MESSAGE_KEY = binary(x'${messageKey}')` : ''}
+      ${!treeFilter.messageQueueLibrary ? `inner join QSYS2.LIBRARY_LIST_INFO on SCHEMA_NAME = MS1.MESSAGE_QUEUE_LIBRARY` : ''}
+      where MS1.MESSAGE_TYPE not in ('REPLY') 
+      ${type === '*MSGQ' ?`and MS1.MESSAGE_QUEUE_NAME = '${treeFilter.messageQueue}'`:''}
+      ${type === '*USRPRF' ?`and MS1.FROM_USER = '${treeFilter.messageQueue}'`:''}
+      ${treeFilter.messageKey ? ` and MS1.MESSAGE_KEY = binary(x'${treeFilter.messageKey}')` : ''}
       `.replace(/\n\s*/g, ' ');
     let results = await Code4i!.runSQL(objQuery);
 
@@ -97,7 +107,7 @@ export namespace IBMiContentMsgq {
     let returnMsgqList = results
       .map(result => ({
         messageQueueLibrary: result.MESSAGE_QUEUE_LIBRARY,
-        messageQueue: queue,
+        messageQueue: result.MESSAGE_QUEUE_NAME,
         messageID: result.MESSAGE_ID,
         messageType: result.MESSAGE_TYPE,
         messageKey: result.MESSAGE_KEY,
@@ -134,6 +144,14 @@ export namespace IBMiContentMsgq {
     if (options) {
     }
 
+    uriPath = uriPath.replace(/^\/+/, '') || '';
+    const thePathParts = breakUpPathFileName(uriPath);
+    const treeFilter = {
+      messageQueueLibrary: thePathParts.get("messageQueueLibrary") || '',
+      messageQueue: thePathParts.get("messageQueue") || '',
+      messageKey: thePathParts.get("messageKey")||''
+    } as IBMiMessageQueueMessage;
+
     let mdContent = ``;
     let retry = 1;
     while (retry > 0) {
@@ -142,8 +160,8 @@ export namespace IBMiContentMsgq {
         //If this command fails we need to try again after we delete the temp remote
         switch (fileExtension.toLowerCase()) {
         default:
-          const thePathParts: string[] = uriPath.split(/[/~.]/);
-          const md = await getMessageQueueMessageFullDetails(thePathParts[1], thePathParts[0], thePathParts[3]);
+          // const thePathParts: string[] = uriPath.split(/[/~.]/);
+          const md = await getMessageQueueMessageFullDetails(treeFilter, thePathParts.get("type")||'*MSGQ');
           const mdFromJobParts = md.fromJob!.split('/');
           if (md) {
             const fmtMsgArray = formatMessageSecondText(md.messageTextSecondLevel || '');
@@ -191,13 +209,27 @@ export namespace IBMiContentMsgq {
   * @param {string} messageQueueLibrary
   * @returns {Promise<String>} a string with the count of messages in message queue
   */
-  export async function getMessageQueueCount(caller: string, messageQueue: string, messageQueueLibrary: string
-    , searchWords?: string, messageID?: string, messageType?: string): Promise<string> {
-    messageQueue = messageQueue.toUpperCase();
-    messageQueueLibrary = messageQueueLibrary.toUpperCase();
+  export async function getMessageQueueCount(caller: string , treeFilter: IBMiMessageQueue , searchWords?: string, messageID?: string, messageType?: string): Promise<string> {
 
+    treeFilter.messageQueue = treeFilter.messageQueue.toUpperCase();
+    treeFilter.messageQueueLibrary = treeFilter.messageQueueLibrary !== '*LIBL' ? treeFilter.messageQueueLibrary.toUpperCase() : ``;
+    const searchWordsU = searchWords?.toLocaleUpperCase() || '';
+    const objQuerya = `/*${caller}*/ select count(*) MSGQ_COUNT
+      from QSYS2.MESSAGE_QUEUE_INFO MS1
+      ${!treeFilter.messageQueueLibrary || treeFilter.type === '*USRPRF'? `inner join QSYS2.LIBRARY_LIST_INFO on SCHEMA_NAME = MS1.MESSAGE_QUEUE_LIBRARY` : ''}
+      where MS1.MESSAGE_TYPE not in ('REPLY') 
+      ${treeFilter.type === '*MSGQ' ?`and MS1.MESSAGE_QUEUE_NAME = '${treeFilter.messageQueue}'`:''}
+      ${treeFilter.type === '*USRPRF' ?`and MS1.FROM_USER = '${treeFilter.messageQueue}'`:''}
+      ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
+      ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
+      ${searchWordsU ? ` and (ucase(MESSAGE_TEXT) like '%${searchWordsU}%' 
+                          or ucase(MESSAGE_SECOND_LEVEL_TEXT) like '%${searchWordsU}%'
+                          or ucase(MESSAGE_ID) = '${searchWordsU}'
+                          or ucase(MESSAGE_TYPE) like '%${searchWordsU}%'
+                        )` : ''}
+                        `.replace(/\n\s*/g, ' ');
     const objQuery = `/*${caller}*/ select count(*) MSGQ_COUNT
-      from table (QSYS2.MESSAGE_QUEUE_INFO(QUEUE_LIBRARY => '${messageQueueLibrary}', QUEUE_NAME=>'${messageQueue}') ) MSGQ 
+      from table (QSYS2.MESSAGE_QUEUE_INFO(QUEUE_LIBRARY => '${treeFilter.messageQueueLibrary}', QUEUE_NAME=>'${treeFilter.messageQueue}') ) MSGQ 
       where MSGQ.MESSAGE_TYPE not in ('REPLY') 
       ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
       ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
@@ -207,9 +239,9 @@ export namespace IBMiContentMsgq {
                           or ucase(MESSAGE_TYPE) like '%${searchWords}%'
                           )` : ''}
     `.replace(/\n\s*/g, ' ');
-    let results = await Code4i!.runSQL(objQuery);
+    let results = await Code4i!.runSQL(objQuerya);
     if (results.length === 0) {
-      return ` ${messageQueueLibrary}/${messageQueue} has no messages`;
+      return ` ${treeFilter.messageQueueLibrary}/${treeFilter.messageQueue} has no messages`;
     }
     return String(results[0].MSGQ_COUNT);
   }
@@ -218,7 +250,7 @@ export namespace IBMiContentMsgq {
   * @param {string} messageQueueLibrary
   * @returns {Promise<String>} an object of message attributes
   */
-  export async function getMessageReplies(caller: string, queues: string[], libraries: string[], msgKey?: string, searchWords?: string, messageID?: string, messageType?: string): Promise<IBMiMessageQueueMessage[]> {
+  export async function getMessageReplies(caller: string, queues: string[], libraries: string[], msgKey?: string, messageID?: string, messageType?: string): Promise<IBMiMessageQueueMessage[]> {
     let returnMessageReplies: IBMiMessageQueueMessage[] = [];
     if (queues.length > 0) {
       const OBJS = queues.map(queue => `'${queue}'`).join(', ');
@@ -236,8 +268,8 @@ export namespace IBMiContentMsgq {
         ${OBJLIBS ? ` and MSR.MESSAGE_QUEUE_LIBRARY in (${OBJLIBS})` : ''}
         ${msgKey ? ` and MSR.ASSOCIATED_MESSAGE_KEY = binary(x'${msgKey}')` : ''}
         ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
-        ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
         `.replace(/\n\s*/g, ' ');
+      // ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
       let results = await Code4i!.runSQL(objQuery2);
 
       if (results.length > 0) {
@@ -260,13 +292,14 @@ export namespace IBMiContentMsgq {
 
   export async function getObjectText(objects: string[], libraries: string[], types: string[]): Promise<ObjAttributes[]> {
     const OBJS = objects.map(object => `'${object}'`).join(', ');
-    const OBJLIBS = (libraries.length === 0 || libraries.length === 1 && libraries[0] === '*LIBL')
-      ? ''
-      : libraries.map(library => `'${library}'`).join(', ');
     const library = (libraries.length === 1 && libraries[0] === '*LIBL')
       ? '*LIBL'
       : '*ALL';
     const TYPES = types?.map(type => `${type}`).join(', ') || '';
+    const OBJLIBS =
+      (library !== '*LIBL' && library !== '*ALL') 
+      ? `'` + libraries.filter(item => !'*LIBL'.includes(item)).join(`', '`) + `'` 
+      : '';
 
     const objQuery = `/*GETOBJECTTEXT*/ select OBJLONGSCHEMA SCHEMA_NAME, OBJNAME OBJECT_NAME, OBJTEXT OBJECT_TEXT
       from table ( QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library}', OBJTYPELIST => '${TYPES}', OBJECT_NAME => '*ALL') ) OB 

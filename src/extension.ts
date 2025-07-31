@@ -11,10 +11,12 @@ import { initializeMessageQueueSearchView } from './messageQueueSearchResults';
 import { TempFileManager } from './tools/tempFileManager'; // Adjust path as needed
 
 let tempFileManager: TempFileManager;
+let globalContext: vscode.ExtensionContext;
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
 	tempFileManager = new TempFileManager();
+	globalContext = context;
 	await Code4i.initialize(context);
 
 	initializeMessageQueueBrowser(context);
@@ -39,4 +41,7 @@ export function deactivate() {
 	if (tempFileManager) {
 		tempFileManager.cleanUpTempFiles();
 	}
+}
+export function getGlobalContext(): vscode.ExtensionContext {
+	return globalContext;
 }

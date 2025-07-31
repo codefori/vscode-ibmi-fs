@@ -1,6 +1,6 @@
 import { stringify, parse, ParsedUrlQueryInput, ParsedUrlQuery } from "querystring";
 import vscode, { FilePermission, l10n } from "vscode";
-import { Code4i,  } from "../../tools";
+import { Code4i, buildPathFileNamefromPattern } from "../../tools";
 import { IBMiMessageQueueMessage, MsgOpenOptions } from "../../typings";
 import { IBMiContentMsgq } from "../../api/IBMiContentMsgq";
 import fs from 'fs';
@@ -10,8 +10,12 @@ import path from 'path';
 
 const writeFileAsync = util.promisify(fs.writeFile);
 
-export function getMessageDetailFileUri(msg: IBMiMessageQueueMessage, options?: MsgOpenOptions) {
-  return getUriFromPath(`${msg.messageQueueLibrary}/${msg.messageQueue}/${msg.messageID}~${msg.messageKey}.msg`, options);
+export function getMessageDetailFileUri(filterType:string, msg: IBMiMessageQueueMessage, options?: MsgOpenOptions) {
+  let mashedUpPath = buildPathFileNamefromPattern(filterType, msg);
+  if (mashedUpPath.length === 0) {
+    mashedUpPath = `${msg.messageQueueLibrary}/${msg.messageQueue}/${msg.messageType}~${msg.messageID}~${msg.messageKey}.msg`;
+  }
+  return getUriFromPath(mashedUpPath, options);
 }
 export function getUriFromPathMsg(path: string, options?: MsgOpenOptions) {
   return getUriFromPath(path, options);

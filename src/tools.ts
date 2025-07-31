@@ -3,9 +3,9 @@ import { SortOrder } from '@halcyontech/vscode-ibmi-types/api/IBMiContent';
 import { FilterType } from '@halcyontech/vscode-ibmi-types/api/Filter';
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
-import { Extension, extensions, ExtensionContext } from "vscode";
+import { ExtensionContext } from "vscode";
 import { loadBase, getBase } from './base';
-import { ObjAttributes, ObjLockState } from './typings';
+import { IBMiMessageQueue, IBMiMessageQueueMessage } from './typings';
 
 let codeForIBMi: CodeForIBMi;
 export namespace Code4i {
@@ -43,9 +43,9 @@ export namespace Code4i {
   export async function runSQL(sqlStatement: string): Promise<Tools.DB2Row[]> {
     return getContent().ibmi.runSQL(sqlStatement);
   }
-  export async function getObjectList(filters: 
-                        { library: string; object?: string; types?: string[]; filterType?: FilterType; member?: string; memberType?: string; }
-                        , sortOrder?: SortOrder): Promise<IBMiObject[]> {
+  export async function getObjectList(filters:
+    { library: string; object?: string; types?: string[]; filterType?: FilterType; member?: string; memberType?: string; }
+    , sortOrder?: SortOrder): Promise<IBMiObject[]> {
     return getContent().getObjectList(filters, sortOrder);
   }
   export async function runCommand(command: RemoteCommand): Promise<CommandResult> {
@@ -58,4 +58,80 @@ export const IBMI_OBJECT_NAME = /^([\w$#@][\w\d$#@_.]{0,9})$/i;
 
 export function getQSYSObjectPath(library: string, name: string, type: string, member?: string, iasp?: string) {
   return `${iasp ? `/${iasp.toUpperCase()}` : ''}/QSYS.LIB/${library.toUpperCase()}.LIB/${name.toUpperCase()}.${type.toUpperCase()}${member ? `/${member.toUpperCase()}.MBR` : ''}`;
+}
+export function buildPathFileNamefromPattern(filterType: string, msg: IBMiMessageQueueMessage): string {
+  let newName = ``;
+  if (filterType === '*USRPRF') {
+    newName = `*USRPRF/${msg.fromUser}/`;
+  } else {
+    newName += `${msg.messageQueueLibrary}/${msg.messageQueue}/`;
+  }
+  let counter = 0;
+  // get from config
+  const splfBrowserConfig = vscode.workspace.getConfiguration('vscode-ibmi-fs');
+  let namePattern: string = splfBrowserConfig.get<string>('messageViewNamePattern') || '';
+  if (namePattern.length === 0) { namePattern = 'messageType,messageID,messageKey'; }
+  // pattern values are separated by commas.  
+  const patterns = namePattern.split(/,\s*/);
+  // append pattern to end of passed in name.
+  patterns.forEach(element => {
+    if (counter > 0) {
+      newName += '~';
+    }
+    counter++;
+    switch (element) {
+
+    case `messageType`:
+      newName += msg.messageType;
+      break;
+    case `messageID`:
+      newName += msg.messageID;
+      break;
+    case `messageKey`:
+      newName += msg.messageKey;
+      break;
+    default:
+    }
+  });
+
+  return newName;
+}
+export function breakUpPathFileName(pPath: string): Map<string, string> {
+  const myConfig = vscode.workspace.getConfiguration('vscode-ibmi-fs');
+  let namePattern: string = myConfig.get<string>('messageViewNamePattern') || '';
+  if (namePattern.length === 0) { namePattern = 'messageType,messageID,messageKey'; }
+
+  // pattern values are separated by commas.  
+  const patterns = namePattern.split(/,\s*/);
+  const pathParts = pPath.split('/');
+  const nameParts = pathParts[2].split(/[~.]/);
+
+  const namePartMap: Map<string, string> = new Map();
+  if (pathParts[0] === '*USRPRF') {
+    namePartMap.set('type', '*USRPRF');
+    namePartMap.set('messageQueueLibrary', 'QSYS');
+    namePartMap.set('messageQueue', pathParts[1]);
+  } else {
+    namePartMap.set('type', '*MSGQ');
+    namePartMap.set('messageQueueLibrary', pathParts[0]);
+    namePartMap.set('messageQueue', pathParts[1]);
+  }
+
+  for (let i = 0; i < patterns.length; i++) {
+    namePartMap.set(patterns[i], nameParts[i]);
+  }
+
+  return namePartMap;
+}
+export function saveFilterValues(filterSingle: IBMiMessageQueue): boolean {
+  const config = Code4i.getConfig();
+  let messageQueues: IBMiMessageQueue[] = config[`messageQueues`] || [];
+  const messageQueueFilter = {};
+  if (!messageQueues.includes(filterSingle)) {
+    messageQueues.push(filterSingle);
+    config.messageQueues = messageQueues;
+    Code4i.getInstance()!.setConfig(config);
+    return true;
+  }
+  return false;
 }

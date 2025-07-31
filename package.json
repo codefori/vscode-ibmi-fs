@@ -148,6 +148,13 @@
         "icon": "$(add)"
       },
       {
+        "command": "vscode-ibmi-fs.addUserMessageFilter",
+        "title": "Add User Message Filter",
+        "category": "IBM i Messages",
+        "enablement": "code-for-ibmi:connected == true",
+        "icon": "$(person-add)"
+      },
+      {
         "command": "vscode-ibmi-fs.removeMessageQueueFilter",
         "title": "Remove Message Queue Filter",
         "category": "IBM i Messages",
@@ -283,10 +290,15 @@
         {
           "command": "vscode-ibmi-fs.refreshMSGQBrowser",
           "when": "view == msgqBrowser",
-          "group": "navigation@91"
+          "group": "navigation@1"
         },
         {
           "command": "vscode-ibmi-fs.addMessageQueueFilter",
+          "when": "view == msgqBrowser",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.addUserMessageFilter",
           "when": "view == msgqBrowser",
           "group": "navigation@1"
         },
@@ -336,24 +348,9 @@
           "group": "5_DtaqAction@2"
         },
         {
-          "command": "vscode-ibmi-fs.removeMessageAll",
-          "when": "view == msgqBrowser && viewItem =~ /^msgq$/",
-          "group": "inline@1"
-        },
-        {
-          "command": "vscode-ibmi-fs.removeMessageAllButUnanswered",
-          "when": "view == msgqBrowser && viewItem =~ /^msgq$/",
-          "group": "inline@1"
-        },
-        {
           "command": "vscode-ibmi-fs.refreshMSGQ",
-          "when": "view == msgqBrowser && viewItem =~ /^msgqq.*$/",
-          "group": "inline@1"
-        },
-        {
-          "command": "vscode-ibmi-fs.filterMessageQueue",
           "when": "view == msgqBrowser && viewItem =~ /^msgq.*$/",
-          "group": "inline@2"
+          "group": "inline@1"
         },
         {
           "command": "vscode-ibmi-fs.filterMessageQueueInquiry",
@@ -369,6 +366,11 @@
           "command": "vscode-ibmi-fs.filterMessageQueue",
           "when": "view == msgqBrowser && viewItem =~ /^msgq.*$/",
           "group": "4_messagequeue@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.filterMessageQueueInquiry",
+          "when": "view == msgqBrowser && viewItem =~ /^msgq.*$/",
+          "group": "4_messagequeue@2"
         },
         {
           "command": "vscode-ibmi-fs.searchMessageQueue",

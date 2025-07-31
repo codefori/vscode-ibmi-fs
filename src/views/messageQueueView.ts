@@ -3,7 +3,7 @@ import { SortOptions } from '@halcyontech/vscode-ibmi-types/api/IBMiContent';
 import vscode, { l10n, TreeDataProvider } from 'vscode';
 import { Code4i } from '../tools';
 import { IBMiContentMsgq, sortObjectArrayByProperty } from "../api/IBMiContentMsgq";
-import { IBMiMessageQueue, IBMiMessageQueueMessage, ObjAttributes } from '../typings';
+import { IBMiMessageQueue, IBMiMessageQueueFilter, IBMiMessageQueueMessage, ObjAttributes, ObjLockState } from '../typings';
 import { getMessageDetailFileUri } from '../filesystem/qsys/MsgqFs';
 
 //https://code.visualstudio.com/api/references/icons-in-labels
@@ -11,6 +11,7 @@ const objectIcons: Record<string, string> = {
   'msgq': 'symbol-folder',
   'msg': 'mail',
   'inquiry': 'question',
+  'usrprf': 'person',
   // eslint-disable-next-line @typescript-eslint/naming-convention
   '': 'circle-large-outline'
 };
@@ -18,12 +19,24 @@ const objectIcons: Record<string, string> = {
 export default class MSGQBrowser implements TreeDataProvider<any> {
   private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void>;
   public onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void>;
+  private _msgqFilters: IBMiMessageQueueFilter[] = [];
 
   constructor() {
     this._onDidChangeTreeData = new vscode.EventEmitter();
     this.onDidChangeTreeData = this._onDidChangeTreeData.event;
   }
 
+  // Method to set data when your extension becomes connected
+  public populateData(newData: IBMiMessageQueueFilter[]): void {
+    this._msgqFilters = newData;
+    // this._onDidChangeTreeData.fire(); // Notify VS Code to refresh
+  }
+
+  // Method to clear the tree view
+  public clearTree(): void {
+    this._msgqFilters = []; // Clear the data
+    this._onDidChangeTreeData.fire(); // Notify VS Code to refresh
+  }
 
   refresh(target?: any): void {
     this._onDidChangeTreeData.fire(target);
@@ -31,17 +44,9 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
 
   async getTreeItem(element: MessageQueue | MessageQueueList) {
     if (element instanceof MessageQueue) {
-      // if (!element.messageCount || element.messageCount === 0) {
-      //   const msgqNum = await IBMiContentMsgq.getMessageQueueCount(`MSGQBrowser.getTreeItem`, element.messageQueue, element.messageQueueLibrary, element.filter
-      //     , undefined, element.inquiryMode);
-      //   element.messageCount = Number(msgqNum);
-      //   element.setRecordCount(element.messageCount);
-      // }
-      // if (!element.text) {
-      //   const objAttributes = await IBMiContentMsgq.getObjectText([element.messageQueue], [element.messageQueueLibrary], [`*MSGQ`]) || '';
-      //   element.text = objAttributes[0].text;
-      // }
-      // element.setDescription('');
+      if (!element.description) {
+        element.setDescription();
+      }
     } else if (element instanceof MessageQueueList) {
     }
     return element;
@@ -54,77 +59,65 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
   async getChildren(element: any): Promise<vscode.TreeItem[]> {
     const items = [];
     const connection = Code4i.getConnection();
-    if (connection) {
-      const config = Code4i.getConfig();
+    if (!element) {
+      // Get level 1 node items from config
+      // let cfgMessageQueues: IBMiMessageQueue[] = config.messageQueues;
+      let cfgMessageQueues: IBMiMessageQueueFilter[] = [];
+      if (this._msgqFilters.length === 0) { cfgMessageQueues = Code4i.getConfig().messageQueues; } else { cfgMessageQueues = this._msgqFilters; }
+      const filtereditems: IBMiMessageQueueFilter[] = cfgMessageQueues.filter((item: any) => item.messageQueueLibrary !== `` || item.messageQueue !== ``);
+      const distinctNames: string[] = [...new Set(filtereditems.map(item => item.messageQueue))];
+      const distinctLibraries: string[] = [...new Set(filtereditems.map(item => item.messageQueueLibrary))];
+      const distinctTypes: string[] = [...new Set(filtereditems.map(item => item.type || '*MSGQ'))];
+      const objAttributes = await IBMiContentMsgq.getObjectText(distinctNames, distinctLibraries, distinctTypes);
+      const objLockStates = await IBMiContentMsgq.getObjectLocks(distinctNames, distinctLibraries, distinctTypes);
+      const mesageQueues = cfgMessageQueues.map((aMsgq) =>
+      ({
+        messageQueueLibrary: lookupLibraryValue(aMsgq, objAttributes),
+        messageQueue: aMsgq.messageQueue,
+        protected: lookupItemLockState(aMsgq, objLockStates),
+        text: lookupItemText(aMsgq, objAttributes),
+        type: lookupFilterType(aMsgq)
+      } as IBMiMessageQueue));
+      const mappedMessageQueues: MessageQueue[] = mesageQueues.map((item) => new MessageQueue(element, item));
+      items.push(...mappedMessageQueues);
+    } else {
+      // the message queue filter items.
+      switch (element.contextValue.split(`_`)[0]) {
+      case `msgq`:
+        //Fetch messages from message queue
+        try {
+          const treeFilter = {...element};
+          let messages = await IBMiContentMsgq.getMessageQueueMessageList(`MSGQBrowser.getChildren`
+            , treeFilter , element.filter , undefined, element.inquiryMode);
+          messages = sortObjectArrayByProperty(messages
+            , element.sort.order === 'date' ? `messageTimestamp` : element.sort.order === 'name' ? 'messageText' : ''
+            , element.sort.ascending ? 'asc' : 'desc');
 
-      if (element) { //Chosen MSGQ filter??
-        // let filter;
-        switch (element.contextValue.split(`_`)[0]) {
-        case `msgq`:
-          //Fetch messages from message queue
-          try {
-            let messages = await IBMiContentMsgq.getMessageQueueMessageList(`MSGQBrowser.getChildren`
-              ,element.messageQueue, element.messageQueueLibrary
-              // , element.sort
-              , element.filter
-              , undefined, element.inquiryMode);
-            messages = sortObjectArrayByProperty(messages
-              , element.sort.order === 'date' ?`messageTimestamp`: element.sort.order === 'name' ?'messageText':''
-              , element.sort.ascending ? 'asc' : 'desc');
-
-            const distinctNames: string[] = [...new Set(messages.map(item => item.messageQueue || ''))];
-            const distinctLibraries: string[] = [...new Set(messages.map(item => item.messageQueueLibrary || ''))];
-            const msgReplies = await IBMiContentMsgq.getMessageReplies(`MSGQBrowser.getChildren`, distinctNames, distinctLibraries
-              , undefined, element.filter
-              , undefined, element.inquiryMode
-            );
-            items.push(...messages.map((message: IBMiMessageQueueMessage) => {
-              let index = 0;
-              index = msgReplies.findIndex(f => (f.messageKeyAssociated === message.messageKey));
-              if (index >= 0) {
-                message.messageKeyAssociated = msgReplies[index].messageKey; // Associate to INQUIRY message its answer
-                message.messageReply = msgReplies[index].messageReply;
-                message.messageReplyUser = msgReplies[index].messageReplyUser;
-                message.messageReplyJob = msgReplies[index].messageReplyJob;
-              }
-              const messageItem = new MessageQueueList(element, message);
-              return messageItem;
-            })
-            );
-            element.setRecordCount(items.length);
-
-          } catch (e: any) {
-            console.log(e);
-            vscode.window.showErrorMessage(e.message);
-            items.push(new vscode.TreeItem(l10n.t(`Error loading messages for message queue {0}.`, element.messageQueueLibrary + '/' + element.messageQueue)));
-          }
-        }
-
-      } else if (config.messageQueues) {
-        let cfgMessageQueues: IBMiMessageQueue[] = config.messageQueues;
-        const filtereditems: IBMiMessageQueue[] = cfgMessageQueues.filter((item: any) => item.messageQueueLibrary !== `` || item.messageQueue !== ``);
-        const distinctNames: string[] = [...new Set(filtereditems.map(item => item.messageQueue))];
-        const distinctLibraries: string[] = [...new Set(filtereditems.map(item => item.messageQueueLibrary))];
-        const objAttributes = await IBMiContentMsgq.getObjectText(distinctNames, distinctLibraries, ['*MSGQ']);
-        const objLockStates = await IBMiContentMsgq.getObjectLocks(distinctNames, distinctLibraries, ['*MSGQ']);
-        const mappedMessageQueues: MessageQueue[] = cfgMessageQueues.map(
-          (aMsgq: IBMiMessageQueue) => {
+          const distinctNames: string[] = [...new Set(messages.map(item => item.messageQueue || ''))];
+          const distinctLibraries: string[] = [...new Set(messages.map(item => item.messageQueueLibrary || ''))];
+          const msgReplies = await IBMiContentMsgq.getMessageReplies(`MSGQBrowser.getChildren`, distinctNames, distinctLibraries
+            , undefined, undefined, element.inquiryMode
+          );
+          items.push(...messages.map((message: IBMiMessageQueueMessage) => {
             let index = 0;
-            index = objAttributes.findIndex(f => (f.library === aMsgq.messageQueueLibrary || aMsgq.messageQueueLibrary === '*LIBL')
-              && f.name === aMsgq.messageQueue);
+            index = msgReplies.findIndex(f => (f.messageKeyAssociated === message.messageKey));
             if (index >= 0) {
-              aMsgq.text = objAttributes[index].text;
+              message.messageKeyAssociated = msgReplies[index].messageKey; // Associate to INQUIRY message its answer
+              message.messageReply = msgReplies[index].messageReply;
+              message.messageReplyUser = msgReplies[index].messageReplyUser;
+              message.messageReplyJob = msgReplies[index].messageReplyJob;
             }
-            index = objLockStates.findIndex(f => (f.library === aMsgq.messageQueueLibrary || aMsgq.messageQueueLibrary === '*LIBL')
-              && f.name === aMsgq.messageQueue);
-            if (index >= 0) {
-              aMsgq.protected = objLockStates[index].lockState === '*EXCL' ? true : false;
-            }
-            const newMsgqObj = new MessageQueue(element, aMsgq);
-            return newMsgqObj;
-          }
-        );
-        items.push(...mappedMessageQueues);
+            const messageItem = new MessageQueueList(element, message);
+            return messageItem;
+          })
+          );
+          element.setRecordCount(items.length);
+
+        } catch (e: any) {
+          console.log(e);
+          vscode.window.showErrorMessage(e.message);
+          items.push(new vscode.TreeItem(l10n.t(`Error loading messages for message queue {0}.`, element.messageQueueLibrary + '/' + element.messageQueue)));
+        }
       }
     }
     return Promise.all(items);
@@ -148,20 +141,26 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
     if (item instanceof MessageQueue) {
       let msgqNum = ``;
       if (!item.messageCount || item.messageCount === 0) {
-        msgqNum = await IBMiContentMsgq.getMessageQueueCount(`MSGQBrowser.resolveTreeItem`, element.messageQueue, element.messageQueueLibrary, element.filter
-          , undefined, element.inquiryMode);
+        const treeFilter = {...element};
+        msgqNum = await IBMiContentMsgq.getMessageQueueCount(`MSGQBrowser.resolveTreeItem`, 
+          treeFilter , element.filter , undefined, element.inquiryMode);
         item.messageCount = Number(msgqNum);
         item.setRecordCount(item.messageCount);
       }
       if (!item.text) {
         const objAttributes = await IBMiContentMsgq.getObjectText([element.messageQueue], [element.messageQueueLibrary], [`*MSGQ`]) || '';
         item.text = objAttributes[0].text;
-        item.setDescription('');
+        item.setDescription();
       }
       item.tooltip = new vscode.MarkdownString(`<table>`
-        .concat(`<thead>${item.messageQueue}/${item.messageQueue}</thead><hr>`)
-        .concat(item.description ? `<tr><td>${l10n.t(`Queue Text:`)} </td><td>&nbsp;${l10n.t(String(item.description))}</td></tr>` : ``)
-        .concat(item.messageCount ? `<tr><td>${l10n.t(`Message Count:`)} </td><td>&nbsp;${l10n.t(String(item.messageCount))}</td></tr>` : ``)
+        .concat(`<thead>${item.label}</thead><hr>`)
+        // .concat(`<thead>${item.messageQueueLibrary}/${item.messageQueue}</thead><hr>`)
+        .concat(`<tr><td>${l10n.t(`Message List Type:`)} </td><td>&nbsp;${l10n.t(String(item.type))}</td></tr>`)
+        .concat(`<tr><td>${l10n.t(`List Text:`)} </td><td>&nbsp;${l10n.t(String(item.text))}</td></tr>`)
+        .concat(`<tr><td>${l10n.t(`Message Count:`)} </td><td>&nbsp;${l10n.t(String(item.messageCount ? item.messageCount : '0'))}</td></tr>`)
+        .concat(`<tr><td>${l10n.t(`Sorting:`)} </td><td>&nbsp;${l10n.t(String(item.sortDescription))}</td></tr>`)
+        .concat(`<tr><td>${l10n.t(`Filtering:`)} </td><td>&nbsp;${l10n.t(String(item.filterDescription))}</td></tr>`)
+        .concat(`<tr><td>${l10n.t(`Inquriy Mode:`)} </td><td>&nbsp;${l10n.t(String(item.inquiryMode))}</td></tr>`)
         .concat(`<tr><td>${l10n.t(`Read Only:`)} </td><td>&nbsp;${l10n.t(String(item.protected))}</td></tr>`)
       );
       item.tooltip.supportHtml = true;
@@ -179,6 +178,7 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
       }
       item.tooltip = new vscode.MarkdownString(`<table>`
         .concat(`<thead>${item.path.split(`/`)[2]}</thead><hr>`)
+        .concat(item.messageQueue ? `<tr><td>${l10n.t(`Message Queue:`)} </td><td>&nbsp;${l10n.t(`${item.messageQueueLibrary}/${item.messageQueue}`)}</td></tr>` : ``)
         .concat(item.messageType ? `<tr><td>${l10n.t(`Message Type:`)} </td><td>&nbsp;${l10n.t(item.messageType)}</td></tr>` : ``)
         .concat(item.severity ? `<tr><td>${l10n.t(`Severity:`)} </td><td>&nbsp;${l10n.t(item.severity)}</td></tr>` : ``)
         .concat(item.messageTimestamp ? `<tr><td>${l10n.t(`Time Arrived:`)} </td><td>&nbsp;${l10n.t(item.messageTimestamp)}</td></tr>` : ``)
@@ -194,7 +194,7 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
           .concat(`<tr><td>${l10n.t(`Message Reply Job:`)} </td><td>&nbsp;${item.messageReplyJob}</td></tr>`)
         );
       }
-      item.tooltip.appendMarkdown(``
+      item.tooltip.appendMarkdown(`<hr>`
         .concat(`<tr><td>${l10n.t(`Context Value:`)} </td><td>&nbsp;${item.contextValue}</td></tr>`)
         .concat(`</table>`)
       );
@@ -210,25 +210,30 @@ export class MessageQueue extends vscode.TreeItem implements IBMiMessageQueue {
   messageQueue: string;
   messageQueueLibrary: string;
   text: string;
+  type: string;
   filter: string | undefined; // reduces tree items to matching tokens
+  filterDescription: string | undefined;
   inquiryMode: string;
   messageCount: number | undefined;
   readonly sort: SortOptions = { order: "date", ascending: true };
   sortDescription: string | undefined;
   constructor(parent: vscode.TreeItem, theMsgq: IBMiMessageQueue) {
-    super(theMsgq.messageQueueLibrary + `/` + theMsgq.messageQueue, vscode.TreeItemCollapsibleState.Collapsed);
+    super(createNodeName(theMsgq), vscode.TreeItemCollapsibleState.Collapsed);
     this.messageQueue = theMsgq.messageQueue;
     this.messageQueueLibrary = theMsgq.messageQueueLibrary;
-    const icon = objectIcons[`msgq`] || objectIcons[``];
+    this.type = theMsgq.type;
+    const icon = this.setIcon(this.type);
     this.protected = theMsgq.protected ? theMsgq.protected : false;
     this.contextValue = `msgq${this.protected ? `_readonly` : ``}`;
     this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
     this.parent = parent;
-    this.iconPath = new vscode.ThemeIcon(this.protected ? `lock-small` : icon
+    // this.iconPath = new vscode.ThemeIcon(this.protected ? `lock-small` : icon
+    this.iconPath = new vscode.ThemeIcon(icon
       , (this.protected ? new vscode.ThemeColor(`list.errorForeground`) : undefined));
     this.sortBy(this.sort);
     this.text = theMsgq.text || '';
-    this.setDescription('');
+    this.setDescription();
+    this.setFilterDescription('');
     this.inquiryMode = '';
   }
   sortBy(sort: SortOptions) {
@@ -237,24 +242,37 @@ export class MessageQueue extends vscode.TreeItem implements IBMiMessageQueue {
       this.sort.ascending = true;
     }
     else {
-      this.sort.ascending = !this.sort.ascending; 
+      this.sort.ascending = !this.sort.ascending;
     }
     this.sortDescription = `(sort: ${this.sort.order} ${this.sort.ascending ? `🔺` : `🔻`})`;
-    // this.sortDescription = ` (sort: ${this.sort.order} ${this.sort.ascending ? `🔼` : `🔽`})`;
   }
   clearToolTip() { this.tooltip = undefined; }
   clearDescription() { this.description = undefined; }
   getRecordCount() { return this.messageCount; }
   setFilter(filter: string | undefined) { this.filter = filter; }
   setInquiryMode(inquiryMode: string) { this.inquiryMode = inquiryMode; }
-  setDescription(value: string | undefined) {
+  setIcon(type: string): string {
+    let choosenIcon = objectIcons[``];
+    if (type === '*MSGQ') { choosenIcon = objectIcons[`msgq`]; }
+    else if (type === '*USRPRF') { choosenIcon = objectIcons[`usrprf`]; }
+    return choosenIcon;
+  }
+  setFilterDescription(value: string | undefined) { this.filterDescription = value; }
+  setDescription() {
     this.description =
-      (this.text? this.text : '')
-        + (value ? ` ` + value : ``) 
-        + (this.sortDescription ? ` ` + this.sortDescription:'');
+      (this.text ? this.text : '')
+      + (this.filterDescription ? ` ` + this.filterDescription : ``)
+      + (this.sortDescription ? ` ` + this.sortDescription : '');
   }
   setProtection(protect: boolean) { this.protected = protect; }
   setRecordCount(aNumber: number) { this.messageCount = aNumber; }
+}
+function createNodeName(theMsgq: IBMiMessageQueue) {
+  let q = theMsgq.messageQueueLibrary + `/` + theMsgq.messageQueue;
+  if (theMsgq.type === '*USRPRF') {
+    q = theMsgq.type + '/' + q;
+  }
+  return q;
 }
 
 export class MessageQueueList extends vscode.TreeItem implements IBMiMessageQueueMessage {
@@ -286,7 +304,7 @@ export class MessageQueueList extends vscode.TreeItem implements IBMiMessageQueu
   // iconColor: string;
   readonly sort: SortOptions = { order: "date", ascending: true };
   readonly sortBy: (sort: SortOptions) => void;
-  readonly setDescription: (value: string | undefined) => void;
+  readonly setDescription: () => void;
   private static nextId: number = 0; // Static and private counter
   private readonly myId: number; // Readonly ID for instances
   // public readonly id: string; 
@@ -305,7 +323,7 @@ export class MessageQueueList extends vscode.TreeItem implements IBMiMessageQueu
       this.messageID = '';
       this.name = this.messageID + ' - ' + object.messageText;
     }
-    this.resourceUri = getMessageDetailFileUri(object, parent.protected ? { readonly: true } : undefined);
+    this.resourceUri = getMessageDetailFileUri(parent.type, object, parent.protected ? { readonly: true } : undefined);
     this.protected = parent.protected;
     this.contextValue = `message${this.protected ? `_readonly` : ``}`;
     if (object.messageType === 'INQUIRY') {
@@ -340,14 +358,9 @@ export class MessageQueueList extends vscode.TreeItem implements IBMiMessageQueu
       title: `Show Message Details`,
       arguments: [this]
     };
-    // this.iconColor = ``;
-    // this.icon = objectIcons[`${object.messageType === 'INQUIRY' ? 'inquiry' : 'msg'}`] || objectIcons[``];
-    // this.setIcon();
-    // this.setIconColor();
     this.updateIconPath();
-    // this.iconPath = new vscode.ThemeIcon(this.protected ? `lock-small` : icon, new vscode.ThemeColor(this.iconColor));
     this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
-    this.setDescription = (value: string | undefined) => parent.setDescription(value);
+    this.setDescription = () => parent.setDescription();
   }
   setIcon(): string {
     let choosenIcon = '';
@@ -381,3 +394,51 @@ export class MessageQueueList extends vscode.TreeItem implements IBMiMessageQueu
   }
   updateIconPath() { this.iconPath = new vscode.ThemeIcon(this.setIcon(), new vscode.ThemeColor(this.setIconColor())); }
 }
+function lookupItemText(aMsgq: IBMiMessageQueueFilter, objAttributes: ObjAttributes[]): string {
+  let index = 0;
+  let theText = '';
+  if (aMsgq.type === '*USRPRF') {
+    index = objAttributes.findIndex(f => f.name === aMsgq.messageQueue);
+    if (index >= 0) {
+      theText = objAttributes[index].text;
+    }
+  } else {
+    index = objAttributes.findIndex(f => (f.library === aMsgq.messageQueueLibrary || aMsgq.messageQueueLibrary === '*LIBL')
+      && f.name === aMsgq.messageQueue);
+    if (index >= 0) {
+      theText = objAttributes[index].text;
+      if (aMsgq.messageQueueLibrary === '*LIBL') { aMsgq.messageQueueLibrary = objAttributes[index].library; }
+    }
+  }
+  return theText;
+}
+function lookupItemLockState(aMsgq: IBMiMessageQueueFilter, objLockStates: ObjLockState[]): boolean {
+  let index = 0;
+  let theLockState = true;
+  if (aMsgq.type === '*USRPRF') {
+    index = objLockStates.findIndex(f => f.name === aMsgq.messageQueue);
+    if (index >= 0) {
+      theLockState = objLockStates[index].lockState === '*EXCL' ? true : false;
+    }
+  } else {
+    index = objLockStates.findIndex(f => (f.library === aMsgq.messageQueueLibrary || aMsgq.messageQueueLibrary === '*LIBL')
+      && f.name === aMsgq.messageQueue);
+    if (index >= 0) {
+      theLockState = objLockStates[index].lockState === '*EXCL' ? true : false;
+    }
+  }
+  return theLockState;
+}
+const lookupFilterType = (aMsgq: IBMiMessageQueueFilter): string => {
+  if (!aMsgq.type || aMsgq.type === '') { aMsgq.type = '*MSGQ'; }
+  return aMsgq.type;
+};
+const lookupLibraryValue = (aMsgq: IBMiMessageQueueFilter, objAttributes: ObjAttributes[]): string => {
+  let theRealLibrary = aMsgq.messageQueueLibrary;
+  if (aMsgq.type === '*MSGQ') {
+    const index = objAttributes.findIndex(f => (f.library === aMsgq.messageQueueLibrary || aMsgq.messageQueueLibrary === '*LIBL')
+      && f.name === aMsgq.messageQueue);
+    if (index >= 0 && aMsgq.messageQueueLibrary === '*LIBL') { theRealLibrary = objAttributes[index].library; }
+  }
+  return theRealLibrary;
+};
