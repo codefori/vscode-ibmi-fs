@@ -24,7 +24,7 @@ export namespace MessageQueueSearch {
     content: string
   }
 
-  export async function searchMessageQueue(searchTerm: string, filter: IBMiMessageQueue, searchWords?: string, messageID?: string): Promise<Result[]> {
+  export async function searchMessageQueue(searchTerm: string, treeFilter: IBMiMessageQueue, searchWords?: string, messageID?: string): Promise<Result[]> {
     const connection = Code4i.getConnection();
     const config = Code4i.getConfig();
     const content = Code4i.getContent();
@@ -39,7 +39,7 @@ export namespace MessageQueueSearch {
         const tmpobj = await tmpFile();
         const setccsid = connection.remoteFeatures.setccsid;
         let objects = await IBMiContentMsgq.getMessageQueueMessageList(`MessageQueueSearch.searchMessageQueue`
-                                      , filter.messageQueue, filter.messageQueueLibrary, searchWords, messageID);
+                                      , treeFilter, searchWords, messageID);
         objects = sortObjectArrayByProperty(objects, `messageTimestamp`, `asc`);
 
         // const workFileFormat = {
@@ -53,8 +53,8 @@ export namespace MessageQueueSearch {
         const query =
           `create or replace table ${tempLib}.${tempName} as (select MESSAGE_ID, MESSAGE_KEY, MESSAGE_TEXT
           from table ( QSYS2.MESSAGE_QUEUE_INFO(
-           QUEUE_NAME => '${filter.messageQueue}'
-           QUEUE_LIBRARY => '${filter.messageQueueLibrary}')
+           QUEUE_NAME => '${treeFilter.messageQueue}'
+           QUEUE_LIBRARY => '${treeFilter.messageQueueLibrary}')
            where 1=1
           ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
           ${searchWords ? ` and (MESSAGE_TEXT like '%${searchWords}%' or MESSAGE_SECOND_LEVEL_TEXT like '%${searchWords}%')` : ''}

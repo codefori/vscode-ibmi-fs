@@ -91,6 +91,7 @@ export interface FuncInfo {
 export interface ObjLockState {
   library:string
   name:string
+  objectType:string
   lockState: string
   lockStatus: string
   lockScope: string

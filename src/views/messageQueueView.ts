@@ -156,12 +156,17 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
         .concat(`<thead>${item.label}</thead><hr>`)
         // .concat(`<thead>${item.messageQueueLibrary}/${item.messageQueue}</thead><hr>`)
         .concat(`<tr><td>${l10n.t(`Message List Type:`)} </td><td>&nbsp;${l10n.t(String(item.type))}</td></tr>`)
-        .concat(`<tr><td>${l10n.t(`List Text:`)} </td><td>&nbsp;${l10n.t(String(item.text))}</td></tr>`)
+        .concat(`<tr><td>${l10n.t(`List Text:`)} </td><td>&nbsp;${l10n.t(String(item.text===null?'':item.text))}</td></tr>`)
         .concat(`<tr><td>${l10n.t(`Message Count:`)} </td><td>&nbsp;${l10n.t(String(item.messageCount ? item.messageCount : '0'))}</td></tr>`)
         .concat(`<tr><td>${l10n.t(`Sorting:`)} </td><td>&nbsp;${l10n.t(String(item.sortDescription))}</td></tr>`)
         .concat(`<tr><td>${l10n.t(`Filtering:`)} </td><td>&nbsp;${l10n.t(String(item.filterDescription))}</td></tr>`)
         .concat(`<tr><td>${l10n.t(`Inquriy Mode:`)} </td><td>&nbsp;${l10n.t(String(item.inquiryMode))}</td></tr>`)
         .concat(`<tr><td>${l10n.t(`Read Only:`)} </td><td>&nbsp;${l10n.t(String(item.protected))}</td></tr>`)
+      );
+      item.tooltip.appendMarkdown(`<hr>`
+        // .concat(`$(debug-alt) Debug Info: `${inDebugMode ? "${this.contextValueToDisplay}" : ""}`)
+        .concat(`<tr><td>${l10n.t(`Context Value:`)} </td><td>&nbsp;${item.contextValue}</td></tr>`)
+        .concat(`</table>`)
       );
       item.tooltip.supportHtml = true;
 
@@ -244,7 +249,7 @@ export class MessageQueue extends vscode.TreeItem implements IBMiMessageQueue {
     else {
       this.sort.ascending = !this.sort.ascending;
     }
-    this.sortDescription = `(sort: ${this.sort.order} ${this.sort.ascending ? `🔺` : `🔻`})`;
+    this.sortDescription = `( sort: ${this.sort.order} ${this.sort.ascending ? `🔺` : `🔻`})`;
   }
   clearToolTip() { this.tooltip = undefined; }
   clearDescription() { this.description = undefined; }
@@ -316,7 +321,7 @@ export class MessageQueueList extends vscode.TreeItem implements IBMiMessageQueu
     // this.myId = MessageQueueList.nextId++; // Assign and increment the ID
     this.myId = MessageQueueList.nextId++; // Assign and increment the ID
     this.parent = parent;
-    if (object.messageID === `null`) {
+    if (object.messageID && object.messageID !== `null`) {
       this.messageID = object.messageID;
       this.name = this.messageID + ' - ' + object.messageText;
     } else {
@@ -416,13 +421,15 @@ function lookupItemLockState(aMsgq: IBMiMessageQueueFilter, objLockStates: ObjLo
   let index = 0;
   let theLockState = true;
   if (aMsgq.type === '*USRPRF') {
-    index = objLockStates.findIndex(f => f.name === aMsgq.messageQueue);
+    index = objLockStates.findIndex(f => f.objectType === aMsgq.type && f.name === aMsgq.messageQueue);
     if (index >= 0) {
       theLockState = objLockStates[index].lockState === '*EXCL' ? true : false;
     }
   } else {
-    index = objLockStates.findIndex(f => (f.library === aMsgq.messageQueueLibrary || aMsgq.messageQueueLibrary === '*LIBL')
-      && f.name === aMsgq.messageQueue);
+    index = objLockStates.findIndex(f => (f.objectType === aMsgq.type
+      && f.name === aMsgq.messageQueue
+      && f.library === aMsgq.messageQueueLibrary || aMsgq.messageQueueLibrary === '*LIBL')
+    );
     if (index >= 0) {
       theLockState = objLockStates[index].lockState === '*EXCL' ? true : false;
     }

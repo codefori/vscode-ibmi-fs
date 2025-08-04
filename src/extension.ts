@@ -17,6 +17,7 @@ let globalContext: vscode.ExtensionContext;
 export async function activate(context: vscode.ExtensionContext) {
 	tempFileManager = new TempFileManager();
 	globalContext = context;
+	const isDebugMode = () => process.env.VSCODE_DEBUG_MODE === "true";
 	await Code4i.initialize(context);
 
 	initializeMessageQueueBrowser(context);

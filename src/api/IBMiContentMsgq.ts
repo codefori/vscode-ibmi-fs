@@ -94,10 +94,11 @@ export namespace IBMiContentMsgq {
                                             and MSR.ASSOCIATED_MESSAGE_KEY = MS1.MESSAGE_KEY
       ${!treeFilter.messageQueueLibrary ? `inner join QSYS2.LIBRARY_LIST_INFO on SCHEMA_NAME = MS1.MESSAGE_QUEUE_LIBRARY` : ''}
       where MS1.MESSAGE_TYPE not in ('REPLY') 
-      ${type === '*MSGQ' ?`and MS1.MESSAGE_QUEUE_NAME = '${treeFilter.messageQueue}'`:''}
+      and MS1.MESSAGE_QUEUE_NAME = '${treeFilter.messageQueue}'
       ${type === '*USRPRF' ?`and MS1.FROM_USER = '${treeFilter.messageQueue}'`:''}
       ${treeFilter.messageKey ? ` and MS1.MESSAGE_KEY = binary(x'${treeFilter.messageKey}')` : ''}
       `.replace(/\n\s*/g, ' ');
+      // ${type === '*MSGQ' ?`and MS1.MESSAGE_QUEUE_NAME = '${treeFilter.messageQueue}'`:''}
     let results = await Code4i!.runSQL(objQuery);
 
     if (results.length === 0) {
@@ -330,14 +331,14 @@ export namespace IBMiContentMsgq {
 
     const objQuery = `/*GETOBJECTLOCKS*/ with T1 as (select B.OBJLONGSCHEMA SCHEMA_NAME, B.OBJNAME OBJECT_NAME, B.OBJTYPE OBJECT_TYPE
       , LOCK_STATE, LOCK_STATUS, LOCK_SCOPE, JOB_NAME
-      , row_number() over( partition by b.OBJNAME) QUEUE_NUMBER
+      , row_number() over( partition by b.OBJNAME,B.OBJTYPE) QUEUE_NUMBER
       from table(QSYS2.OBJECT_STATISTICS('*ALL', '${TYPESB}', '*ALL')) B
       left join  QSYS2.OBJECT_LOCK_INFO OL on OL.OBJECT_NAME=B.OBJNAME and OL.OBJECT_SCHEMA=B.OBJLONGSCHEMA ${TYPESA ? `and OL.OBJECT_TYPE in (${TYPESA})` : ``} 
       where 1=1
       ${OBJLIBS ? ` and B.OBJLONGSCHEMA in (${OBJLIBS})` : ''}
       ${OBJS ? `and B.OBJNAME in (${OBJS})` : ``}
       ${TYPESA ? `and B.OBJTYPE in (${TYPESA})` : ``}
-      ) select SCHEMA_NAME ,OBJECT_NAME ,LOCK_STATE ,LOCK_STATUS ,LOCK_SCOPE ,JOB_NAME 
+      ) select SCHEMA_NAME ,OBJECT_NAME, OBJECT_TYPE ,LOCK_STATE ,LOCK_STATUS ,LOCK_SCOPE ,JOB_NAME 
       from T1 where QUEUE_NUMBER = 1`.replace(/\n\s*/g, ' ');
     let results = await Code4i!.runSQL(objQuery);
     let objLockState: ObjLockState[] = [];
@@ -346,6 +347,7 @@ export namespace IBMiContentMsgq {
       ({
         library: result.SCHEMA_NAME,
         name: result.OBJECT_NAME,
+        objectType: result.OBJECT_TYPE,
         lockState: result.LOCK_STATE,
         lockStatus: result.LOCK_STATUS,
         lockScope: result.LOCK_SCOPE,
@@ -359,6 +361,29 @@ export namespace IBMiContentMsgq {
     userReply = userReply || '*DFT';
     let actionCompleteGood: boolean = true;
     const command = `SNDRPY MSGKEY(x'${item.messageKey}') MSGQ(${item.messageQueueLibrary}/${item.messageQueue}) RPY('${userReply}') RMV(*NO)`;
+    const commandResult = await Code4i.runCommand({
+      command: command
+      , environment: `ile`
+    });
+    if (commandResult) {
+      // vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
+      if (commandResult.code === 0 || commandResult.code === null) {
+      } else {
+        actionCompleteGood = false;
+      }
+    }
+
+    return actionCompleteGood;
+  }
+  export async function sendMessage(item: IBMiMessageQueue, userReply?: string, inquiry?: Boolean): Promise<boolean> {
+    userReply = userReply || '*DFT';
+    let actionCompleteGood: boolean = true;
+    const command = `SNDMSG 
+    MSG('${userReply}')
+    ${item.type === '*MSGQ' ?`TOMSGQ(${item.messageQueueLibrary}/${item.messageQueue})`:''}
+    ${item.type === '*USRPRF' ?`TOUSR(${item.messageQueue})`:''}
+    ${inquiry === true ?`MSGTYPE(*INQ) RPYMSGQ(${Code4i.getConnection().currentUser}) `:''}
+    `.replace(/\n\s*/g, ' ');
     const commandResult = await Code4i.runCommand({
       command: command
       , environment: `ile`

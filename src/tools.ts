@@ -61,11 +61,11 @@ export function getQSYSObjectPath(library: string, name: string, type: string, m
 }
 export function buildPathFileNamefromPattern(filterType: string, msg: IBMiMessageQueueMessage): string {
   let newName = ``;
-  if (filterType === '*USRPRF') {
-    newName = `*USRPRF/${msg.fromUser}/`;
-  } else {
+  // if (filterType === '*USRPRF') {
+  //   newName = `*USRPRF/${msg.fromUser}/`;
+  // } else {
     newName += `${msg.messageQueueLibrary}/${msg.messageQueue}/`;
-  }
+  // }
   let counter = 0;
   // get from config
   const splfBrowserConfig = vscode.workspace.getConfiguration('vscode-ibmi-fs');
@@ -107,15 +107,15 @@ export function breakUpPathFileName(pPath: string): Map<string, string> {
   const nameParts = pathParts[2].split(/[~.]/);
 
   const namePartMap: Map<string, string> = new Map();
-  if (pathParts[0] === '*USRPRF') {
-    namePartMap.set('type', '*USRPRF');
-    namePartMap.set('messageQueueLibrary', 'QSYS');
-    namePartMap.set('messageQueue', pathParts[1]);
-  } else {
+  // if (pathParts[0] === '*USRPRF') {
+  //   namePartMap.set('type', '*USRPRF');
+  //   namePartMap.set('messageQueueLibrary', 'QSYS');
+  //   namePartMap.set('messageQueue', pathParts[1]);
+  // } else {
     namePartMap.set('type', '*MSGQ');
     namePartMap.set('messageQueueLibrary', pathParts[0]);
     namePartMap.set('messageQueue', pathParts[1]);
-  }
+  // }
 
   for (let i = 0; i < patterns.length; i++) {
     namePartMap.set(patterns[i], nameParts[i]);
