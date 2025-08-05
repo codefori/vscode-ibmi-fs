@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { FocusOptions } from '@halcyontech/vscode-ibmi-types/';
 import vscode, { l10n, } from 'vscode';
-import { MsgqFS, getUriFromPathMsg, parseFSOptions } from "./filesystem/qsys/MsgqFs";
+import { MsgqFS, getUriFromPathMsg, parseFSOptions } from "./filesystem/qsys/MsgQFs";
 import { IBMiContentMsgq, sortObjectArrayByProperty } from "./api/IBMiContentMsgq";
 import { Code4i, saveFilterValues } from "./tools";
 import { IBMiMessageQueue, IBMiMessageQueueFilter, IBMiMessageQueueMessage, MsgOpenOptions, SearchParms } from './typings';

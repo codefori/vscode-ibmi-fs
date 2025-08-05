@@ -4,7 +4,7 @@ import vscode, { l10n, TreeDataProvider } from 'vscode';
 import { Code4i } from '../tools';
 import { IBMiContentMsgq, sortObjectArrayByProperty } from "../api/IBMiContentMsgq";
 import { IBMiMessageQueue, IBMiMessageQueueFilter, IBMiMessageQueueMessage, ObjAttributes, ObjLockState } from '../typings';
-import { getMessageDetailFileUri } from '../filesystem/qsys/MsgqFs';
+import { getMessageDetailFileUri } from '../filesystem/qsys/MsgQFs';
 
 //https://code.visualstudio.com/api/references/icons-in-labels
 const objectIcons: Record<string, string> = {

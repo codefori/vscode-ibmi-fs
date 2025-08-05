@@ -14,8 +14,9 @@ Has support for:
 * Data Areas (DTAARA) - display and edit
 * Data Queues (DTAQ) - display, send data, clear
 * Save Files (SAVF) - display, download and upload
+* Message queue viewer 
+ 
 
 ## TODO:
 
-* Message queue viewer - Active work
 * More file types

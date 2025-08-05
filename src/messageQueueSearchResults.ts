@@ -83,8 +83,15 @@ export async function initializeMessageQueueSearchView(context: vscode.Extension
                   clearInterval(messageTimeout);
                 }
               }, timeoutInternal);
-              let results = await MessageQueueSearch.searchMessageQueue(String(search.term), {messageQueue :String(search.messageQueue), messageQueueLibrary: String(search.messageQueueLibrary)}
-                                                                        , search.word);
+              let results = await MessageQueueSearch.searchMessageQueue(
+                String(search.term),
+                {
+                  messageQueue: String(search.messageQueue),
+                  messageQueueLibrary: String(search.messageQueueLibrary),
+                  type: '*MSGQ'
+                },
+                search.word
+              );
 
               if (results.length > 0) {
                 results.forEach(result => {
