@@ -11,10 +11,10 @@ export namespace IBMiContentMsgq {
   export async function getMessageQueueMessageList(caller: string, treeFilter: IBMiMessageQueue , searchWords?: string, messageID?: string, messageType?: string
   ): Promise<IBMiMessageQueueMessage[]> {
 
-    treeFilter.messageQueue = treeFilter.messageQueue.toUpperCase();
-    treeFilter.messageQueueLibrary = treeFilter.messageQueueLibrary !== '*LIBL' ? treeFilter.messageQueueLibrary.toUpperCase() : ``;
-    messageID = messageID || '';
-    const searchWordsU = searchWords?.toLocaleUpperCase() || '';
+    treeFilter.messageQueue = treeFilter.messageQueue.toLocaleUpperCase();
+    treeFilter.messageQueueLibrary = treeFilter.messageQueueLibrary !== '*LIBL' ? treeFilter.messageQueueLibrary.toLocaleUpperCase() : ``;
+    messageID = messageID!.toLocaleUpperCase() || '';
+    const searchWordsU = searchWords!.toLocaleUpperCase() || '';
 
     const objQuery = `/*${caller}*/ select MS1.MESSAGE_QUEUE_LIBRARY, MS1.MESSAGE_QUEUE_NAME, MS1.MESSAGE_ID, MS1.MESSAGE_TYPE, MS1.MESSAGE_TEXT
     , MS1.MESSAGE_SUBTYPE, digits(MS1.SEVERITY) SEVERITY
@@ -75,9 +75,9 @@ export namespace IBMiContentMsgq {
   */
   export async function getMessageQueueMessageFullDetails(treeFilter: IBMiMessageQueueMessage, type: string): Promise<IBMiMessageQueueMessage> {
 
-    treeFilter.messageQueue = treeFilter.messageQueue!.toUpperCase()||'';
-    treeFilter.messageQueueLibrary = treeFilter.messageQueueLibrary !== '*LIBL' ? treeFilter.messageQueueLibrary!.toUpperCase() : ``;
-    treeFilter.messageKey = treeFilter.messageKey ||'';
+    treeFilter.messageQueue = treeFilter.messageQueue!.toLocaleUpperCase()||'';
+    treeFilter.messageQueueLibrary = treeFilter.messageQueueLibrary !== '*LIBL' ? treeFilter.messageQueueLibrary!.toLocaleUpperCase() : ``;
+    treeFilter.messageKey = treeFilter.messageKey!.toLocaleUpperCase() ||'';
     const objQuery = `select MS1.MESSAGE_QUEUE_LIBRARY ,MS1.MESSAGE_QUEUE_NAME
       ,MS1.MESSAGE_ID ,MS1.MESSAGE_TYPE ,MS1.MESSAGE_SUBTYPE ,MS1.MESSAGE_TEXT ,MS1.SEVERITY ,MS1.MESSAGE_TIMESTAMP
       ,hex(MS1.MESSAGE_KEY) MESSAGE_KEY ,hex(MS1.ASSOCIATED_MESSAGE_KEY) ASSOCIATED_MESSAGE_KEY
@@ -212,10 +212,10 @@ export namespace IBMiContentMsgq {
   */
   export async function getMessageQueueCount(caller: string , treeFilter: IBMiMessageQueue , searchWords?: string, messageID?: string, messageType?: string): Promise<string> {
 
-    treeFilter.messageQueue = treeFilter.messageQueue.toUpperCase();
-    treeFilter.messageQueueLibrary = treeFilter.messageQueueLibrary !== '*LIBL' ? treeFilter.messageQueueLibrary.toUpperCase() : ``;
-    const searchWordsU = searchWords?.toLocaleUpperCase() || '';
-    const objQuerya = `/*${caller}*/ select count(*) MSGQ_COUNT
+    treeFilter.messageQueue = treeFilter.messageQueue.toLocaleUpperCase();
+    treeFilter.messageQueueLibrary = treeFilter.messageQueueLibrary !== '*LIBL' ? treeFilter.messageQueueLibrary.toLocaleUpperCase() : ``;
+    const searchWordsU = searchWords!.toLocaleUpperCase() || '';
+    const objQuery = `/*${caller}*/ select count(*) MSGQ_COUNT
       from QSYS2.MESSAGE_QUEUE_INFO MS1
       ${!treeFilter.messageQueueLibrary || treeFilter.type === '*USRPRF'? `inner join QSYS2.LIBRARY_LIST_INFO on SCHEMA_NAME = MS1.MESSAGE_QUEUE_LIBRARY` : ''}
       where MS1.MESSAGE_TYPE not in ('REPLY') 
@@ -229,18 +229,7 @@ export namespace IBMiContentMsgq {
                           or ucase(MESSAGE_TYPE) like '%${searchWordsU}%'
                         )` : ''}
                         `.replace(/\n\s*/g, ' ');
-    const objQuery = `/*${caller}*/ select count(*) MSGQ_COUNT
-      from table (QSYS2.MESSAGE_QUEUE_INFO(QUEUE_LIBRARY => '${treeFilter.messageQueueLibrary}', QUEUE_NAME=>'${treeFilter.messageQueue}') ) MSGQ 
-      where MSGQ.MESSAGE_TYPE not in ('REPLY') 
-      ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
-      ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
-      ${searchWords ? ` and (ucase(MESSAGE_TEXT) like '%${searchWords}%' 
-                          or ucase(MESSAGE_SECOND_LEVEL_TEXT) like '%${searchWords}%'
-                          or ucase(MESSAGE_ID) like '%${searchWords}%'
-                          or ucase(MESSAGE_TYPE) like '%${searchWords}%'
-                          )` : ''}
-    `.replace(/\n\s*/g, ' ');
-    let results = await Code4i!.runSQL(objQuerya);
+    let results = await Code4i!.runSQL(objQuery);
     if (results.length === 0) {
       return ` ${treeFilter.messageQueueLibrary}/${treeFilter.messageQueue} has no messages`;
     }
@@ -259,7 +248,7 @@ export namespace IBMiContentMsgq {
         ? 'select LL.SCHEMA_NAME from QSYS2.LIBRARY_LIST_INFO LL'
         : libraries.map(library => `'${library}'`).join(', ');
 
-      const objQuery2 = `/*${caller}*/ select MSR.MESSAGE_QUEUE_LIBRARY, MSR.MESSAGE_QUEUE_NAME
+      const objQuery = `/*${caller}*/ select MSR.MESSAGE_QUEUE_LIBRARY, MSR.MESSAGE_QUEUE_NAME
         , substr(MSR.MESSAGE_TEXT,1,25) MESSAGE_REPLY, MSR.FROM_USER REPLY_FROM_USER, MSR.FROM_JOB REPLY_FROM_JOB
         , MSR.FROM_PROGRAM REPLY_FROM_PROGRAM
         , hex(MSR.MESSAGE_KEY) MESSAGE_KEY, hex(MSR.ASSOCIATED_MESSAGE_KEY) ASSOCIATED_MESSAGE_KEY
@@ -271,7 +260,7 @@ export namespace IBMiContentMsgq {
         ${messageID ? ` and MESSAGE_ID = '${messageID}'` : ''}
         `.replace(/\n\s*/g, ' ');
       // ${messageType ? ` and MESSAGE_TYPE = '${messageType}'` : ''}
-      let results = await Code4i!.runSQL(objQuery2);
+      let results = await Code4i!.runSQL(objQuery);
 
       if (results.length > 0) {
         returnMessageReplies = results.map((result) =>
@@ -292,14 +281,14 @@ export namespace IBMiContentMsgq {
   }
 
   export async function getObjectText(objects: string[], libraries: string[], types: string[]): Promise<ObjAttributes[]> {
-    const OBJS = objects.map(object => `'${object}'`).join(', ');
+    const OBJS = objects.map(object => `'${object}'`).join(', ').toLocaleUpperCase();
     const library = (libraries.length === 1 && libraries[0] === '*LIBL')
       ? '*LIBL'
       : '*ALL';
-    const TYPES = types?.map(type => `${type}`).join(', ') || '';
+    const TYPES = types?.map(type => `${type}`).join(', ').toLocaleUpperCase() || '*ALL';
     const OBJLIBS =
       (library !== '*LIBL' && library !== '*ALL') 
-      ? `'` + libraries.filter(item => !'*LIBL'.includes(item)).join(`', '`) + `'` 
+      ? `'` + libraries.filter(item => !'*LIBL'.includes(item)).join(`', '`).toLocaleUpperCase() + `'` 
       : '';
 
     const objQuery = `/*GETOBJECTTEXT*/ select OBJLONGSCHEMA SCHEMA_NAME, OBJNAME OBJECT_NAME, OBJTEXT OBJECT_TEXT
@@ -322,12 +311,12 @@ export namespace IBMiContentMsgq {
     return objAttributes;
   }
   export async function getObjectLocks(objects: string[], libraries: string[], types: string[]): Promise<ObjLockState[]> {
-    const OBJS = objects.map(object => `'${object}'`).join(', ');
+    const OBJS = objects.map(object => `'${object}'`).join(', ').toLocaleUpperCase();
     const OBJLIBS = (libraries.length === 0 || libraries.length === 1 && libraries[0] === '*LIBL')
       ? 'select LL.SCHEMA_NAME from QSYS2.LIBRARY_LIST_INFO LL where LL.SCHEMA_NAME = B.OBJLONGSCHEMA'
-      : libraries.map(library => `'${library}'`).join(', ');
-    const TYPESA = types?.map(type => `'${type}'`).join(', ') || '';// comma list for IN() clause
-    const TYPESB = types?.map(type => `${type}`).join(', ') || '';// comma list without quote of each item
+      : libraries.map(library => `'${library}'`).join(', ').toLocaleUpperCase();
+    const TYPESA = types?.map(type => `'${type}'`).join(', ').toLocaleUpperCase() || '';// comma list for IN() clause
+    const TYPESB = types?.map(type => `${type}`).join(', ').toLocaleUpperCase() || '';// comma list without quote of each item
 
     const objQuery = `/*GETOBJECTLOCKS*/ with T1 as (select B.OBJLONGSCHEMA SCHEMA_NAME, B.OBJNAME OBJECT_NAME, B.OBJTYPE OBJECT_TYPE
       , LOCK_STATE, LOCK_STATUS, LOCK_SCOPE, JOB_NAME

@@ -29,12 +29,19 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
   // Method to set data when your extension becomes connected
   public populateData(newData: IBMiMessageQueueFilter[]): void {
     this._msgqFilters = newData;
-    // this._onDidChangeTreeData.fire(); // Notify VS Code to refresh
+    this._onDidChangeTreeData.fire(); // Notify VS Code to refresh
   }
 
   // Method to clear the tree view
-  public clearTree(): void {
-    this._msgqFilters = []; // Clear the data
+  public clearTree(oldData?: IBMiMessageQueueFilter): void {
+    if (oldData) {const tempArray = this._msgqFilters.filter(obj => obj.messageQueueLibrary !== oldData.messageQueueLibrary 
+                                                                  && obj.messageQueue !== oldData.messageQueue
+                                                                  && obj.type !== oldData.type
+                                                                );
+      this._msgqFilters = tempArray; 
+    } else {
+      this._msgqFilters = []; // Clear the data
+    }
     this._onDidChangeTreeData.fire(); // Notify VS Code to refresh
   }
 
@@ -61,16 +68,16 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
     const connection = Code4i.getConnection();
     if (!element) {
       // Get level 1 node items from config
-      // let cfgMessageQueues: IBMiMessageQueue[] = config.messageQueues;
       let cfgMessageQueues: IBMiMessageQueueFilter[] = [];
       if (this._msgqFilters.length === 0) { cfgMessageQueues = Code4i.getConfig().messageQueues; } else { cfgMessageQueues = this._msgqFilters; }
-      const filtereditems: IBMiMessageQueueFilter[] = cfgMessageQueues.filter((item: any) => item.messageQueueLibrary !== `` || item.messageQueue !== ``);
+      if (this._msgqFilters.length === 0) { return []; }
+      const filtereditems: IBMiMessageQueueFilter[] = this._msgqFilters!.filter((item: any) => item.messageQueueLibrary !== `` || item.messageQueue !== ``);
       const distinctNames: string[] = [...new Set(filtereditems.map(item => item.messageQueue))];
       const distinctLibraries: string[] = [...new Set(filtereditems.map(item => item.messageQueueLibrary))];
       const distinctTypes: string[] = [...new Set(filtereditems.map(item => item.type || '*MSGQ'))];
       const objAttributes = await IBMiContentMsgq.getObjectText(distinctNames, distinctLibraries, distinctTypes);
       const objLockStates = await IBMiContentMsgq.getObjectLocks(distinctNames, distinctLibraries, distinctTypes);
-      const mesageQueues = cfgMessageQueues.map((aMsgq) =>
+      const mesageQueues = this._msgqFilters.map((aMsgq) =>
       ({
         messageQueueLibrary: lookupLibraryValue(aMsgq, objAttributes),
         messageQueue: aMsgq.messageQueue,

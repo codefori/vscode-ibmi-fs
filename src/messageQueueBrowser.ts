@@ -63,13 +63,13 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
 
       try {
         if (newEntry) {
-          const x: string[] = newEntry.trim().toUpperCase().toUpperCase().split('/');
+          const x: string[] = newEntry.trim().toLocaleUpperCase().split('/');
           if (x.length === 1) {
             const objAttributes = await IBMiContentMsgq.getObjectText([newEntry], [`*LIBL`], ['*MSGQ']);
-            newFilter = { messageQueueLibrary: objAttributes[0].library, messageQueue: newEntry, type: 'MSGQ' };
+            newFilter = { messageQueueLibrary: objAttributes[0].library, messageQueue: newEntry, type: '*MSGQ' };
           }
           else {
-            newFilter = { messageQueue: x[1], messageQueueLibrary: x[0], type: 'MSGQ' };
+            newFilter = { messageQueue: x[1], messageQueueLibrary: x[0], type: '*MSGQ' };
           }
           if (saveFilterValues(newFilter)) { vscode.commands.executeCommand(`vscode-ibmi-fs.sortMessageQueueFilter`, node); }
         }
@@ -91,7 +91,7 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
 
       try {
         if (newEntry) {
-          const x: string[] = newEntry.trim().toUpperCase().toUpperCase().split('/');
+          const x: string[] = newEntry.trim().toLocaleUpperCase().split('/');
           if (x.length === 1) { // no library given
             const objAttributes = await IBMiContentMsgq.getObjectText([newEntry], [`*LIBL`], ['*USRPRF']);
             newFilter = { messageQueueLibrary: objAttributes[0].library, messageQueue: newEntry, type: '*USRPRF' };
@@ -133,13 +133,12 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
       const config = Code4i.getConfig();
 
       let removeMsgq: string | undefined;
-      let messageQueues: IBMiMessageQueue[] = config[`messageQueues`] || [];;
+      let messageQueues: IBMiMessageQueueFilter[] = config[`messageQueues`] || [];;
       let msgBoxList: string[] = [``];
 
       if (node) {
         removeMsgq = node.messageQueueLibrary + '/' + node.messageQueue;
       } else {
-        // TODO: messageQueues need to be a simple array
         msgBoxList = messageQueues.map(o => (o.messageQueueLibrary + '/' + o.messageQueue));
         removeMsgq = await vscode.window.showQuickPick(msgBoxList, {
           placeHolder: l10n.t('Type filter name to remove'),
@@ -157,9 +156,10 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
 
                 const index = messageQueues.findIndex(f => f.messageQueueLibrary + '/' + f.messageQueue === removeMsgq);
                 if (index > -1) {
-                  messageQueues.splice(index, 1);
+                  const deletedItem = messageQueues.splice(index, 1);
                   config.messageQueues = messageQueues;
                   Code4i.getInstance()!.setConfig(config);
+                  msgqBrowserObj.populateData(Code4i.getConfig().messageQueues);
                   vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQBrowser`);
                 }
               }

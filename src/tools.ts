@@ -5,7 +5,7 @@ import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import { ExtensionContext } from "vscode";
 import { loadBase, getBase } from './base';
-import { IBMiMessageQueue, IBMiMessageQueueMessage } from './typings';
+import { IBMiMessageQueueFilter, IBMiMessageQueueMessage } from './typings';
 
 let codeForIBMi: CodeForIBMi;
 export namespace Code4i {
@@ -123,12 +123,17 @@ export function breakUpPathFileName(pPath: string): Map<string, string> {
 
   return namePartMap;
 }
-export function saveFilterValues(filterSingle: IBMiMessageQueue): boolean {
+export function saveFilterValues(singleFilter: IBMiMessageQueueFilter): boolean {
   const config = Code4i.getConfig();
-  let messageQueues: IBMiMessageQueue[] = config[`messageQueues`] || [];
+  let messageQueues: IBMiMessageQueueFilter[] = config[`messageQueues`] || [];
   const messageQueueFilter = {};
-  if (!messageQueues.includes(filterSingle)) {
-    messageQueues.push(filterSingle);
+  const foundFilter = messageQueues.find(queue => queue.messageQueueLibrary === singleFilter.messageQueueLibrary 
+                                                && queue.messageQueue === singleFilter.messageQueue
+                                                && queue.type === singleFilter.type
+                                              );
+
+if (!foundFilter) {
+    messageQueues.push(singleFilter);
     config.messageQueues = messageQueues;
     Code4i.getInstance()!.setConfig(config);
     return true;

@@ -2,7 +2,7 @@
   "name": "vscode-ibmi-fs",
   "displayName": "IBM i FileSystem",
   "description": "File system provider for IBM i QSYS",
-  "version": "0.0.3-dev",
+  "version": "0.0.5-dev",
   "icon": "media/light-message-queue.png",
   "preview": true,
   "license": "MIT",
