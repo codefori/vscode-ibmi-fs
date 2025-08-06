@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { FocusOptions } from '@halcyontech/vscode-ibmi-types/';
 import vscode, { l10n, } from 'vscode';
-import { MsgqFS, getUriFromPathMsg, parseFSOptions } from "./filesystem/qsys/MsgQFs";
+import { MsgqFS, getUriFromPathMsg, parseFSOptions } from "./filesystem/qsys/MsgqFs";
 import { IBMiContentMsgq, sortObjectArrayByProperty } from "./api/IBMiContentMsgq";
 import { Code4i, saveFilterValues } from "./tools";
 import { IBMiMessageQueue, IBMiMessageQueueFilter, IBMiMessageQueueMessage, MsgOpenOptions, SearchParms } from './typings';
@@ -63,13 +63,13 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
 
       try {
         if (newEntry) {
-          const x: string[] = newEntry.trim().toLocaleUpperCase().split('/');
-          if (x.length === 1) {
-            const objAttributes = await IBMiContentMsgq.getObjectText([newEntry], [`*LIBL`], ['*MSGQ']);
-            newFilter = { messageQueueLibrary: objAttributes[0].library, messageQueue: newEntry, type: '*MSGQ' };
+          const newEntryParts = newEntry.trim().toLocaleUpperCase().split('/');
+          if (newEntryParts.length === 1) {
+            const objAttributes = await IBMiContentMsgq.getObjectText(newEntryParts, [`*LIBL`], ['*MSGQ']);
+            newFilter = { messageQueueLibrary: objAttributes[0].library, messageQueue: newEntryParts[0], type: '*MSGQ' };
           }
           else {
-            newFilter = { messageQueue: x[1], messageQueueLibrary: x[0], type: '*MSGQ' };
+            newFilter = { messageQueue: newEntryParts[1], messageQueueLibrary: newEntryParts[0], type: '*MSGQ' };
           }
           if (saveFilterValues(newFilter)) { vscode.commands.executeCommand(`vscode-ibmi-fs.sortMessageQueueFilter`, node); }
         }
@@ -664,5 +664,6 @@ function run_on_connection() {
   msgqBrowserObj.populateData(Code4i.getConfig().messageQueues);
 }
 async function run_on_disconnection() {
+  msgqBrowserObj.clearTree();
   vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQBrowser`);
 }

@@ -4,7 +4,7 @@ import vscode, { l10n, TreeDataProvider } from 'vscode';
 import { Code4i } from '../tools';
 import { IBMiContentMsgq, sortObjectArrayByProperty } from "../api/IBMiContentMsgq";
 import { IBMiMessageQueue, IBMiMessageQueueFilter, IBMiMessageQueueMessage, ObjAttributes, ObjLockState } from '../typings';
-import { getMessageDetailFileUri } from '../filesystem/qsys/MsgQFs';
+import { getMessageDetailFileUri } from '../filesystem/qsys/MsgqFs';
 
 //https://code.visualstudio.com/api/references/icons-in-labels
 const objectIcons: Record<string, string> = {
@@ -34,11 +34,12 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
 
   // Method to clear the tree view
   public clearTree(oldData?: IBMiMessageQueueFilter): void {
-    if (oldData) {const tempArray = this._msgqFilters.filter(obj => obj.messageQueueLibrary !== oldData.messageQueueLibrary 
-                                                                  && obj.messageQueue !== oldData.messageQueue
-                                                                  && obj.type !== oldData.type
-                                                                );
-      this._msgqFilters = tempArray; 
+    if (oldData) {
+      const tempArray = this._msgqFilters.filter(obj => obj.messageQueueLibrary !== oldData.messageQueueLibrary
+        && obj.messageQueue !== oldData.messageQueue
+        && obj.type !== oldData.type
+      );
+      this._msgqFilters = tempArray;
     } else {
       this._msgqFilters = []; // Clear the data
     }
@@ -65,37 +66,34 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
    */
   async getChildren(element: any): Promise<vscode.TreeItem[]> {
     const items = [];
-    const connection = Code4i.getConnection();
     if (!element) {
-      // Get level 1 node items from config
-      let cfgMessageQueues: IBMiMessageQueueFilter[] = [];
-      if (this._msgqFilters.length === 0) { cfgMessageQueues = Code4i.getConfig().messageQueues; } else { cfgMessageQueues = this._msgqFilters; }
-      if (this._msgqFilters.length === 0) { return []; }
-      const filtereditems: IBMiMessageQueueFilter[] = this._msgqFilters!.filter((item: any) => item.messageQueueLibrary !== `` || item.messageQueue !== ``);
-      const distinctNames: string[] = [...new Set(filtereditems.map(item => item.messageQueue))];
-      const distinctLibraries: string[] = [...new Set(filtereditems.map(item => item.messageQueueLibrary))];
-      const distinctTypes: string[] = [...new Set(filtereditems.map(item => item.type || '*MSGQ'))];
-      const objAttributes = await IBMiContentMsgq.getObjectText(distinctNames, distinctLibraries, distinctTypes);
-      const objLockStates = await IBMiContentMsgq.getObjectLocks(distinctNames, distinctLibraries, distinctTypes);
-      const mesageQueues = this._msgqFilters.map((aMsgq) =>
-      ({
-        messageQueueLibrary: lookupLibraryValue(aMsgq, objAttributes),
-        messageQueue: aMsgq.messageQueue,
-        protected: lookupItemLockState(aMsgq, objLockStates),
-        text: lookupItemText(aMsgq, objAttributes),
-        type: lookupFilterType(aMsgq)
-      } as IBMiMessageQueue));
-      const mappedMessageQueues: MessageQueue[] = mesageQueues.map((item) => new MessageQueue(element, item));
-      items.push(...mappedMessageQueues);
+      if (this._msgqFilters && this._msgqFilters.length > 0) {
+        const filtereditems: IBMiMessageQueueFilter[] = this._msgqFilters.filter((item: any) => item.messageQueueLibrary !== `` || item.messageQueue !== ``);
+        const distinctNames: string[] = [...new Set(filtereditems.map(item => item.messageQueue))];
+        const distinctLibraries: string[] = [...new Set(filtereditems.map(item => item.messageQueueLibrary))];
+        const distinctTypes: string[] = [...new Set(filtereditems.map(item => item.type || '*MSGQ'))];
+        const objAttributes = await IBMiContentMsgq.getObjectText(distinctNames, distinctLibraries, distinctTypes);
+        const objLockStates = await IBMiContentMsgq.getObjectLocks(distinctNames, distinctLibraries, distinctTypes);
+        const mesageQueues = this._msgqFilters.map((aMsgq) =>
+        ({
+          messageQueueLibrary: lookupLibraryValue(aMsgq, objAttributes),
+          messageQueue: aMsgq.messageQueue,
+          protected: lookupItemLockState(aMsgq, objLockStates),
+          text: lookupItemText(aMsgq, objAttributes),
+          type: lookupFilterType(aMsgq)
+        } as IBMiMessageQueue));
+        const mappedMessageQueues: MessageQueue[] = mesageQueues.map((item) => new MessageQueue(element, item));
+        items.push(...mappedMessageQueues);
+      }
     } else {
       // the message queue filter items.
       switch (element.contextValue.split(`_`)[0]) {
       case `msgq`:
         //Fetch messages from message queue
         try {
-          const treeFilter = {...element};
+          const treeFilter = { ...element };
           let messages = await IBMiContentMsgq.getMessageQueueMessageList(`MSGQBrowser.getChildren`
-            , treeFilter , element.filter , undefined, element.inquiryMode);
+            , treeFilter, element.filter, undefined, element.inquiryMode);
           messages = sortObjectArrayByProperty(messages
             , element.sort.order === 'date' ? `messageTimestamp` : element.sort.order === 'name' ? 'messageText' : ''
             , element.sort.ascending ? 'asc' : 'desc');
@@ -148,9 +146,9 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
     if (item instanceof MessageQueue) {
       let msgqNum = ``;
       if (!item.messageCount || item.messageCount === 0) {
-        const treeFilter = {...element};
-        msgqNum = await IBMiContentMsgq.getMessageQueueCount(`MSGQBrowser.resolveTreeItem`, 
-          treeFilter , element.filter , undefined, element.inquiryMode);
+        const treeFilter = { ...element };
+        msgqNum = await IBMiContentMsgq.getMessageQueueCount(`MSGQBrowser.resolveTreeItem`,
+          treeFilter, element.filter, undefined, element.inquiryMode);
         item.messageCount = Number(msgqNum);
         item.setRecordCount(item.messageCount);
       }
@@ -163,7 +161,7 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
         .concat(`<thead>${item.label}</thead><hr>`)
         // .concat(`<thead>${item.messageQueueLibrary}/${item.messageQueue}</thead><hr>`)
         .concat(`<tr><td>${l10n.t(`Message List Type:`)} </td><td>&nbsp;${l10n.t(String(item.type))}</td></tr>`)
-        .concat(`<tr><td>${l10n.t(`List Text:`)} </td><td>&nbsp;${l10n.t(String(item.text===null?'':item.text))}</td></tr>`)
+        .concat(`<tr><td>${l10n.t(`List Text:`)} </td><td>&nbsp;${l10n.t(String(item.text === null ? '' : item.text))}</td></tr>`)
         .concat(`<tr><td>${l10n.t(`Message Count:`)} </td><td>&nbsp;${l10n.t(String(item.messageCount ? item.messageCount : '0'))}</td></tr>`)
         .concat(`<tr><td>${l10n.t(`Sorting:`)} </td><td>&nbsp;${l10n.t(String(item.sortDescription))}</td></tr>`)
         .concat(`<tr><td>${l10n.t(`Filtering:`)} </td><td>&nbsp;${l10n.t(String(item.filterDescription))}</td></tr>`)

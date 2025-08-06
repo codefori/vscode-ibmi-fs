@@ -13,8 +13,8 @@ export namespace IBMiContentMsgq {
 
     treeFilter.messageQueue = treeFilter.messageQueue.toLocaleUpperCase();
     treeFilter.messageQueueLibrary = treeFilter.messageQueueLibrary !== '*LIBL' ? treeFilter.messageQueueLibrary.toLocaleUpperCase() : ``;
-    messageID = messageID!.toLocaleUpperCase() || '';
-    const searchWordsU = searchWords!.toLocaleUpperCase() || '';
+    messageID = messageID?.toLocaleUpperCase() || '';
+    const searchWordsU = searchWords?.toLocaleUpperCase() || '';
 
     const objQuery = `/*${caller}*/ select MS1.MESSAGE_QUEUE_LIBRARY, MS1.MESSAGE_QUEUE_NAME, MS1.MESSAGE_ID, MS1.MESSAGE_TYPE, MS1.MESSAGE_TEXT
     , MS1.MESSAGE_SUBTYPE, digits(MS1.SEVERITY) SEVERITY
@@ -75,9 +75,9 @@ export namespace IBMiContentMsgq {
   */
   export async function getMessageQueueMessageFullDetails(treeFilter: IBMiMessageQueueMessage, type: string): Promise<IBMiMessageQueueMessage> {
 
-    treeFilter.messageQueue = treeFilter.messageQueue!.toLocaleUpperCase()||'';
-    treeFilter.messageQueueLibrary = treeFilter.messageQueueLibrary !== '*LIBL' ? treeFilter.messageQueueLibrary!.toLocaleUpperCase() : ``;
-    treeFilter.messageKey = treeFilter.messageKey!.toLocaleUpperCase() ||'';
+    treeFilter.messageQueue = treeFilter.messageQueue?.toLocaleUpperCase()||'';
+    treeFilter.messageQueueLibrary = treeFilter.messageQueueLibrary !== '*LIBL' ? treeFilter.messageQueueLibrary?.toLocaleUpperCase() : ``;
+    treeFilter.messageKey = treeFilter.messageKey?.toLocaleUpperCase() ||'';
     const objQuery = `select MS1.MESSAGE_QUEUE_LIBRARY ,MS1.MESSAGE_QUEUE_NAME
       ,MS1.MESSAGE_ID ,MS1.MESSAGE_TYPE ,MS1.MESSAGE_SUBTYPE ,MS1.MESSAGE_TEXT ,MS1.SEVERITY ,MS1.MESSAGE_TIMESTAMP
       ,hex(MS1.MESSAGE_KEY) MESSAGE_KEY ,hex(MS1.ASSOCIATED_MESSAGE_KEY) ASSOCIATED_MESSAGE_KEY
@@ -214,7 +214,7 @@ export namespace IBMiContentMsgq {
 
     treeFilter.messageQueue = treeFilter.messageQueue.toLocaleUpperCase();
     treeFilter.messageQueueLibrary = treeFilter.messageQueueLibrary !== '*LIBL' ? treeFilter.messageQueueLibrary.toLocaleUpperCase() : ``;
-    const searchWordsU = searchWords!.toLocaleUpperCase() || '';
+    const searchWordsU = searchWords?.toLocaleUpperCase() || '';
     const objQuery = `/*${caller}*/ select count(*) MSGQ_COUNT
       from QSYS2.MESSAGE_QUEUE_INFO MS1
       ${!treeFilter.messageQueueLibrary || treeFilter.type === '*USRPRF'? `inner join QSYS2.LIBRARY_LIST_INFO on SCHEMA_NAME = MS1.MESSAGE_QUEUE_LIBRARY` : ''}
