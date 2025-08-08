@@ -4,7 +4,7 @@ import fs from "fs";
 import tmp from "tmp";
 import { Code4i } from "../tools";
 import { isProtectedFilter } from '../filesystem/qsys/MsgQFs';
-import { IBMiContentMsgq,sortObjectArrayByProperty } from "./IBMiContentMsgq";
+import { IBMiContentMsgq,sortObjectArrayByProperty } from "./IBMiContentfs";
 import { IBMiMessageQueue } from '../typings';
 
 const tmpFile = util.promisify(tmp.file);

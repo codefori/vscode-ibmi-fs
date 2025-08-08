@@ -5,7 +5,7 @@ import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import { ExtensionContext } from "vscode";
 import { loadBase, getBase } from './base';
-import { IBMiMessageQueueFilter, IBMiMessageQueueMessage } from './typings';
+import { IBMiMessageQueueFilter, IBMiMessageQueueMessage, IBMiUserJobsFilter } from './typings';
 
 let codeForIBMi: CodeForIBMi;
 export namespace Code4i {
@@ -61,11 +61,7 @@ export function getQSYSObjectPath(library: string, name: string, type: string, m
 }
 export function buildPathFileNamefromPattern(filterType: string, msg: IBMiMessageQueueMessage): string {
   let newName = ``;
-  // if (filterType === '*USRPRF') {
-  //   newName = `*USRPRF/${msg.fromUser}/`;
-  // } else {
-    newName += `${msg.messageQueueLibrary}/${msg.messageQueue}/`;
-  // }
+  newName += `${msg.messageQueueLibrary}/${msg.messageQueue}/`;
   let counter = 0;
   // get from config
   const splfBrowserConfig = vscode.workspace.getConfiguration('vscode-ibmi-fs');
@@ -107,15 +103,9 @@ export function breakUpPathFileName(pPath: string): Map<string, string> {
   const nameParts = pathParts[2].split(/[~.]/);
 
   const namePartMap: Map<string, string> = new Map();
-  // if (pathParts[0] === '*USRPRF') {
-  //   namePartMap.set('type', '*USRPRF');
-  //   namePartMap.set('messageQueueLibrary', 'QSYS');
-  //   namePartMap.set('messageQueue', pathParts[1]);
-  // } else {
-    namePartMap.set('type', '*MSGQ');
-    namePartMap.set('messageQueueLibrary', pathParts[0]);
-    namePartMap.set('messageQueue', pathParts[1]);
-  // }
+  namePartMap.set('type', '*MSGQ');
+  namePartMap.set('messageQueueLibrary', pathParts[0]);
+  namePartMap.set('messageQueue', pathParts[1]);
 
   for (let i = 0; i < patterns.length; i++) {
     namePartMap.set(patterns[i], nameParts[i]);
@@ -123,18 +113,30 @@ export function breakUpPathFileName(pPath: string): Map<string, string> {
 
   return namePartMap;
 }
-export function saveFilterValues(singleFilter: IBMiMessageQueueFilter): boolean {
+export function saveFilterValuesMessages(singleFilter: IBMiMessageQueueFilter): boolean {
   const config = Code4i.getConfig();
   let messageQueues: IBMiMessageQueueFilter[] = config[`messageQueues`] || [];
-  const messageQueueFilter = {};
-  const foundFilter = messageQueues.find(queue => queue.messageQueueLibrary === singleFilter.messageQueueLibrary 
-                                                && queue.messageQueue === singleFilter.messageQueue
-                                                && queue.type === singleFilter.type
-                                              );
+  const foundFilter = messageQueues.find(queue => queue.messageQueueLibrary === singleFilter.messageQueueLibrary
+    && queue.messageQueue === singleFilter.messageQueue
+    && queue.type === singleFilter.type
+  );
 
-if (!foundFilter) {
+  if (!foundFilter) {
     messageQueues.push(singleFilter);
     config.messageQueues = messageQueues;
+    Code4i.getInstance()!.setConfig(config);
+    return true;
+  }
+  return false;
+}
+export function saveFilterValuesUserJobs(singleFilter: IBMiUserJobsFilter): boolean {
+  const config = Code4i.getConfig();
+  let userJobs: IBMiUserJobsFilter[] = config[`userJobs`] || [];
+  const foundFilter = userJobs.find(userJob => userJob.user === singleFilter.user);
+
+  if (!foundFilter) {
+    userJobs.push(singleFilter);
+    config.userJobs = userJobs;
     Code4i.getInstance()!.setConfig(config);
     return true;
   }

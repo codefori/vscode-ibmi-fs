@@ -280,6 +280,49 @@ export namespace IBMiContentMsgq {
     return returnMessageReplies;
   }
 
+  export async function answerMessage(item: IBMiMessageQueueMessage, userReply?: string): Promise<boolean> {
+    userReply = userReply || '*DFT';
+    let actionCompleteGood: boolean = true;
+    const command = `SNDRPY MSGKEY(x'${item.messageKey}') MSGQ(${item.messageQueueLibrary}/${item.messageQueue}) RPY('${userReply}') RMV(*NO)`;
+    const commandResult = await Code4i.runCommand({
+      command: command
+      , environment: `ile`
+    });
+    if (commandResult) {
+      // vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
+      if (commandResult.code === 0 || commandResult.code === null) {
+      } else {
+        actionCompleteGood = false;
+      }
+    }
+
+    return actionCompleteGood;
+  }
+  export async function sendMessage(item: IBMiMessageQueue, userReply?: string, inquiry?: Boolean): Promise<boolean> {
+    userReply = userReply || '*DFT';
+    let actionCompleteGood: boolean = true;
+    const command = `SNDMSG 
+    MSG('${userReply}')
+    ${item.type === '*MSGQ' ?`TOMSGQ(${item.messageQueueLibrary}/${item.messageQueue})`:''}
+    ${item.type === '*USRPRF' ?`TOUSR(${item.messageQueue})`:''}
+    ${inquiry === true ?`MSGTYPE(*INQ) RPYMSGQ(${Code4i.getConnection().currentUser}) `:''}
+    `.replace(/\n\s*/g, ' ');
+    const commandResult = await Code4i.runCommand({
+      command: command
+      , environment: `ile`
+    });
+    if (commandResult) {
+      // vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
+      if (commandResult.code === 0 || commandResult.code === null) {
+      } else {
+        actionCompleteGood = false;
+      }
+    }
+
+    return actionCompleteGood;
+  }
+}
+export namespace IBMiContentFS {
   export async function getObjectText(objects: string[], libraries: string[], types: string[]): Promise<ObjAttributes[]> {
     const OBJS = objects.map(object => `'${object}'`).join(', ').toLocaleUpperCase();
     const library = (libraries.length === 1 && libraries[0] === '*LIBL')
@@ -345,47 +388,6 @@ export namespace IBMiContentMsgq {
       );
     }
     return objLockState;
-  }
-  export async function answerMessage(item: IBMiMessageQueueMessage, userReply?: string): Promise<boolean> {
-    userReply = userReply || '*DFT';
-    let actionCompleteGood: boolean = true;
-    const command = `SNDRPY MSGKEY(x'${item.messageKey}') MSGQ(${item.messageQueueLibrary}/${item.messageQueue}) RPY('${userReply}') RMV(*NO)`;
-    const commandResult = await Code4i.runCommand({
-      command: command
-      , environment: `ile`
-    });
-    if (commandResult) {
-      // vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
-      if (commandResult.code === 0 || commandResult.code === null) {
-      } else {
-        actionCompleteGood = false;
-      }
-    }
-
-    return actionCompleteGood;
-  }
-  export async function sendMessage(item: IBMiMessageQueue, userReply?: string, inquiry?: Boolean): Promise<boolean> {
-    userReply = userReply || '*DFT';
-    let actionCompleteGood: boolean = true;
-    const command = `SNDMSG 
-    MSG('${userReply}')
-    ${item.type === '*MSGQ' ?`TOMSGQ(${item.messageQueueLibrary}/${item.messageQueue})`:''}
-    ${item.type === '*USRPRF' ?`TOUSR(${item.messageQueue})`:''}
-    ${inquiry === true ?`MSGTYPE(*INQ) RPYMSGQ(${Code4i.getConnection().currentUser}) `:''}
-    `.replace(/\n\s*/g, ' ');
-    const commandResult = await Code4i.runCommand({
-      command: command
-      , environment: `ile`
-    });
-    if (commandResult) {
-      // vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
-      if (commandResult.code === 0 || commandResult.code === null) {
-      } else {
-        actionCompleteGood = false;
-      }
-    }
-
-    return actionCompleteGood;
   }
 }
 function formatMessageSecondText(text: string): string[] {

@@ -22,7 +22,8 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onFileSystem:MsgQFs"
+    "onFileSystem:MsgQFs",
+    "onFileSystem:UsrJobFs"
   ],
   "extensionDependencies": [
     "HalcyonTechLtd.code-for-ibmi"
@@ -45,6 +46,13 @@
           "id": "msgqBrowser",
           "name": "Message Queue Browser",
           "when": "code-for-ibmi:connected && vscode-ibmi-fs:msgqBrowserDisabled !== true ",
+          "visibility": "collapsed",
+          "icon": ""
+        },
+        {
+          "id": "userJobBrowser",
+          "name": "User Jobs Browser",
+          "when": "code-for-ibmi:connected && vscode-ibmi-fs:userJobBrowserDisabled !== true ",
           "visibility": "collapsed",
           "icon": ""
         }
@@ -281,6 +289,83 @@
         "enablement": "code-for-ibmi:connected",
         "title": "Send Inquiry Message",
         "category": "IBM i Messages"
+      },
+      {
+        "command": "vscode-ibmi-fs.sortUserJobsByID",
+        "title": "Sort Jobs by Name ",
+        "category": "IBM i User Jobs",
+        "enablement": "code-for-ibmi:connected",
+        "icon": "$(sort-precedence)"
+      },
+      {
+        "command": "vscode-ibmi-fs.sortUserJobsByDate",
+        "title": "Sort Jobs by Entry Date",
+        "category": "IBM i User Jobs",
+        "enablement": "code-for-ibmi:connected",
+        "icon": "$(sort-precedence)"
+      },
+      {
+        "command": "vscode-ibmi-fs.refreshUserJobBrowser",
+        "title": "Refresh User Jobs List",
+        "category": "IBM i User Jobs",
+        "enablement": "code-for-ibmi:connected",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "vscode-ibmi-fs.refreshUserJobs",
+        "title": "Refresh User Jobs",
+        "category": "IBM i User Jobs",
+        "enablement": "code-for-ibmi:connected",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "vscode-ibmi-fs.revealUserJobBrowser",
+        "title": "Reveal User Job Browser",
+        "category": "IBM i User Jobs",
+        "enablement": "code-for-ibmi:connected",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "vscode-ibmi-fs.addUserJobFilter",
+        "title": "Add User Job List Filter",
+        "category": "IBM i User Jobs",
+        "enablement": "code-for-ibmi:connected",
+        "icon": "$(person-add)"
+      },
+      {
+        "command": "vscode-ibmi-fs.sortUserJobFilter",
+        "title": "Sort User Job Filter",
+        "category": "IBM i User Jobs",
+        "enablement": "code-for-ibmi:connected",
+        "icon": "$(list-ordered)"
+      },
+      {
+        "command": "vscode-ibmi-fs.removeUserJobFilter",
+        "title": "Remove User Job Filter",
+        "category": "IBM i User Jobs",
+        "enablement": "code-for-ibmi:connected",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "vscode-ibmi-fs.filterUserJobsMSGW",
+        "title": "Filter Jobs by MSGW status",
+        "category": "IBM i User Jobs",
+        "enablement": "code-for-ibmi:connected",
+        "icon": "$(question)"
+      },
+      {
+        "command": "vscode-ibmi-fs.filterUserJobs",
+        "title": "Filter Jobs by Value",
+        "category": "IBM i User Jobs",
+        "enablement": "code-for-ibmi:connected",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "vscode-ibmi-fs.viewUserJobDetails",
+        "title": "View User Job Details",
+        "category": "IBM i User Jobs",
+        "enablement": "code-for-ibmi:connected",
+        "icon": "$(report)"
       }
     ],
     "menus": {
@@ -324,6 +409,21 @@
           "command": "vscode-ibmi-fs.searchMessageQueueBrowser",
           "group": "navigation@6",
           "when": "view == msgqBrowser"
+        },
+        {
+          "command": "vscode-ibmi-fs.refreshUserJobBrowser",
+          "when": "view == userJobBrowser",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.addUserJobFilter",
+          "when": "view == userJobBrowser",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.sortUserJobFilter",
+          "when": "view == userJobBrowser",
+          "group": "navigation@1"
         }
       ],
       "vscode-ibmi-fs.sortMessageQueue": [
@@ -337,6 +437,19 @@
       "vscode-ibmi-fs.viewMessage": [
         {
           "command": "vscode-ibmi-fs.viewMessageDetails"
+        }
+      ],
+      "vscode-ibmi-fs.sortUserJobs": [
+        {
+          "command": "vscode-ibmi-fs.sortUserJobsByID"
+        },
+        {
+          "command": "vscode-ibmi-fs.sortUserJobsByDate"
+        }
+      ],
+      "vscode-ibmi-fs.viewUserJob": [
+        {
+          "command": "vscode-ibmi-fs.viewUserJobDetails"
         }
       ],
       "view/item/context": [
@@ -438,12 +551,7 @@
         {
           "submenu": "vscode-ibmi-fs.sortMessageQueue",
           "when": "view == msgqBrowser",
-          "group": "0_message@1"
-        },
-        {
-          "submenu": "vscode-ibmi-fs.viewMessage",
-          "when": "view == msgqBrowser && viewItem =~ /^message.*$/",
-          "group": "0_open@1"
+          "group": "2_message@1"
         },
         {
           "command": "vscode-ibmi-fs.sendMessage",
@@ -451,9 +559,74 @@
           "group": "0_open@2"
         },
         {
+          "submenu": "vscode-ibmi-fs.viewMessage",
+          "when": "view == msgqBrowser && viewItem =~ /^message.*$/",
+          "group": "0_open@1"
+        },
+        {
           "command": "vscode-ibmi-fs.sendInquiryMessage",
-          "when": "view == msgqBrowser && viewItem =~ /^msgq.*$/",
+          "when": "view == msgqBrowser && viewItem =~ /^message.*$/",
           "group": "0_open@3"
+        },
+        {
+          "command": "vscode-ibmi-fs.refreshUserJobs",
+          "when": "view == userJobBrowser && viewItem =~ /^userJobUser.*$/",
+          "group": "inline@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.filterUserJobs",
+          "when": "view == userJobBrowser && viewItem =~ /^userJobUser.*$/",
+          "group": "inline@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.filterUserJobsMSGW",
+          "when": "view == userJobBrowser && viewItem =~ /^userJobUser.*$/",
+          "group": "inline@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.removeUserJobFilter",
+          "when": "view == userJobBrowser && viewItem =~ /^userJobUser.*$/",
+          "group": "inline@3"
+        },
+        {
+          "submenu": "vscode-ibmi-fs.sortUserJobs",
+          "when": "view == userJobBrowser && viewItem =~ /^userJobUser.*$/",
+          "group": "0_userjobs@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.refreshUserJobs",
+          "when": "view == userJobBrowser && viewItem =~ /^userJobUser.*$/",
+          "group": "2_userjobs@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.filterUserJobsMSGW",
+          "when": "view == userJobBrowser && viewItem =~ /^userJobUser.*$/",
+          "group": "3_userjobs@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.filterUserJobs",
+          "when": "view == userJobBrowser && viewItem =~ /^userJobUser.*$/",
+          "group": "3_userjobs@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.removeUserJobFilter",
+          "when": "view == userJobBrowser && viewItem =~ /^userJobUser.*$/",
+          "group": "6_userjobs@3"
+        },
+        {
+          "submenu": "vscode-ibmi-fs.viewUserJob",
+          "when": "view == userJobBrowser && viewItem =~ /^userJobJob.*$/",
+          "group": "0_jobs@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.filterUserJobs",
+          "when": "view == userJobBrowser && viewItem =~ /^userJobJob.*$/",
+          "group": "2_jobs@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.filterUserJobsMSGW",
+          "when": "view == userJobBrowser && viewItem =~ /^userJobJob.*$/",
+          "group": "2_jobs@1"
         }
       ],
       "commandPalette": [
@@ -518,10 +691,18 @@
     "submenus": [
       {
         "id": "vscode-ibmi-fs.sortMessageQueue",
-        "label": "Sort Message Queue by"
+        "label": "Sort List by"
       },
       {
         "id": "vscode-ibmi-fs.viewMessage",
+        "label": "View"
+      },
+      {
+        "id": "vscode-ibmi-fs.sortUserJobs",
+        "label": "Sort list by"
+      },
+      {
+        "id": "vscode-ibmi-fs.viewUserJob",
         "label": "View"
       }
     ]
@@ -554,6 +735,7 @@
     "glob": "^8.1.0",
     "mocha": "^10.2.0",
     "rimraf": "^5.0.5",
+    "sanitize-filename": "^1.6.3",
     "tmp": "^0.2.1",
     "typescript": "^4.9.5",
     "webpack": "^5.94.0",

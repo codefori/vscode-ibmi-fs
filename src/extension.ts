@@ -8,6 +8,7 @@ import { DataQueueActions } from './types/dataqueue';
 import { SaveFileActions } from './types/saveFile';
 import { initializeMessageQueueBrowser } from './messageQueueBrowser';
 import { initializeMessageQueueSearchView } from './messageQueueSearchResults';
+import { initializeUserJobBrowser } from './userJobsBrowser';
 import { TempFileManager } from './tools/tempFileManager'; // Adjust path as needed
 
 let tempFileManager: TempFileManager;
@@ -22,6 +23,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	initializeMessageQueueBrowser(context);
 	await initializeMessageQueueSearchView(context);
+	initializeUserJobBrowser(context);
 	context.subscriptions.push(
 		vscode.window.registerCustomEditorProvider(`vscode-ibmi-fs.editor`, new ObjectProvider(), {
 			webviewOptions: {

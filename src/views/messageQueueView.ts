@@ -2,9 +2,9 @@
 import { SortOptions } from '@halcyontech/vscode-ibmi-types/api/IBMiContent';
 import vscode, { l10n, TreeDataProvider } from 'vscode';
 import { Code4i } from '../tools';
-import { IBMiContentMsgq, sortObjectArrayByProperty } from "../api/IBMiContentMsgq";
+import { IBMiContentMsgq, IBMiContentFS, sortObjectArrayByProperty } from "../api/IBMiContentfs";
 import { IBMiMessageQueue, IBMiMessageQueueFilter, IBMiMessageQueueMessage, ObjAttributes, ObjLockState } from '../typings';
-import { getMessageDetailFileUri } from '../filesystem/qsys/MsgqFs';
+import { getMessageDetailFileUri } from '../filesystem/qsys/MsgQFs';
 
 //https://code.visualstudio.com/api/references/icons-in-labels
 const objectIcons: Record<string, string> = {
@@ -72,8 +72,8 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
         const distinctNames: string[] = [...new Set(filtereditems.map(item => item.messageQueue))];
         const distinctLibraries: string[] = [...new Set(filtereditems.map(item => item.messageQueueLibrary))];
         const distinctTypes: string[] = [...new Set(filtereditems.map(item => item.type || '*MSGQ'))];
-        const objAttributes = await IBMiContentMsgq.getObjectText(distinctNames, distinctLibraries, distinctTypes);
-        const objLockStates = await IBMiContentMsgq.getObjectLocks(distinctNames, distinctLibraries, distinctTypes);
+        const objAttributes = await IBMiContentFS.getObjectText(distinctNames, distinctLibraries, distinctTypes);
+        const objLockStates = await IBMiContentFS.getObjectLocks(distinctNames, distinctLibraries, distinctTypes);
         const mesageQueues = this._msgqFilters.map((aMsgq) =>
         ({
           messageQueueLibrary: lookupLibraryValue(aMsgq, objAttributes),
@@ -153,7 +153,7 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
         item.setRecordCount(item.messageCount);
       }
       if (!item.text) {
-        const objAttributes = await IBMiContentMsgq.getObjectText([element.messageQueue], [element.messageQueueLibrary], [`*MSGQ`]) || '';
+        const objAttributes = await IBMiContentFS.getObjectText([element.messageQueue], [element.messageQueueLibrary], [`*MSGQ`]) || '';
         item.text = objAttributes[0].text;
         item.setDescription();
       }
@@ -221,8 +221,8 @@ export class MessageQueue extends vscode.TreeItem implements IBMiMessageQueue {
   messageQueueLibrary: string;
   text: string;
   type: string;
-  filter: string | undefined; // reduces tree items to matching tokens
-  filterDescription: string | undefined;
+  filter?: string; // reduces tree items to matching tokens
+  filterDescription?: string;
   inquiryMode: string;
   messageCount: number | undefined;
   readonly sort: SortOptions = { order: "date", ascending: true };
@@ -243,7 +243,7 @@ export class MessageQueue extends vscode.TreeItem implements IBMiMessageQueue {
     this.sortBy(this.sort);
     this.text = theMsgq.text || '';
     this.setDescription();
-    this.setFilterDescription('');
+    this.setFilterDescription(this.filter);
     this.inquiryMode = '';
   }
   sortBy(sort: SortOptions) {
@@ -267,7 +267,7 @@ export class MessageQueue extends vscode.TreeItem implements IBMiMessageQueue {
     else if (type === '*USRPRF') { choosenIcon = objectIcons[`usrprf`]; }
     return choosenIcon;
   }
-  setFilterDescription(value: string | undefined) { this.filterDescription = value; }
+  setFilterDescription(value: string | undefined) { this.filterDescription = `${value?`Filtered by: ${value}`:''}`; }
   setDescription() {
     this.description =
       (this.text ? this.text : '')
