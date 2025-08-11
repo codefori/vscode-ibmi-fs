@@ -123,7 +123,7 @@ export function breakUpPathFileName(pPath: string): Map<string, string> {
 
   return namePartMap;
 }
-export function saveFilterValues(singleFilter: IBMiMessageQueueFilter): boolean {
+export function saveFilterValuesMessages(singleFilter: IBMiMessageQueueFilter): boolean {
   const config = Code4i.getConfig();
   let messageQueues: IBMiMessageQueueFilter[] = config[`messageQueues`] || [];
   const messageQueueFilter = {};

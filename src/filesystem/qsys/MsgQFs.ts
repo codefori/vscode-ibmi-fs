@@ -2,7 +2,7 @@ import { stringify, parse, ParsedUrlQueryInput, ParsedUrlQuery } from "querystri
 import vscode, { FilePermission, l10n } from "vscode";
 import { Code4i, buildPathFileNamefromPattern } from "../../tools";
 import { IBMiMessageQueueMessage, MsgOpenOptions } from "../../typings";
-import { IBMiContentMsgq } from "../../api/IBMiContentMsgq";
+import { IBMiContentMsgq } from "../../api/IBMiContentfs";
 import fs from 'fs';
 import util from 'util';
 import path from 'path';

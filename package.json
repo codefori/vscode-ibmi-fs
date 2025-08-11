@@ -438,12 +438,7 @@
         {
           "submenu": "vscode-ibmi-fs.sortMessageQueue",
           "when": "view == msgqBrowser",
-          "group": "0_message@1"
-        },
-        {
-          "submenu": "vscode-ibmi-fs.viewMessage",
-          "when": "view == msgqBrowser && viewItem =~ /^message.*$/",
-          "group": "0_open@1"
+          "group": "2_message@1"
         },
         {
           "command": "vscode-ibmi-fs.sendMessage",
@@ -451,8 +446,13 @@
           "group": "0_open@2"
         },
         {
+          "submenu": "vscode-ibmi-fs.viewMessage",
+          "when": "view == msgqBrowser && viewItem =~ /^message.*$/",
+          "group": "0_open@1"
+        },
+        {
           "command": "vscode-ibmi-fs.sendInquiryMessage",
-          "when": "view == msgqBrowser && viewItem =~ /^msgq.*$/",
+          "when": "view == msgqBrowser && viewItem =~ /^message.*$/",
           "group": "0_open@3"
         }
       ],
@@ -518,7 +518,7 @@
     "submenus": [
       {
         "id": "vscode-ibmi-fs.sortMessageQueue",
-        "label": "Sort Message Queue by"
+        "label": "Sort List by"
       },
       {
         "id": "vscode-ibmi-fs.viewMessage",
@@ -554,6 +554,7 @@
     "glob": "^8.1.0",
     "mocha": "^10.2.0",
     "rimraf": "^5.0.5",
+    "sanitize-filename": "^1.6.3",
     "tmp": "^0.2.1",
     "typescript": "^4.9.5",
     "webpack": "^5.94.0",

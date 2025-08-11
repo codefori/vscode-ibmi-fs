@@ -1,5 +1,5 @@
 import vscode, { l10n, } from 'vscode';
-import { IBMiContentMsgq } from "./api/IBMiContentMsgq";
+import { IBMiContentMsgq } from "./api/IBMiContentfs";
 import { MessageQueueSearch } from './api/messageQueueSearch';
 import { Code4i } from "./tools";
 import { MsgqSearchView } from './views/messageQueueSearchView';

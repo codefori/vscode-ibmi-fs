@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { FocusOptions } from '@halcyontech/vscode-ibmi-types/';
 import vscode, { l10n, } from 'vscode';
-import { MsgqFS, getUriFromPathMsg, parseFSOptions } from "./filesystem/qsys/MsgqFs";
-import { IBMiContentMsgq, sortObjectArrayByProperty } from "./api/IBMiContentMsgq";
-import { Code4i, saveFilterValues } from "./tools";
+import { MsgqFS, getUriFromPathMsg, parseFSOptions } from './filesystem/qsys/MsgQFs';
+import { IBMiContentMsgq, IBMiContentFS, sortObjectArrayByProperty } from "./api/IBMiContentfs";
+import { Code4i, saveFilterValuesMessages } from './tools';
 import { IBMiMessageQueue, IBMiMessageQueueFilter, IBMiMessageQueueMessage, MsgOpenOptions, SearchParms } from './typings';
 import MSGQBrowser, { MessageQueue, MessageQueueList } from './views/messageQueueView';
 
@@ -65,13 +65,13 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
         if (newEntry) {
           const newEntryParts = newEntry.trim().toLocaleUpperCase().split('/');
           if (newEntryParts.length === 1) {
-            const objAttributes = await IBMiContentMsgq.getObjectText(newEntryParts, [`*LIBL`], ['*MSGQ']);
+            const objAttributes = await IBMiContentFS.getObjectText(newEntryParts, [`*LIBL`], ['*MSGQ']);
             newFilter = { messageQueueLibrary: objAttributes[0].library, messageQueue: newEntryParts[0], type: '*MSGQ' };
           }
           else {
             newFilter = { messageQueue: newEntryParts[1], messageQueueLibrary: newEntryParts[0], type: '*MSGQ' };
           }
-          if (saveFilterValues(newFilter)) { vscode.commands.executeCommand(`vscode-ibmi-fs.sortMessageQueueFilter`, node); }
+          if (saveFilterValuesMessages(newFilter)) { vscode.commands.executeCommand(`vscode-ibmi-fs.sortMessageQueueFilter`, node); }
         }
       } catch (e) {
         console.log(e);
@@ -93,13 +93,13 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
         if (newEntry) {
           const x: string[] = newEntry.trim().toLocaleUpperCase().split('/');
           if (x.length === 1) { // no library given
-            const objAttributes = await IBMiContentMsgq.getObjectText([newEntry], [`*LIBL`], ['*USRPRF']);
+            const objAttributes = await IBMiContentFS.getObjectText([newEntry], [`*LIBL`], ['*USRPRF']);
             newFilter = { messageQueueLibrary: objAttributes[0].library, messageQueue: newEntry, type: '*USRPRF' };
           }
           else {
             newFilter = { messageQueue: x[1], messageQueueLibrary: x[0], type: '*USRPRF' };
           }
-          if (saveFilterValues(newFilter)) { vscode.commands.executeCommand(`vscode-ibmi-fs.sortMessageQueueFilter`, node); }
+          if (saveFilterValuesMessages(newFilter)) { vscode.commands.executeCommand(`vscode-ibmi-fs.sortMessageQueueFilter`, node); }
         }
       } catch (e) {
         console.log(e);
@@ -474,10 +474,10 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
     }),
     vscode.commands.registerCommand(`vscode-ibmi-fs.filterMessageQueueInquiry`, async (node: MessageQueue) => {
       if (node.inquiryMode === 'INQUIRY') {
-        // node.setFilter(searchTerm);
         node.setInquiryMode(``);
         node.clearToolTip();
-        node.clearDescription();
+        node.setFilterDescription(node.filter);
+        node.setDescription();
         vscode.commands.executeCommand(`vscode-ibmi-fs.revealMSGQBrowser`, node, { expand: false, focus: true, select: true });
         vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node);
 
@@ -541,14 +541,14 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
                 node.parent.setFilter(searchTerm);
                 node.parent.setInquiryMode(inquiryMode);
                 node.parent.clearToolTip();
-                node.parent.setFilterDescription(`Filtered by: ${searchTerm ? searchTerm : inquiryMode}`);
+                node.parent.setFilterDescription(searchTerm ? searchTerm : inquiryMode);
                 node.parent.setDescription();
                 vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node.parent);
               } else {
                 node.setFilter(searchTerm);
                 node.setInquiryMode(inquiryMode);
                 node.clearToolTip();
-                node.setFilterDescription(`Filtered by: ${searchTerm ? searchTerm : inquiryMode}`);
+                node.setFilterDescription(searchTerm ? searchTerm : inquiryMode);
                 node.setDescription();
                 // await msgqBrowserObj.getChildren(node);
                 vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node);
