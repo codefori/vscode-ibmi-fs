@@ -21,9 +21,11 @@ export namespace IBMiContentJobs {
     const searchWordsU = searchWords?.toLocaleUpperCase() || '';
     const activeJobStatusU = activeJobStatus?.toLocaleUpperCase() || '';
 
+    // TODO: if in the future IBM exposes the Message Reply condition of the job to this UDF, replace the condition of V_ACTIVE_STATUS with that information
+    //       in the mean time assume HLD for an active job can mean MSGW.  There is no other condition to know of MSGW status right now. 
     const objQuery = `/*${caller}*/ select JOB_NAME, JOB_NAME_SHORT, JOB_USER, JOB_NUMBER, JOB_STATUS ,JOB_TYPE
-      , JOB_QUEUE_LIBRARY, JOB_QUEUE_NAME, CCSID JOB_CCSID, JOB_ENTERED_SYSTEM_TIME 
-      , V_ACTIVE_JOB_STATUS
+      , JOB_QUEUE_LIBRARY, JOB_QUEUE_NAME, nullif(JOB_QUEUE_STATUS,'RELEASED') JOB_QUEUE_STATUS, CCSID JOB_CCSID, JOB_ENTERED_SYSTEM_TIME 
+      , case when V_ACTIVE_JOB_STATUS = 'HLD' then 'MSGW' else V_ACTIVE_JOB_STATUS end V_ACTIVE_JOB_STATUS
       from table (QSYS2.JOB_INFO(JOB_USER_FILTER => '${user}')) JI
       left join table (QSYS2.GET_JOB_INFO(JI.JOB_NAME,V_IGNORE_ERRORS =>'YES')) GJI on 1=1
       where JOB_TYPE not in ('SBS','SYS','RDR','WTR') 
@@ -49,11 +51,13 @@ export namespace IBMiContentJobs {
         jobNumber: result.JOB_NUMBER,
         jobStatus: result.JOB_STATUS,
         jobType: result.JOB_TYPE,
-        jobQueueLibrary: result.JOB_QUEUE_LIBRARY,
-        jobQueueName: result.JOB_QUEUE_NAME,
+        jobQueueLibrary: result.JOB_QUEUE_LIBRARY==='null'?undefined:result.JOB_QUEUE_LIBRARY,
+        jobQueueName: result.JOB_QUEUE_NAME==='null'?undefined:result.JOB_QUEUE_NAME,
+        jobQueueStatus: result.JOB_QUEUE_STATUS==='null'?undefined:result.JOB_QUEUE_STATUS,
         jobCCSID: result.JOB_CCSID,
-        activeJobStatus: result.V_ACTIVE_JOB_STATUS,
+        activeJobStatus: result.V_ACTIVE_JOB_STATUS==='null'?undefined:result.V_ACTIVE_JOB_STATUS,
         jobEnteredSystemTime: result.JOB_ENTERED_SYSTEM_TIME
+
       } as IBMiUserJob))
       .filter(obj => searchWords_.length === 0 || searchWords_.some(term => Object.values(obj).join(" ").toLocaleLowerCase().includes(term)))
       ;
@@ -70,8 +74,6 @@ export namespace IBMiContentJobs {
 
     treeFilter.jobName = treeFilter.jobName?.toLocaleUpperCase() || '';
     treeFilter.jobNameShort = treeFilter.jobNameShort?.toLocaleUpperCase() || '';
-    // treeFilter.jobUser = treeFilter.jobUser?.toLocaleUpperCase() || '';
-    // treeFilter.jobNumber = treeFilter.jobNumber?.toLocaleUpperCase() || '';
     const objQuery = `select JOB_NAME, JOB_NAME_SHORT, JOB_USER, JOB_NUMBER, JOB_INFORMATION, JOB_STATUS, JOB_TYPE, JOB_TYPE_ENHANCED,
       JOB_SUBSYSTEM, JOB_DATE, JOB_DESCRIPTION_LIBRARY, JOB_DESCRIPTION, JOB_ACCOUNTING_CODE, SUBMITTER_JOB_NAME,
       SUBMITTER_MESSAGE_QUEUE_LIBRARY, SUBMITTER_MESSAGE_QUEUE, SERVER_TYPE, JOB_ENTERED_SYSTEM_TIME, JOB_SCHEDULED_TIME,
@@ -250,7 +252,7 @@ export namespace IBMiContentJobs {
   export async function answerMessage(item: IBMiUserJob, userReply?: string): Promise<boolean> {
       userReply = userReply || '*DFT';
       let actionCompleteGood: boolean = true;
-      const command = `SNDRPY MSGKEY(x'${item.jobMessageKey}') MSGQ(${item.jobMessageQueueLibrary}/${item.jobMessageQueueName}) RPY('${userReply}') RMV(*NO)`;
+      const command = `SNDRPY MSGKEY(${item.jobMessageKey}) MSGQ(${item.jobMessageQueueLibrary}/${item.jobMessageQueueName}) RPY('${userReply}') RMV(*NO)`;
       const commandResult = await Code4i.runCommand({
         command: command
         , environment: `ile`
@@ -261,6 +263,44 @@ export namespace IBMiContentJobs {
         } else {
           actionCompleteGood = false;
         }
+      }
+  
+      return actionCompleteGood;
+    }
+  export async function holdJob(item: IBMiUserJob): Promise<boolean> {
+      let actionCompleteGood: boolean = true;
+      const command = `HLDJOB JOB(${item.jobName}) DUPJOBOPT(*MSG)`;
+      const commandResult = await Code4i.runCommand({
+        command: command
+        , environment: `ile`
+      });
+      if (commandResult) {
+        if (commandResult.code === 0 || commandResult.code === null) {
+          throw new Error(commandResult.stderr);
+        } else {
+          actionCompleteGood = false;
+        }
+      } else {
+         throw new Error(l10n.t(`Error atempting to hold job, ${item.jobName}.`, ));
+      }
+  
+      return actionCompleteGood;
+    }
+  export async function releaseJob(item: IBMiUserJob): Promise<boolean> {
+      let actionCompleteGood: boolean = true;
+      const command = `RLSJOB JOB(${item.jobName}) DUPJOBOPT(*MSG)`;
+      const commandResult = await Code4i.runCommand({
+        command: command
+        , environment: `ile`
+      });
+      if (commandResult) {
+        if (commandResult.code === 0 || commandResult.code === null) {
+          throw new Error(commandResult.stderr);
+        } else {
+          actionCompleteGood = false;
+        }
+      } else {
+         throw new Error(l10n.t(`Error atempting to release job, ${item.jobName}.`, ));
       }
   
       return actionCompleteGood;

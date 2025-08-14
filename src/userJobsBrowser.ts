@@ -15,6 +15,14 @@ const userjobBrowserViewer = vscode.window.createTreeView(
   canSelectMany: true,
 });
 export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
+    const enabled = updateExtensionStatus();
+    // Listen for changes to the setting
+    vscode.workspace.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration('vscode-ibmi-fs.userJobBrowser.enabled')) {
+        updateExtensionStatus();
+      }
+    });
+    if (enabled) {
   context.subscriptions.push(
     userjobBrowserViewer,
     vscode.workspace.registerFileSystemProvider(`usrjob`, new UsrJobFS(context), {
@@ -25,11 +33,11 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
       // NOTE: repeated calls will cause asc to desc change in order
       node.sortBy({ order: "name" });
       node.setDescription();
-      if (node.contextValue === `message`) {
-        vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, (node.parent));
+      if (node.contextValue === `userJobJob`) {
+        vscode.commands.executeCommand(`vscode-ibmi-fs.refreshUserJobs`, (node.parent));
       }
       else {
-        vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, (node));
+        vscode.commands.executeCommand(`vscode-ibmi-fs.refreshUserJobs`, (node));
       }
       userjobBrowserViewer.reveal(node, { expand: true });
     }),
@@ -37,17 +45,17 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
       // NOTE: repeated calls will cause asc to desc change in order
       node.sortBy({ order: "date" });
       node.setDescription();
-      if (node.contextValue === `message`) {
-        vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, (node.parent));
+      if (node.contextValue === `userJobJob`) {
+        vscode.commands.executeCommand(`vscode-ibmi-fs.refreshUserJobs`, (node.parent));
       }
       else {
-        vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, (node));
+        vscode.commands.executeCommand(`vscode-ibmi-fs.refreshUserJobs`, (node));
       }
       userjobBrowserViewer.reveal(node, { expand: true });
     }),
     vscode.commands.registerCommand(`vscode-ibmi-fs.refreshUserJobBrowser`, () => userjobBrowserObj.refresh()),
     vscode.commands.registerCommand(`vscode-ibmi-fs.refreshUserJobs`, (node) => userjobBrowserObj.refresh(node)),
-    vscode.commands.registerCommand(`vscode-ibmi-fs.revealUserJobBrowser`, async (item: vscode.TreeItem, options?: FocusOptions) => {
+    vscode.commands.registerCommand(`vscode-ibmi-fs.revealUserJobsBrowser`, async (item: vscode.TreeItem, options?: FocusOptions) => {
       userjobBrowserViewer.reveal(item, options);
     }),
     vscode.commands.registerCommand(`vscode-ibmi-fs.addUserJobFilter`, async (node) => {
@@ -122,7 +130,7 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
                   config.userJobs = userJobs;
                   Code4i.getInstance()!.setConfig(config);
                   userjobBrowserObj.populateData(Code4i.getConfig().userJobs);
-                  vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQBrowser`);
+                  vscode.commands.executeCommand(`vscode-ibmi-fs.refreshUserJobsBrowser`);
                 }
               }
             });
@@ -137,14 +145,14 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
         node.setMsgwMode(``);
         node.clearToolTip();
         node.setDescription();
-        vscode.commands.executeCommand(`vscode-ibmi-fs.revealUserJobBrowser`, node, { expand: false, focus: true, select: true });
+        vscode.commands.executeCommand(`vscode-ibmi-fs.revealUserJobsBrowser`, node, { expand: false, focus: true, select: true });
         vscode.commands.executeCommand(`vscode-ibmi-fs.refreshUserJobs`, node);
 
       } else {
         vscode.commands.executeCommand('vscode-ibmi-fs.filterUserJobs', node, 'MSGW');
       }
     }),
-    vscode.commands.registerCommand(`vscode-ibmi-fs.filterUserJobs`, async (node, msgwMode?: string) => {
+    vscode.commands.registerCommand(`vscode-ibmi-fs.filterUserJobs`, async (node, filterToMsgwMode?: string) => {
 
       let searchUser: any;
       let searchTerm: any;
@@ -160,7 +168,7 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
 
       if (!searchUser) { return; }
 
-      if (!searchTerm && !msgwMode) {
+      if (!searchTerm && !filterToMsgwMode) {
         searchTerm = await vscode.window.showInputBox({
           prompt: l10n.t(`Filter {0}'s jobs. Delete value to clear filter.`, searchSource),
           value: `${/^userJobJob/.test(node.contextValue) ? node.parent.filter ? node.parent.filter : `` : node?.filter ? node?.filter : ``}`
@@ -176,39 +184,39 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
 
       }
 
-      if (searchTerm || msgwMode) {
+      if (searchTerm || filterToMsgwMode) {
         try {
           await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
             title: l10n.t(`Filtering list of user jobs`),
           }, async progress => {
             progress.report({
-              message: l10n.t(`Filtering jobs for {0}, using these words, {1}.`, searchUser, searchTerm || msgwMode),
+              message: l10n.t(`Filtering jobs for {0}, using these words, {1}.`, searchUser, searchTerm || filterToMsgwMode),
             });
             // searchTerm = searchTerm?.toLocaleUpperCase();
 
             if (!userJobNum || userJobNum === 0) {
               const treeFilter = { ...node };
-              const userJobNumAnswer = await IBMiContentJobs.getUserJobCount(`vscode-ibmi-fs.filterUserJobs`, treeFilter, searchTerm, msgwMode);
+              const userJobNumAnswer = await IBMiContentJobs.getUserJobCount(`vscode-ibmi-fs.filterUserJobs`, treeFilter, searchTerm, filterToMsgwMode);
               if (Number.isFinite(Number(userJobNumAnswer))) { userJobNum = Number(userJobNumAnswer); }
             }
             if (userJobNum > 0) {
               if (node.contextValue === `userJobJob`) {
                 node.parent.setFilter(searchTerm);
-                node.parent.setMsgwMode(msgwMode);
+                node.parent.setMsgwMode(filterToMsgwMode);
                 node.parent.clearToolTip();
-                node.parent.setFilterDescription(searchTerm ? searchTerm : msgwMode);
+                node.parent.setFilterDescription(searchTerm ? searchTerm : filterToMsgwMode);
                 node.parent.setDescription();
                 vscode.commands.executeCommand(`vscode-ibmi-fs.refreshUserJobs`, node.parent);
               } else {
                 node.setFilter(searchTerm);
-                node.setMsgwMode(msgwMode);
+                node.setMsgwMode(filterToMsgwMode);
                 node.clearToolTip();
-                node.setFilterDescription(searchTerm ? searchTerm : msgwMode);
+                node.setFilterDescription(searchTerm ? searchTerm : filterToMsgwMode);
                 node.setDescription();
                 // await userjobBrowserObj.getChildren(node);
                 vscode.commands.executeCommand(`vscode-ibmi-fs.refreshUserJobs`, node);
-                vscode.commands.executeCommand(`vscode-ibmi-fs.revealUserJobBrowser`, node, { expand: true, focus: true, select: true });
+                vscode.commands.executeCommand(`vscode-ibmi-fs.revealUserJobsBrowser`, node, { expand: true, focus: true, select: true });
               }
             } else {
               vscode.window.showErrorMessage(l10n.t(`No user jobs to filter.`));
@@ -259,10 +267,10 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
       }
 
     }),
-    vscode.commands.registerCommand(`vscode-ibmi-fs.ReplyToUnansweredMessage`, async (node) => {
+    vscode.commands.registerCommand(`vscode-ibmi-fs.ReplyToJobMessage`, async (node) => {
       const item = node as IBMiUserJob;
       try {
-        if (!item.activeJobStatus && item.activeJobStatus === 'MSGW') {
+        if (item.activeJobStatus && item.activeJobStatus === 'MSGW') {
           const userReply = await vscode.window.showInputBox({
             title: l10n.t(`What is your answer?`),
             prompt: l10n.t(`If no answer given then the reply *DFT is assumed.`),
@@ -274,7 +282,7 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
               location: vscode.ProgressLocation.Notification,
               title: l10n.t(`Filtering list of user jobs`),
             }, async progress => {
-              progress.report({ message: l10n.t(`Finding message for job to send reply to.`), });
+              progress.report({ message: l10n.t(`Getting message key for job to send reply to.`), });
               const msgwJobs = await IBMiContentJobs.getJobMessageWaitMessages(`vscode-ibmi-fs.ReplyToUnansweredMessage`, [item.jobName || '']);
               item.jobMessageKey = msgwJobs[0].jobMessageKey;
               item.jobMessageQueueLibrary = msgwJobs[0].jobMessageQueueLibrary;
@@ -283,19 +291,68 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
             if (!await IBMiContentJobs.answerMessage(item, userReply)) {
 
             }
-            vscode.commands.executeCommand(`vscode-ibmi-fs.refreshMSGQ`, node.parent);
+            vscode.commands.executeCommand(`vscode-ibmi-fs.refreshUserJobs`, node.parent);
           }
         } else {
-          vscode.window.showInformationMessage(l10n.t(`Message not in a state to reply with an answer.`));
+          vscode.window.showInformationMessage(l10n.t(`Job not in a state to reply with an answer.`));
         }
       } catch (e: any) {
         console.log(e);
-        vscode.window.showErrorMessage(l10n.t(`Error answering message! {0}.`, e));
+        vscode.window.showErrorMessage(l10n.t(`Error answering job's message! {0}.`, e));
+      }
+    }),
+    vscode.commands.registerCommand(`vscode-ibmi-fs.HoldJob`, async (node) => {
+      const item = node as IBMiUserJob;
+      try {
+        if (item.activeJobStatus === 'HLD'
+          || item.jobQueueStatus === 'HELD'
+          || item.jobStatus === 'OUTQ'
+        ) {
+          vscode.window.showInformationMessage(l10n.t(`Job not in a state to hold.`));
+        } else {
+            await vscode.window.withProgress({
+              location: vscode.ProgressLocation.Notification,
+              title: l10n.t(`Releasing Job`),
+            }, async progress => {
+              progress.report({ message: l10n.t(`Attempting to hold selected job, ${item.jobName}.`), });
+            });
+            if (!await IBMiContentJobs.releaseJob(item)) {
+
+            }
+            vscode.commands.executeCommand(`vscode-ibmi-fs.refreshUserJobs`, node.parent);
+        }
+      } catch (e: any) {
+        console.log(e);
+        vscode.window.showErrorMessage(l10n.t(`Error holding job {0}!`, e));
+      }
+    }),
+    vscode.commands.registerCommand(`vscode-ibmi-fs.ReleaseJob`, async (node) => {
+      const item = node as IBMiUserJob;
+      try {
+        if (item.activeJobStatus && item.activeJobStatus === 'HELD'|| item.jobQueueStatus === 'HELD') {
+
+            await vscode.window.withProgress({
+              location: vscode.ProgressLocation.Notification,
+              title: l10n.t(`Releasing Job`),
+            }, async progress => {
+              progress.report({ message: l10n.t(`Attempting to release selected job, ${item.jobName}.`), });
+            });
+            if (!await IBMiContentJobs.releaseJob(item)) {
+
+            }
+            vscode.commands.executeCommand(`vscode-ibmi-fs.refreshUserJobs`, node.parent);
+        } else {
+          vscode.window.showInformationMessage(l10n.t(`Job not in a state to release.`));
+        }
+      } catch (e: any) {
+        console.log(e);
+        vscode.window.showErrorMessage(l10n.t(`Error releasing job {0}!`, e));
       }
     }),
   );
   Code4i.getInstance().subscribe(context, `connected`, "Refresh user job browser", run_on_connection);
   Code4i.getInstance().subscribe(context, `disconnected`, "Clear user job browser", run_on_disconnection);
+} else {}
 }
 function run_on_connection() {
   userjobBrowserObj.populateData(Code4i.getConfig().userJobs);
@@ -303,4 +360,13 @@ function run_on_connection() {
 async function run_on_disconnection() {
   userjobBrowserObj.clearTree();
   vscode.commands.executeCommand(`vscode-ibmi-fs.refreshUserJobBrowser`);
+}
+
+function updateExtensionStatus(): boolean {
+  const config = vscode.workspace.getConfiguration();
+  const enabled = config.get<boolean>('vscode-ibmi-fs.userJobBrowser.enabled', true);
+
+  // Example: Show/hide views using setContext
+  vscode.commands.executeCommand('setContext', 'vscode-ibmi-fs:userJobBrowserDisabled', !enabled);
+  return enabled;
 }

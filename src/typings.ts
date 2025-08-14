@@ -130,6 +130,7 @@ export interface IBMiUserJob {
   jobMessageQueueLibrary?: string,
   jobMessageQueueName?: string,
   jobEnteredSystemTime?: string,
+  jobQueueStatus?: string,
 }
 export interface DspJobOpenOptions {
   readonly?: boolean;

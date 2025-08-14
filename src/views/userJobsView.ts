@@ -78,12 +78,12 @@ export default class UserJobBrowser implements TreeDataProvider<any> {
           userJobs = sortObjectArrayByProperty(userJobs
             , element.sort.order === 'date' ? `jobEnteredSystemTime` : element.sort.order === 'name' ? 'jobNameShort' : ''
             , element.sort.ascending ? 'asc' : 'desc');
-            // NOTE: this section is about getting the message key for those jobs in MSGW status.
-            //       We are going to wait to do this until the user decides to answer the message for the specfic job.
-            //       Waiting reduces the load time. 
-            // // const filtereditems: IBMiUserJob[] = userJobs.filter((item: any) => item.activeJobStatus === 'MSGW');
-            // // const distinctNames: string[] = [...new Set(filtereditems.map(item => item.jobName||''))];
-            // // const msgwJobs = await IBMiContentJobs.getJobMessageWaitMessages(`MSGQBrowser.getChildren`, distinctNames);
+          // NOTE: this section is about getting the message key for those jobs in MSGW status.
+          //       We are going to wait to do this until the user decides to answer the message for the specfic job.
+          //       Waiting reduces the load time. 
+          // // const filtereditems: IBMiUserJob[] = userJobs.filter((item: any) => item.activeJobStatus === 'MSGW');
+          // // const distinctNames: string[] = [...new Set(filtereditems.map(item => item.jobName||''))];
+          // // const msgwJobs = await IBMiContentJobs.getJobMessageWaitMessages(`MSGQBrowser.getChildren`, distinctNames);
           items.push(...userJobs.map((userJob: IBMiUserJob) => {
             // // let index = 0;
             // // index = msgwJobs.findIndex(f => (f.jobName === userJob.jobName));
@@ -154,9 +154,10 @@ export default class UserJobBrowser implements TreeDataProvider<any> {
     } else if (item instanceof UserJob) {
       item.tooltip = new vscode.MarkdownString(`<table>`
         .concat(`<thead>${item.label}</thead><hr>`)
-        .concat(`<tr><td>${l10n.t(`Active Job Subsystem:`)} </td><td>&nbsp;${l10n.t(String(`${item.activeJobSubsystem?item.activeJobSubsystem:''}`))}</td></tr>`)
+        .concat(`<tr><td>${l10n.t(`Active Job Subsystem:`)} </td><td>&nbsp;${l10n.t(String(`${item.activeJobSubsystem ? item.activeJobSubsystem : ''}`))}</td></tr>`)
+        .concat(`<tr><td>${l10n.t(`Job Status:`)} </td><td>&nbsp;${l10n.t(String(item.jobStatus))}</td></tr>`)
         .concat(`<tr><td>${l10n.t(`Active Job Status:`)} </td><td>&nbsp;${l10n.t(String(item.activeJobStatus))}</td></tr>`)
-        .concat(`<tr><td>${l10n.t(`Job Queue:`)} </td><td>&nbsp;${l10n.t(String(item.jobQueueLibrary+'/'+item.jobQueueName))}</td></tr>`)
+        .concat(`<tr><td>${l10n.t(`Job Queue:`)} </td><td>&nbsp;${l10n.t(String(item.jobQueueLibrary + '/' + item.jobQueueName))}</td></tr>`)
         .concat(`<tr><td>${l10n.t(`Job CCSID:`)} </td><td>&nbsp;${l10n.t(String(item.jobCCSID))}</td></tr>`)
         // .concat(`<tr><td>${l10n.t(`Job Inquiry Message Key:`)} </td><td>&nbsp;${l10n.t(String(`${item.jobMessageKey?item.jobMessageKey:'...pending...'}`))}</td></tr>`)
       );
@@ -182,7 +183,7 @@ export class UserList extends vscode.TreeItem implements IBMiUserJobsUsers {
   sortDescription: string | undefined;
   protected: boolean;
   constructor(parent: vscode.TreeItem, theUser: IBMiUserJobsUsers) {
-    super(createNodeName(theUser), vscode.TreeItemCollapsibleState.Collapsed);
+    super(createUserListNodeLabel(theUser), vscode.TreeItemCollapsibleState.Collapsed);
     this.protected = false;
     this.user = theUser.user;
     const icon = this.setIcon('user');
@@ -213,7 +214,7 @@ export class UserList extends vscode.TreeItem implements IBMiUserJobsUsers {
   setIcon(type: string): string {
     return objectIcons[type];
   }
-  setFilterDescription(value: string | undefined) { this.filterDescription = this.filterDescription = `${value?`Filtered by: ${value}`:''}`; }
+  setFilterDescription(value: string | undefined) { this.filterDescription = this.filterDescription = `${value ? `Filtered by: ${value}` : ''}`; }
   setDescription() {
     this.description =
       (this.text ? this.text : '')
@@ -248,11 +249,13 @@ export class UserJob extends vscode.TreeItem implements IBMiUserJob {
 
   constructor(parent: UserList, object: IBMiUserJob) {
 
-    super(`${object.jobName} - (${object.jobType}) ${object.activeJobSubsystem?object.activeJobSubsystem:object.jobStatus} `, vscode.TreeItemCollapsibleState.Collapsed);
+    super(createUserJobNodeLabel(object), vscode.TreeItemCollapsibleState.Collapsed);
+    // super(`${object.jobName} - (${object.jobType}) ${object.activeJobSubsystem?object.activeJobSubsystem:object.jobStatus} `, vscode.TreeItemCollapsibleState.Collapsed);
     this.collapsibleState = vscode.TreeItemCollapsibleState.None;
     this.parent = parent;
     this.resourceUri = getUsrJobDetailFileUri(object, { readonly: false });
-    this.contextValue = `userJobJob`;
+    // this.contextValue = `userJobJob`;
+    this.setContextValue(object);
     this.path = this.resourceUri.path.substring(1); // removes leading slash for QSYS paths
     this.jobName = object.jobName;
     this.jobStatus = object.jobStatus;
@@ -275,18 +278,34 @@ export class UserJob extends vscode.TreeItem implements IBMiUserJob {
     this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
     this.setDescription = () => parent.setDescription();
   }
+  getContextValue() { return this.contextValue; }
   setIcon(): string { return objectIcons['job']; }
-  setIconColor(): string {return ''; }
+  setIconColor(): string { return ''; }
   updateIconPath() { this.iconPath = new vscode.ThemeIcon(this.setIcon(), new vscode.ThemeColor(this.setIconColor())); }
   // setjobMessageKey(mKey: string | undefined) { return this.jobMessageKey = mKey; }
   // setjobMessageQueueLibrary(item: string | undefined) { return this.jobMessageQueueLibrary = item; }
   // setjobMessageQueueName(item: string | undefined) { return this.jobMessageQueueName = item; }
+  updateContextValue(newContextValue: string) { this.contextValue = newContextValue; }
+  setContextValue(item: IBMiUserJob) { 
+    this.contextValue = `userJobJob_` +item.jobType+'_'+item.jobStatus;
+    if (item.activeJobStatus && item.activeJobStatus !== 'DSPW') {
+      this.contextValue +='_'+item.activeJobStatus;
+    } else if (item.jobQueueStatus && item.jobQueueStatus !== 'RELEASED') {
+      this.contextValue += '_'+item.jobQueueStatus;
+    }
+  }
 }
-function createNodeName(theValue: IBMiUserJobsUsers|IBMiUserJob) {
+function createUserListNodeLabel(theValue: IBMiUserJobsUsers) {
   let q = '';
-  if (theValue instanceof UserList) {
-    q = theValue.user;
-  } else  if (theValue instanceof UserJob) {}
+  q = theValue.user;
+  return q;
+}
+function createUserJobNodeLabel(object: IBMiUserJob) {
+  let q = `${object.jobName} - (${object.jobType}) ${object.jobStatus}`;
+  if (object.activeJobStatus) { q += ' - ' + object.activeJobStatus; 
+
+  } else if (object.jobQueueStatus) 
+    { q += ' - ' + object.jobQueueStatus; }
   return q;
 }
 function lookupItemText(aFilter: IBMiUserJobsFilter, objAttributes: ObjAttributes[]): string {
