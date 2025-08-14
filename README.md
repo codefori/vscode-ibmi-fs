@@ -14,8 +14,8 @@ Has support for:
 * Data Areas (DTAARA) - display and edit
 * Data Queues (DTAQ) - display, send data, clear
 * Save Files (SAVF) - display, download and upload
-* Message queue viewer 
- 
+* Message queue viewer  - view your own message, message in any queue you have authority to, answer messages, clean up messages, deactivate view if not wanted through config setting `vscode-ibmi-fs.msgqBrowser.enabled`
+
 
 ## TODO:
 

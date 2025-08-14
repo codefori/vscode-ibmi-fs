@@ -30,12 +30,25 @@
   "main": "./dist/extension.js",
   "l10n": "./l10n",
   "contributes": {
+    "configuration": [
+      {
+        "title": "Code for IBM i FileSystems Configuration",
+        "properties": {
+          "vscode-ibmi-fs.msgqBrowser.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable or disable Message Queue Browser."
+          }
+        }
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
           "id": "MessageQueue-search",
           "title": "Message Queue Messages",
-          "icon": "$(email)"
+          "icon": "$(email)",
+          "when": "config.vscode-ibmi-fs.msgqBrowser"
         }
       ]
     },
@@ -53,7 +66,7 @@
         {
           "id": "MsgqSearchView",
           "name": "MSGQ-Search_Results",
-          "when": "vscode-ibmi-fs:searchViewVisible",
+          "when": "vscode-ibmi-fs:searchViewVisible && config.vscode-ibmi-fs.msgqBrowser",
           "icon": ""
         }
       ]
@@ -118,141 +131,161 @@
         "enablement": "code-for-ibmi:connected",
         "title": "Filter Messages",
         "category": "IBM i FS",
-        "icon": "$(list-filter)"
+        "icon": "$(list-filter)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.filterMessageQueueInquiry",
         "enablement": "code-for-ibmi:connected",
         "title": "Toggle to/from INQUIRY Messages",
         "category": "IBM i FS",
-        "icon": "$(question)"
+        "icon": "$(question)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.searchMessageQueue",
         "enablement": "code-for-ibmi:connected",
         "title": "Search Messages",
         "category": "IBM i Messages",
-        "icon": "$(search)"
+        "icon": "$(search)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.searchMessageQueueBrowser",
         "title": "Search Messages",
         "category": "IBM i",
         "icon": "$(search-fuzzy)",
-        "enablement": "code-for-ibmi:connected"
+        "enablement": "code-for-ibmi:connected",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.addMessageQueueFilter",
         "title": "Add Message Queue Filter",
         "category": "IBM i Messages",
         "enablement": "code-for-ibmi:connected == true",
-        "icon": "$(add)"
+        "icon": "$(add)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.addUserMessageFilter",
         "title": "Add User Message Filter",
         "category": "IBM i Messages",
         "enablement": "code-for-ibmi:connected == true",
-        "icon": "$(person-add)"
+        "icon": "$(person-add)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.removeMessageQueueFilter",
         "title": "Remove Message Queue Filter",
         "category": "IBM i Messages",
         "enablement": "code-for-ibmi:connected == true",
-        "icon": "$(trash)"
+        "icon": "$(trash)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.sortMessageQueueFilter",
         "title": "Sort Filters",
         "category": "IBM i Messages",
         "enablement": "code-for-ibmi:connected == true",
-        "icon": "$(list-ordered)"
+        "icon": "$(list-ordered)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.ReplyToUnansweredMessage",
         "title": "Answer Message",
         "category": "IBM i Messages",
         "enablement": "code-for-ibmi:connected == true",
-        "icon": "$(reply)"
+        "icon": "$(reply)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.deleteMessageAll",
         "title": "Delete All Messages",
         "category": "IBM i Messages",
         "enablement": "code-for-ibmi:connected == true",
-        "icon": "$(clear-all)"
+        "icon": "$(clear-all)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.deleteMessageAllButUnanswered",
         "title": "Delete All Messages Except Unanswered",
         "category": "IBM i Messages",
         "enablement": "code-for-ibmi:connected == true",
-        "icon": "$(combine)"
+        "icon": "$(combine)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.deleteMessage",
         "title": "Delete SELECTED Message",
         "enablement": "code-for-ibmi:connected",
         "category": "IBM i Messages",
-        "icon": "$(delete)"
+        "icon": "$(delete)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.deleteMessagesByID",
         "title": "Delete by Message ID",
         "enablement": "code-for-ibmi:connected",
         "category": "IBM i Messages",
-        "icon": "$(delete)"
+        "icon": "$(delete)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.deleteMessagesFiltered",
         "title": "Delete all FILTERED messages",
         "enablement": "code-for-ibmi:connected",
         "category": "IBM i Messages",
-        "icon": "$(delete)"
+        "icon": "$(delete)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.refreshMSGQBrowser",
         "title": "Refresh Message Queue Browser",
         "enablement": "code-for-ibmi:connected",
         "category": "IBM i Messages",
-        "icon": "$(refresh)"
+        "icon": "$(refresh)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.refreshMSGQ",
         "title": "Refresh Message Queue",
         "enablement": "code-for-ibmi:connected",
         "category": "IBM i Messages",
-        "icon": "$(refresh)"
+        "icon": "$(refresh)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.sortMessagesByID",
         "title": "Name",
         "enablement": "code-for-ibmi:connected",
-        "category": "IBM i Messages"
+        "category": "IBM i Messages",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.sortMessagesByDate",
         "title": "Date",
         "enablement": "code-for-ibmi:connected",
-        "category": "IBM i Messages"
+        "category": "IBM i Messages",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
-        "command": "vscode-ibmi-fs.collapseSearchView",
+        "command": "vscode-ibmi-fs.collapseMessageSearchView",
         "title": "Collapse All Search Results",
         "enablement": "code-for-ibmi:connected",
         "category": "IBM i Messages",
-        "icon": "$(collapse-all)"
+        "icon": "$(collapse-all)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
-        "command": "vscode-ibmi-fs.expandSearchView",
+        "command": "vscode-ibmi-fs.expandMessageSearchView",
         "enablement": "code-for-ibmi:connected",
         "title": "Expand All Search Results",
         "category": "IBM i Messages",
-        "icon": "$(expand-all)"
+        "icon": "$(expand-all)",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
-        "command": "vscode-ibmi-fs.closeSearchView",
+        "command": "vscode-ibmi-fs.closeMessageSearchView",
         "enablement": "code-for-ibmi:connected",
         "title": "Close Search View",
         "category": "IBM i Messages",
@@ -262,41 +295,45 @@
         "command": "vscode-ibmi-fs.revealMSGQBrowser",
         "enablement": "code-for-ibmi:connected",
         "title": "Reveal in User MSGQ Browser",
-        "category": "IBM i Messages"
+        "category": "IBM i Messages",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.viewMessageDetails",
         "enablement": "code-for-ibmi:connected",
         "title": "View Message Details",
-        "category": "IBM i Messages"
+        "category": "IBM i Messages",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.sendMessage",
         "enablement": "code-for-ibmi:connected",
         "title": "Send Message",
-        "category": "IBM i Messages"
+        "category": "IBM i Messages",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       },
       {
         "command": "vscode-ibmi-fs.sendInquiryMessage",
         "enablement": "code-for-ibmi:connected",
         "title": "Send Inquiry Message",
-        "category": "IBM i Messages"
+        "category": "IBM i Messages",
+        "when": "config.vscode-ibmi-fs.msgqBrowser"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "vscode-ibmi-fs.closeSearchView",
+          "command": "vscode-ibmi-fs.closeMessageSearchView",
           "when": "view == MsgqSearchView",
           "group": "navigation@2"
         },
         {
-          "command": "vscode-ibmi-fs.collapseSearchView",
+          "command": "vscode-ibmi-fs.collapseMessageSearchView",
           "when": "view == MsgqSearchView",
           "group": "navigation@1"
         },
         {
-          "command": "vscode-ibmi-fs.expandSearchView",
+          "command": "vscode-ibmi-fs.expandMessageSearchView",
           "when": "view == MsgqSearchView",
           "group": "navigation@1"
         },
