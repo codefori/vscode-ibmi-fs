@@ -7,7 +7,6 @@ import fs from 'fs';
 import util from 'util';
 import path from 'path';
 import os from "os";
-import sanitize from 'sanitize-filename';
 const writeFileAsync = util.promisify(fs.writeFile);
 
 export function getUsrJobDetailFileUri(userJob: IBMiUserJob, options?: DspJobOpenOptions) {
@@ -63,16 +62,17 @@ export class UsrJobFS implements vscode.FileSystemProvider {
     // uriPath: `/${job.jobName}.dspjob``,
     const options: ParsedUrlQuery = parse(uri.query);
 
-    const userJobDetails = await IBMiContentJobs.downloadJobDetails(uri.path);
+    const userJobDetails = await IBMiContentJobs.downloadJobDetails(uri.path, options);
     if (userJobDetails !== undefined) {
       return new Uint8Array(Buffer.from(userJobDetails, `utf8`));
     }
     else {
-      throw new Error(`Couldn't read ${uri}; check IBM i connection.`);
+      throw new Error(l10n.t(`Couldn't read ${uri}; check IBM i connection.`));
     }
   }
 
   async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
+    // TODO: is this one needed for USERJOBS??s
     // uri: `usrjob://${job.jobName}.dspjob``,
     // uriPath: `/${job.jobName}.dspjob``,
     console.log(uri);
@@ -95,11 +95,11 @@ export class UsrJobFS implements vscode.FileSystemProvider {
         vscode.window.showErrorMessage(l10n.t(`Error saving Spoooled File, ${uri}! ${e}`));
       }
     }
-    throw new Error("Method not implemented.");
+    throw new Error(l10n.t("Method not implemented."));
   }
 
   rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { readonly overwrite: boolean; }): void | Thenable<void> {
-    throw new Error("Method not implemented.");
+    throw new Error(l10n.t("Method not implemented."));
   }
 
   watch(uri: vscode.Uri, options: { readonly recursive: boolean; readonly excludes: readonly string[]; }): vscode.Disposable {
@@ -107,15 +107,15 @@ export class UsrJobFS implements vscode.FileSystemProvider {
   }
 
   readDirectory(uri: vscode.Uri): [string, vscode.FileType][] | Thenable<[string, vscode.FileType][]> {
-    throw new Error("Method not implemented.");
+    throw new Error(l10n.t("Method not implemented."));
   }
 
   createDirectory(uri: vscode.Uri): void | Thenable<void> {
-    throw new Error("Method not implemented.");
+    throw new Error(l10n.t("Method not implemented."));
   }
 
   delete(uri: vscode.Uri, options: { readonly recursive: boolean; }): void | Thenable<void> {
-    throw new Error("Method not implemented.");
+    throw new Error(l10n.t("Method not implemented."));
   }
 }
 function generateSequencedFileName(uri: vscode.Uri): string {

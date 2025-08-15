@@ -2,7 +2,7 @@
   "name": "vscode-ibmi-fs",
   "displayName": "IBM i FileSystem",
   "description": "File system provider for IBM i QSYS",
-  "version": "0.0.6-dev",
+  "version": "0.0.3-dev0",
   "icon": "media/light-message-queue.png",
   "preview": true,
   "license": "MIT",
@@ -421,6 +421,14 @@
         "when": "config.vscode-ibmi-fs.userJobBrowser"
       },
       {
+        "command": "vscode-ibmi-fs.viewUserJobJoblog",
+        "title": "View Job Log",
+        "category": "IBM i User Jobs",
+        "enablement": "code-for-ibmi:connected",
+        "icon": "$(report)",
+        "when": "config.vscode-ibmi-fs.userJobBrowser"
+      },
+      {
         "command": "vscode-ibmi-fs.ReplyToJobMessage",
         "title": "Answer Job's Message",
         "category": "IBM i User Jobs",
@@ -526,7 +534,12 @@
       ],
       "vscode-ibmi-fs.viewUserJob": [
         {
-          "command": "vscode-ibmi-fs.viewUserJobDetails"
+          "command": "vscode-ibmi-fs.viewUserJobDetails",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.viewUserJobJoblog",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [
@@ -712,12 +725,12 @@
         },
         {
           "command": "vscode-ibmi-fs.HoldJob",
-          "when": "view == userJobBrowser && viewItem =~ /^userJobJob.*([^OUTQ]|[^HELD])$/",
+          "when": "view == userJobBrowser && viewItem =~ /^userJobJob.+(?<!OUTQ|HLD|HELD)$/",
           "group": "4_jobs@3"
         },
         {
           "command": "vscode-ibmi-fs.ReleaseJob",
-          "when": "view == userJobBrowser && viewItem =~ /^userJobJob.*(HLD|HELD)$/",
+          "when": "view == userJobBrowser && viewItem =~ /^userJobJob.*(_ACTIVE).*(HLD|HELD)$/",
           "group": "4_jobs@4"
         }
       ],

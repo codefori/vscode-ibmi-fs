@@ -124,7 +124,6 @@ export interface IBMiUserJob {
   jobQueueLibrary?: string,
   jobQueueName?: string,
   jobCCSID?: string,
-  activeJobSubsystem?: string,
   activeJobStatus?: string,
   jobMessageKey?: string,
   jobMessageQueueLibrary?: string,
@@ -134,6 +133,7 @@ export interface IBMiUserJob {
 }
 export interface DspJobOpenOptions {
   readonly?: boolean;
+  printSection?: string;
 }
 export interface IBMiUserJobDetails {
 jobName?: string,

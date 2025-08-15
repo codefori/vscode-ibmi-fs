@@ -152,12 +152,12 @@ export default class UserJobBrowser implements TreeDataProvider<any> {
       item.tooltip.supportHtml = true;
 
     } else if (item instanceof UserJob) {
+      const qualQueue = item.jobQueueName ? item.jobQueueLibrary + '/' + item.jobQueueName :'';
       item.tooltip = new vscode.MarkdownString(`<table>`
         .concat(`<thead>${item.label}</thead><hr>`)
-        .concat(`<tr><td>${l10n.t(`Active Job Subsystem:`)} </td><td>&nbsp;${l10n.t(String(`${item.activeJobSubsystem ? item.activeJobSubsystem : ''}`))}</td></tr>`)
         .concat(`<tr><td>${l10n.t(`Job Status:`)} </td><td>&nbsp;${l10n.t(String(item.jobStatus))}</td></tr>`)
         .concat(`<tr><td>${l10n.t(`Active Job Status:`)} </td><td>&nbsp;${l10n.t(String(item.activeJobStatus))}</td></tr>`)
-        .concat(`<tr><td>${l10n.t(`Job Queue:`)} </td><td>&nbsp;${l10n.t(String(item.jobQueueLibrary + '/' + item.jobQueueName))}</td></tr>`)
+        .concat(`<tr><td>${l10n.t(`Job Queue:`)} </td><td>&nbsp;${l10n.t(String(qualQueue))}</td></tr>`)
         .concat(`<tr><td>${l10n.t(`Job CCSID:`)} </td><td>&nbsp;${l10n.t(String(item.jobCCSID))}</td></tr>`)
         // .concat(`<tr><td>${l10n.t(`Job Inquiry Message Key:`)} </td><td>&nbsp;${l10n.t(String(`${item.jobMessageKey?item.jobMessageKey:'...pending...'}`))}</td></tr>`)
       );
@@ -236,8 +236,8 @@ export class UserJob extends vscode.TreeItem implements IBMiUserJob {
   jobNumber?: string;
   jobQueueLibrary?: string;
   jobQueueName?: string;
+  jobQueueStatus?: string;
   jobCCSID?: string;
-  activeJobSubsystem?: string;
   activeJobStatus?: string;
   // jobMessageKey?: string;
   // jobMessageQueueLibrary?: string;
@@ -250,7 +250,6 @@ export class UserJob extends vscode.TreeItem implements IBMiUserJob {
   constructor(parent: UserList, object: IBMiUserJob) {
 
     super(createUserJobNodeLabel(object), vscode.TreeItemCollapsibleState.Collapsed);
-    // super(`${object.jobName} - (${object.jobType}) ${object.activeJobSubsystem?object.activeJobSubsystem:object.jobStatus} `, vscode.TreeItemCollapsibleState.Collapsed);
     this.collapsibleState = vscode.TreeItemCollapsibleState.None;
     this.parent = parent;
     this.resourceUri = getUsrJobDetailFileUri(object, { readonly: false });
@@ -265,8 +264,8 @@ export class UserJob extends vscode.TreeItem implements IBMiUserJob {
     this.jobNumber = object.jobNumber;
     this.jobQueueLibrary = object.jobQueueLibrary;
     this.jobQueueName = object.jobQueueName;
+    this.jobQueueName = object.jobQueueStatus;
     this.jobCCSID = object.jobCCSID;
-    this.activeJobSubsystem = object.activeJobSubsystem;
     this.activeJobStatus = object.activeJobStatus;
     this.jobEnteredSystemTime = object.jobEnteredSystemTime;
     this.command = {

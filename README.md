@@ -14,8 +14,21 @@ Has support for:
 * Data Areas (DTAARA) - display and edit
 * Data Queues (DTAQ) - display, send data, clear
 * Save Files (SAVF) - display, download and upload
-* Message queue viewer  - view your own message, message in any queue you have authority to, answer messages, clean up messages, deactivate view if not wanted through config setting `vscode-ibmi-fs.msgqBrowser.enabled`
-* User Jobs view - view your own jobs, answer jobs waiting on a reply, clean up jobs, release and hold jobs, deactivate view if not wanted through config setting `vscode-ibmi-fs.userJobBrowser.enabled`
+* Message queue viewer  
+    - Command category `IBM i Messages:`
+    - View your own Message
+    - View messages in any queue you have authority to
+    - Answer messages
+    - Clean up messages
+    - Deactivate view if not wanted through config setting `vscode-ibmi-fs.msgqBrowser.enabled`
+* User Jobs view 
+    - Command category `IBM i User Jobs:`
+    - View your own jobs 
+    - Answer jobs waiting on a reply 
+    - Clean up jobs 
+    - Release and hold jobs 
+    - Deactivate view if not wanted through config setting `vscode-ibmi-fs.userJobBrowser.enabled`
+    - Required system items, `table function QSYS2.JOB_INFO()` and `table function QSYS2.GET_JOB_INFO()`
  
 
 ## TODO:
