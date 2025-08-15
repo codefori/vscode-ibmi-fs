@@ -3,7 +3,6 @@
   "displayName": "IBM i FileSystem",
   "description": "File system provider for IBM i QSYS",
   "version": "0.0.3-dev0",
-  "icon": "media/light-message-queue.png",
   "preview": true,
   "license": "MIT",
   "engines": {
