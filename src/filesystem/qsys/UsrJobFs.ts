@@ -72,12 +72,8 @@ export class UsrJobFS implements vscode.FileSystemProvider {
   }
 
   async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
-    // TODO: is this one needed for USERJOBS??s
     // uri: `usrjob://${job.jobName}.dspjob``,
     // uriPath: `/${job.jobName}.dspjob``,
-    console.log(uri);
-    console.log(options);
-    console.log(content);
     const lpath = uri.path.split(`/`);
     let localFilepath = os.homedir() + `/` + lpath[3] + `.txt`;
     let savFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(localFilepath) });

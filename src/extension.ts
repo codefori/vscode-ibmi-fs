@@ -35,7 +35,7 @@ export async function activate(context: vscode.ExtensionContext) {
 	SaveFileActions.register(context);
 	DataQueueActions.register(context);
 
-	console.log(`Congratulations, your extension "vscode-ibmi-fs" "Version" :"${context.extension.packageJSON.version}" is now active!`);
+	// console.log(`Congratulations, your extension "vscode-ibmi-fs" "Version" :"${context.extension.packageJSON.version}" is now active!`);
 }
 
 // this method is called when your extension is deactivated

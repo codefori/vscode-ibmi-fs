@@ -3,7 +3,7 @@ import { FocusOptions } from '@halcyontech/vscode-ibmi-types/';
 import vscode, { l10n, } from 'vscode';
 import { UsrJobFS, getUriFromPathMsg, parseFSOptions } from "./filesystem/qsys/UsrJobFs";
 import { IBMiContentJobs } from "./api/IBMiContentJobs";
-import { Code4i, saveFilterValuesUserJobs } from "./tools";
+import { Code4i } from "./tools";
 import { IBMiUserJobsFilter, DspJobOpenOptions, IBMiUserJob } from './typings';
 import UsrJobBrowser, { UserJob, UserList } from './views/userJobsView';
 
@@ -72,7 +72,7 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
             if (saveFilterValuesUserJobs({ user: newEntry })) { vscode.commands.executeCommand(`vscode-ibmi-fs.sortUserJobFilter`, node); }
           }
         } catch (e) {
-          console.log(e);
+          // console.log(e);
         }
       }),
       vscode.commands.registerCommand(`vscode-ibmi-fs.sortUserJobFilter`, async (node) => {
@@ -224,7 +224,7 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
             });
 
           } catch (e) {
-            console.log(e);
+            // console.log(e);
             vscode.window.showErrorMessage(l10n.t(`Error filtering user jobs.`));
           }
         }
@@ -263,7 +263,7 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
           await vscode.commands.executeCommand(`vscode.open`, uri);
           return true;
         } catch (e) {
-          console.log(e);
+          // console.log(e);
           return false;
         }
 
@@ -289,7 +289,7 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
           await vscode.commands.executeCommand(`vscode.open`, uri);
           return true;
         } catch (e) {
-          console.log(e);
+          // console.log(e);
           return false;
         }
 
@@ -324,7 +324,7 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
             vscode.window.showInformationMessage(l10n.t(`Job not in a state to reply with an answer.`));
           }
         } catch (e: any) {
-          console.log(e);
+          // console.log(e);
           vscode.window.showErrorMessage(l10n.t(`Error answering job's message! {0}.`, e));
         }
       }),
@@ -349,7 +349,7 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
             vscode.commands.executeCommand(`vscode-ibmi-fs.refreshUserJobs`, node.parent);
           }
         } catch (e: any) {
-          console.log(e);
+          // console.log(e);
           vscode.window.showErrorMessage(l10n.t(`Error holding job {0}!`, e));
         }
       }),
@@ -372,7 +372,7 @@ export function initializeUserJobBrowser(context: vscode.ExtensionContext) {
             vscode.window.showInformationMessage(l10n.t(`Job not in a state to release.`));
           }
         } catch (e: any) {
-          console.log(e);
+          // console.log(e);
           vscode.window.showErrorMessage(l10n.t(`Error releasing job {0}!`, e));
         }
       }),
@@ -396,4 +396,17 @@ function updateExtensionStatus(): boolean {
   // Example: Show/hide views using setContext
   vscode.commands.executeCommand('setContext', 'vscode-ibmi-fs:userJobBrowserDisabled', !enabled);
   return enabled;
+}
+function saveFilterValuesUserJobs(singleFilter: IBMiUserJobsFilter): boolean {
+  const config = Code4i.getConfig();
+  let userJobs: IBMiUserJobsFilter[] = config[`userJobs`] || [];
+  const foundFilter = userJobs.find(userJob => userJob.user === singleFilter.user);
+
+  if (!foundFilter) {
+    userJobs.push(singleFilter);
+    config.userJobs = userJobs;
+    Code4i.getInstance()!.setConfig(config);
+    return true;
+  }
+  return false;
 }

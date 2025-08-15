@@ -78,18 +78,7 @@ export default class UserJobBrowser implements TreeDataProvider<any> {
           userJobs = sortObjectArrayByProperty(userJobs
             , element.sort.order === 'date' ? `jobEnteredSystemTime` : element.sort.order === 'name' ? 'jobNameShort' : ''
             , element.sort.ascending ? 'asc' : 'desc');
-          // NOTE: this section is about getting the message key for those jobs in MSGW status.
-          //       We are going to wait to do this until the user decides to answer the message for the specfic job.
-          //       Waiting reduces the load time. 
-          // // const filtereditems: IBMiUserJob[] = userJobs.filter((item: any) => item.activeJobStatus === 'MSGW');
-          // // const distinctNames: string[] = [...new Set(filtereditems.map(item => item.jobName||''))];
-          // // const msgwJobs = await IBMiContentJobs.getJobMessageWaitMessages(`MSGQBrowser.getChildren`, distinctNames);
           items.push(...userJobs.map((userJob: IBMiUserJob) => {
-            // // let index = 0;
-            // // index = msgwJobs.findIndex(f => (f.jobName === userJob.jobName));
-            // // if (index >= 0) {
-            // //   userJob.jobMessageKey = msgwJobs[index].jobMessageKey; // Show which job has a message wait and what key(?)
-            // // }
             const userJobItem = new UserJob(element, userJob);
             return userJobItem;
           })
@@ -97,7 +86,7 @@ export default class UserJobBrowser implements TreeDataProvider<any> {
           element.setRecordCount(items.length);
 
         } catch (e: any) {
-          console.log(e);
+          // console.log(e);
           vscode.window.showErrorMessage(e.message);
           items.push(new vscode.TreeItem(l10n.t(`Error loading user job for user {0}.`, element.user)));
         }
@@ -239,9 +228,6 @@ export class UserJob extends vscode.TreeItem implements IBMiUserJob {
   jobQueueStatus?: string;
   jobCCSID?: string;
   activeJobStatus?: string;
-  // jobMessageKey?: string;
-  // jobMessageQueueLibrary?: string;
-  // jobMessageQueueName?: string;
   jobEnteredSystemTime?: string;
   readonly sort: SortOptions = { order: "date", ascending: true };
   readonly sortBy: (sort: SortOptions) => void;
@@ -253,7 +239,6 @@ export class UserJob extends vscode.TreeItem implements IBMiUserJob {
     this.collapsibleState = vscode.TreeItemCollapsibleState.None;
     this.parent = parent;
     this.resourceUri = getUsrJobDetailFileUri(object, { readonly: false });
-    // this.contextValue = `userJobJob`;
     this.setContextValue(object);
     this.path = this.resourceUri.path.substring(1); // removes leading slash for QSYS paths
     this.jobName = object.jobName;
@@ -281,9 +266,6 @@ export class UserJob extends vscode.TreeItem implements IBMiUserJob {
   setIcon(): string { return objectIcons['job']; }
   setIconColor(): string { return ''; }
   updateIconPath() { this.iconPath = new vscode.ThemeIcon(this.setIcon(), new vscode.ThemeColor(this.setIconColor())); }
-  // setjobMessageKey(mKey: string | undefined) { return this.jobMessageKey = mKey; }
-  // setjobMessageQueueLibrary(item: string | undefined) { return this.jobMessageQueueLibrary = item; }
-  // setjobMessageQueueName(item: string | undefined) { return this.jobMessageQueueName = item; }
   updateContextValue(newContextValue: string) { this.contextValue = newContextValue; }
   setContextValue(item: IBMiUserJob) { 
     this.contextValue = `userJobJob_` +item.jobType+'_'+item.jobStatus;

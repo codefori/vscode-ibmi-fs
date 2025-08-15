@@ -82,7 +82,7 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
             if (saveFilterValuesMessages(newFilter)) { vscode.commands.executeCommand(`vscode-ibmi-fs.sortMessageQueueFilter`, node); }
           }
         } catch (e) {
-          console.log(e);
+          // console.log(e);
         }
       }),
       vscode.commands.registerCommand(`vscode-ibmi-fs.addUserMessageFilter`, async (node) => {
@@ -110,7 +110,7 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
             if (saveFilterValuesMessages(newFilter)) { vscode.commands.executeCommand(`vscode-ibmi-fs.sortMessageQueueFilter`, node); }
           }
         } catch (e) {
-          console.log(e);
+          // console.log(e);
         }
       }),
       vscode.commands.registerCommand(`vscode-ibmi-fs.sortMessageQueueFilter`, async (node) => {
@@ -279,10 +279,6 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
           if (result === `Yes`) {
 
             const connection = Code4i.getConnection();
-            // const x = (10-node.messageQueue.length);
-            // const x = 10;
-            // const str = node.messageQueue.padEnd(x);
-            // console.log(`${str} ::${str.length} :::${x}`);
             let cmd = `call QMHRMVM ('${node.messageQueue.padEnd(10)}${node.messageQueueLibrary}' x'${node.messageKey}' '*BYKEY' x'00000000')`;
             try {
               const cmdResults = await connection.runCommand({
@@ -568,7 +564,7 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
             });
 
           } catch (e) {
-            console.log(e);
+            // console.log(e);
             vscode.window.showErrorMessage(l10n.t(`Error filtering messages.`));
           }
         }
@@ -605,7 +601,7 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
           await vscode.commands.executeCommand(`vscode.open`, uri);
           return true;
         } catch (e) {
-          console.log(e);
+          // console.log(e);
           return false;
         }
 
@@ -634,7 +630,7 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
             vscode.window.showInformationMessage(l10n.t(`Message not in a state to reply with an answer.`));
           }
         } catch (e: any) {
-          console.log(e);
+          // console.log(e);
           vscode.window.showErrorMessage(l10n.t(`Error answering message! {0}.`, e));
         }
       }),
@@ -656,7 +652,7 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
             }
           }
         } catch (e: any) {
-          console.log(e);
+          // console.log(e);
           vscode.window.showErrorMessage(l10n.t(`Error answering message! {0}.`, e));
         }
       }),

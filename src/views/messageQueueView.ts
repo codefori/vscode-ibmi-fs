@@ -119,7 +119,7 @@ export default class MSGQBrowser implements TreeDataProvider<any> {
           element.setRecordCount(items.length);
 
         } catch (e: any) {
-          console.log(e);
+          // console.log(e);
           vscode.window.showErrorMessage(e.message);
           items.push(new vscode.TreeItem(l10n.t(`Error loading messages for message queue {0}.`, element.messageQueueLibrary + '/' + element.messageQueue)));
         }

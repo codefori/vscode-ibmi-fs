@@ -115,7 +115,7 @@ export async function initializeMessageQueueSearchView(context: vscode.Extension
           });
 
         } catch (e) {
-          console.log(e);
+          // console.log(e);
           vscode.window.showErrorMessage(l10n.t(`Error searching messages.`));
         }
       }
