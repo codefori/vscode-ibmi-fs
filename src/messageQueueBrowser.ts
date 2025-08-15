@@ -3,7 +3,7 @@ import { FocusOptions } from '@halcyontech/vscode-ibmi-types/';
 import vscode, { l10n, } from 'vscode';
 import { MsgqFS, getUriFromPathMsg, parseFSOptions } from './filesystem/qsys/MsgQFs';
 import { IBMiContentMsgq, IBMiContentFS, sortObjectArrayByProperty } from "./api/IBMiContentfs";
-import { Code4i, saveFilterValuesMessages } from './tools';
+import { Code4i } from './tools';
 import { IBMiMessageQueue, IBMiMessageQueueFilter, IBMiMessageQueueMessage, MsgOpenOptions, SearchParms } from './typings';
 import MSGQBrowser, { MessageQueue, MessageQueueList } from './views/messageQueueView';
 
@@ -23,7 +23,6 @@ export function initializeMessageQueueBrowser(context: vscode.ExtensionContext) 
     }
   });
   if (enabled) {
-
     context.subscriptions.push(
       msgqBrowserViewer,
       vscode.workspace.registerFileSystemProvider(`message`, new MsgqFS(context), {
@@ -685,4 +684,20 @@ function updateExtensionStatus(): boolean {
   // Example: Show/hide views using setContext
   vscode.commands.executeCommand('setContext', 'vscode-ibmi-fs:msgqBrowserDisabled', !enabled);
   return enabled;
+}
+function saveFilterValuesMessages(singleFilter: IBMiMessageQueueFilter): boolean {
+  const config = Code4i.getConfig();
+  let messageQueues: IBMiMessageQueueFilter[] = config[`messageQueues`] || [];
+  const foundFilter = messageQueues.find(queue => queue.messageQueueLibrary === singleFilter.messageQueueLibrary 
+                                                && queue.messageQueue === singleFilter.messageQueue
+                                                && queue.type === singleFilter.type
+                                              );
+
+if (!foundFilter) {
+    messageQueues.push(singleFilter);
+    config.messageQueues = messageQueues;
+    Code4i.getInstance()!.setConfig(config);
+    return true;
+  }
+  return false;
 }

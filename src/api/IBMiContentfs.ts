@@ -1,4 +1,5 @@
-import { breakUpPathFileName, Code4i } from '../tools';
+import vscode from "vscode";
+import { Code4i } from '../tools';
 import { IBMiMessageQueue, IBMiMessageQueueMessage, MsgOpenOptions, ObjAttributes, ObjLockState } from '../typings';
 
 
@@ -146,7 +147,7 @@ export namespace IBMiContentMsgq {
     }
 
     uriPath = uriPath.replace(/^\/+/, '') || '';
-    const thePathParts = breakUpPathFileName(uriPath);
+    const thePathParts = breakUpPathFileNameMessage(uriPath);
     const treeFilter = {
       messageQueueLibrary: thePathParts.get("messageQueueLibrary") || '',
       messageQueue: thePathParts.get("messageQueue") || '',
@@ -477,4 +478,25 @@ export function sortObjectArrayByProperty(
     // Handle other types or provide a default sorting
     return 0;
   });
+}
+export function breakUpPathFileNameMessage(pPath: string): Map<string, string> {
+  const myConfig = vscode.workspace.getConfiguration('vscode-ibmi-fs');
+  let namePattern: string = myConfig.get<string>('messageViewNamePattern') || '';
+  if (namePattern.length === 0) { namePattern = 'messageType,messageID,messageKey'; }
+
+  // pattern values are separated by commas.  
+  const patterns = namePattern.split(/,\s*/);
+  const pathParts = pPath.split('/');
+  const nameParts = pathParts[2].split(/[~.]/);
+
+  const namePartMap: Map<string, string> = new Map();
+    namePartMap.set('type', '*MSGQ');
+    namePartMap.set('messageQueueLibrary', pathParts[0]);
+    namePartMap.set('messageQueue', pathParts[1]);
+
+  for (let i = 0; i < patterns.length; i++) {
+    namePartMap.set(patterns[i], nameParts[i]);
+  }
+
+  return namePartMap;
 }

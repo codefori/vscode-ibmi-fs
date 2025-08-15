@@ -1,6 +1,6 @@
 import { stringify, parse, ParsedUrlQueryInput, ParsedUrlQuery } from "querystring";
-import vscode, { FilePermission, l10n } from "vscode";
-import { Code4i, buildPathFileNamefromPattern } from "../../tools";
+import vscode, { FilePermission } from "vscode";
+import { Code4i } from "../../tools";
 import { IBMiMessageQueueMessage, MsgOpenOptions } from "../../typings";
 import { IBMiContentMsgq } from "../../api/IBMiContentfs";
 import fs from 'fs';
@@ -11,7 +11,7 @@ import path from 'path';
 const writeFileAsync = util.promisify(fs.writeFile);
 
 export function getMessageDetailFileUri(filterType:string, msg: IBMiMessageQueueMessage, options?: MsgOpenOptions) {
-  let mashedUpPath = buildPathFileNamefromPattern(filterType, msg);
+  let mashedUpPath = buildPathFileNamefromPatternMessge(filterType, msg);
   if (mashedUpPath.length === 0) {
     mashedUpPath = `${msg.messageQueueLibrary}/${msg.messageQueue}/${msg.messageType}~${msg.messageID}~${msg.messageKey}.msg`;
   }
@@ -128,4 +128,37 @@ export class MsgqFS implements vscode.FileSystemProvider {
   delete(uri: vscode.Uri, options: { readonly recursive: boolean; }): void | Thenable<void> {
     throw new Error("Method not implemented.");
   }
+}
+export function buildPathFileNamefromPatternMessge(filterType: string, msg: IBMiMessageQueueMessage): string {
+  let newName = ``;
+    newName += `${msg.messageQueueLibrary}/${msg.messageQueue}/`;
+  let counter = 0;
+  // get from config
+  const splfBrowserConfig = vscode.workspace.getConfiguration('vscode-ibmi-fs');
+  let namePattern: string = splfBrowserConfig.get<string>('messageViewNamePattern') || '';
+  if (namePattern.length === 0) { namePattern = 'messageType,messageID,messageKey'; }
+  // pattern values are separated by commas.  
+  const patterns = namePattern.split(/,\s*/);
+  // append pattern to end of passed in name.
+  patterns.forEach(element => {
+    if (counter > 0) {
+      newName += '~';
+    }
+    counter++;
+    switch (element) {
+
+    case `messageType`:
+      newName += msg.messageType;
+      break;
+    case `messageID`:
+      newName += msg.messageID;
+      break;
+    case `messageKey`:
+      newName += msg.messageKey;
+      break;
+    default:
+    }
+  });
+
+  return newName;
 }

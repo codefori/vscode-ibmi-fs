@@ -829,12 +829,7 @@
     "vscode:prepublish": "npm run build",
     "compile": "npm run clean && webpack",
     "watch": "npm run clean && webpack --watch",
-    "build": "npm run clean && webpack --mode production --devtool hidden-source-map",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "build": "npm run clean && webpack --mode production --devtool hidden-source-map"
   },
   "devDependencies": {
     "@halcyontech/vscode-ibmi-types": "^2.16.0",
