@@ -3,8 +3,10 @@ import Base from "./base";
 import { Components } from "../webviewToolkit";
 import { Code4i } from '../tools';
 import IBMiContent from '@halcyontech/vscode-ibmi-types/api/IBMiContent';
+import IBMi from '@halcyontech/vscode-ibmi-types/api/IBMi';
 
 export default class Program extends Base {
+
   columns: Map<string, string> = new Map();
   selectClause: string | undefined;
 
@@ -15,16 +17,17 @@ export default class Program extends Base {
   private exportedSymbols?: ILEExport[];
 
   async fetch(): Promise<void> {
-    const connection = Code4i.getConnection();
-    const content = Code4i.getContent();
-    if (connection && content) {
-      await this.loadProgramInfoColumns(content);
 
-      const library = this.library.toUpperCase();
-      const name = this.name.toUpperCase();
+    const library = this.library.toUpperCase();
+    const name = this.name.toUpperCase();
+
+    const ibmi=Base.getIbmi();
+    
+    if(ibmi){
+      await this.loadProgramInfoColumns(ibmi);
 
       //https://www.ibm.com/docs/en/i/7.4?topic=services-program-info-view
-      const [programInfo] = await content.runSQL(`Select ${this.selectClause} From QSYS2.PROGRAM_INFO Where PROGRAM_LIBRARY = '${library}' And PROGRAM_NAME = '${name}'`);
+      const [programInfo] = await ibmi.runSQL(`Select ${this.selectClause} From QSYS2.PROGRAM_INFO Where PROGRAM_LIBRARY = '${library}' And PROGRAM_NAME = '${name}'`);
 
       this.type = String(programInfo.OBJECT_TYPE);
 
@@ -33,21 +36,19 @@ export default class Program extends Base {
 
       [this.boundModules, this.boundServicePrograms, this.exportedSymbols] =
         await Promise.all([
-          getBoundModules(library, name),
-          getBoundServicePrograms(library, name),
-          getServiceProgramExports(library, name)
+          getBoundModules(library, name, ibmi),
+          getBoundServicePrograms(library, name, ibmi),
+          getServiceProgramExports(library, name, ibmi)
         ]);
-    } else {
-      throw new Error(`No connection`);
-    }
+      }
   }
 
-  private async loadProgramInfoColumns(content: IBMiContent) {
+  private async loadProgramInfoColumns(ibmi: IBMi) {
     if (!this.selectClause) {
       this.selectClause = "";
-      const hasFullSQL = content.ibmi.config?.enableSQL;
+
       //https://www.ibm.com/docs/en/i/7.4?topic=views-syscolumns2
-      const columnDetail = await content.runSQL(`Select COLUMN_NAME, ${this.castIfNeeded("COLUMN_HEADING", 60, hasFullSQL)}, CCSID, LENGTH From QSYS2.SYSCOLUMNS2 Where TABLE_NAME = 'PROGRAM_INFO'`);
+      const columnDetail = await ibmi.runSQL(`Select COLUMN_NAME, "COLUMN_HEADING", CCSID, LENGTH From QSYS2.SYSCOLUMNS2 Where TABLE_NAME = 'PROGRAM_INFO'`);
 
       columnDetail.forEach((column) => {
         const name = column.COLUMN_NAME!.toString();
@@ -55,7 +56,7 @@ export default class Program extends Base {
           const heading = this.parseHeading(column.COLUMN_HEADING!.toString());
           const length = Number(column.LENGTH);
           this.columns.set(name, heading);
-          this.selectClause += (this.selectClause ? ',' : '') + this.castIfNeeded(name, length, hasFullSQL || (column.CCSID || 0) !== 1200);
+          this.selectClause += (this.selectClause ? ',' : '') + this.castIfNeeded(name, length, (column.CCSID || 0) !== 1200);
         }
       });
     }
@@ -254,7 +255,7 @@ interface ILEModule {
   debugData: "*YES" | "*NO";
 }
 
-async function getBoundModules(library: string, object: string): Promise<ILEModule[]> {
+async function getBoundModules(library: string, object: string, ibmi: IBMi): Promise<ILEModule[]> {
   const query = [
     `select `,
     `  a.BOUND_MODULE_LIBRARY,`,
@@ -266,7 +267,7 @@ async function getBoundModules(library: string, object: string): Promise<ILEModu
     `where a.PROGRAM_LIBRARY = '${library}' and a.PROGRAM_NAME = '${object}'`
   ].join(` `);
 
-  const rows = await Code4i.getContent().runSQL(query);
+  const rows = await ibmi.runSQL(query);
   return rows.map(row => ({
     library: String(row.BOUND_MODULE_LIBRARY),
     object: String(row.BOUND_MODULE),
@@ -282,7 +283,7 @@ interface ILEServiceProgram {
   signature: string;
 }
 
-async function getBoundServicePrograms(library: string, object: string): Promise<ILEServiceProgram[]> {
+async function getBoundServicePrograms(library: string, object: string, ibmi: IBMi): Promise<ILEServiceProgram[]> {
   const query = [
     `select `,
     `  a.BOUND_SERVICE_PROGRAM_LIBRARY,`,
@@ -292,7 +293,7 @@ async function getBoundServicePrograms(library: string, object: string): Promise
     `where a.PROGRAM_LIBRARY = '${library}' and a.PROGRAM_NAME = '${object}'`
   ].join(` `);
 
-  const rows = await Code4i.getContent().runSQL(query);
+  const rows = await ibmi.runSQL(query);
   return rows.map(row => ({
     library: String(row.BOUND_SERVICE_PROGRAM_LIBRARY),
     object: String(row.BOUND_SERVICE_PROGRAM),
@@ -305,7 +306,7 @@ interface ILEExport {
   usage: string;
 }
 
-async function getServiceProgramExports(library: string, object: string): Promise<ILEExport[]> {
+async function getServiceProgramExports(library: string, object: string, ibmi: IBMi): Promise<ILEExport[]> {
   const query = [
     `select `,
     `  a.SYMBOL_NAME,`,
@@ -314,7 +315,7 @@ async function getServiceProgramExports(library: string, object: string): Promis
     `where a.PROGRAM_LIBRARY = '${library}' and a.PROGRAM_NAME = '${object}'`
   ].join(` `);
 
-  const rows = await Code4i.getContent().runSQL(query);
+  const rows = await ibmi.runSQL(query);
   return rows.map(row => ({
     name: String(row.SYMBOL_NAME),
     usage: String(row.SYMBOL_USAGE),

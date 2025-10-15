@@ -20,10 +20,10 @@ export class DataArea extends Base {
   };
 
   async fetch(): Promise<void> {
-    const connection = Code4i.getConnection();
-    const content = Code4i.getContent();
-    if (connection && content) {
-      const [dtaara] = await content.runSQL(
+    const ibmi=Base.getIbmi();
+
+    if(ibmi){
+      const [dtaara] = await ibmi.runSQL(
         `Select DATA_AREA_TYPE, LENGTH, DECIMAL_POSITIONS, DATA_AREA_VALUE
                 From TABLE(QSYS2.DATA_AREA_INFO(
                     DATA_AREA_NAME => '${this.name}',
@@ -35,9 +35,7 @@ export class DataArea extends Base {
       this.dataArea.value = dtaara.DATA_AREA_VALUE?.toString() || "";
       this.dataArea.length = Number(dtaara.LENGTH!);
       this.dataArea.decimalPosition = Number(dtaara.DECIMAL_POSITIONS || 0);
-    } else {
-      throw new Error("No connection.");
-    }
+    }   
   }
 
   generateHTML(): string {

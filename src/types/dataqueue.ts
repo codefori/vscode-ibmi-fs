@@ -20,7 +20,7 @@ export namespace DataQueueActions {
         const library = item.library.toUpperCase();
         const name = item.name.toUpperCase();
         if (await vscode.window.showWarningMessage(`Are you sure you want to clear Data Queue ${library}/${name}?`, { modal: true }, "Clear")) {
-            await Code4i.getContent().runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
+            await Base.getIbmi().runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
             vscode.window.showInformationMessage(`Data Queue ${library}/${name} cleared.`);
             return true;
         }
@@ -61,7 +61,7 @@ export namespace DataQueueActions {
                 }
             });
             if (data) {
-                await dataQueue.content.runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
+                await Base.getIbmi().runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
               DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
                 vscode.window.showInformationMessage(`Data successfully sent to ${dataQueue.library}/${dataQueue.name}.`);
                 return true;
@@ -112,7 +112,7 @@ export class DataQueue extends Base {
     }
 
     async fetchInfo() {
-        const [dtaq] = await this.content.runSQL(
+        const [dtaq] = await this.ibmi.runSQL(
             `Select * From QSYS2.DATA_QUEUE_INFO
             Where DATA_QUEUE_NAME = '${this.name}' And
                   DATA_QUEUE_LIBRARY = '${this.library}'
@@ -162,7 +162,7 @@ export class DataQueue extends Base {
 
     private async _fetchEntries() {
         this._entries.length = 0;
-        const entryRows = await this.content.runSQL(`
+        const entryRows = await this.ibmi.runSQL(`
         Select MESSAGE_DATA, MESSAGE_ENQUEUE_TIMESTAMP, SENDER_JOB_NAME, SENDER_CURRENT_USER ${this._keyed ? ",KEY_DATA" : ""}
         From TABLE(QSYS2.DATA_QUEUE_ENTRIES(
             DATA_QUEUE_LIBRARY => '${this.library}',

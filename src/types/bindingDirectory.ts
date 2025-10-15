@@ -272,13 +272,17 @@ export default class BindingDirectory extends Base {
         `  (c.ENTRY_LIBRARY = b.PROGRAM_LIBRARY or (c.ENTRY_LIBRARY = '*LIBL' and b.PROGRAM_LIBRARY in (${libraryInList})))`,
       ].join(` `);
 
-      const rows = await Code4i.getContent().runSQL(query);
-      return rows.map(row => ({
-        library: String(row.PROGRAM_LIBRARY),
-        object: String(row.PROGRAM_NAME),
-        symbol: String(row.SYMBOL_NAME),
-        usage: String(row.SYMBOL_USAGE)
-      }));
+      const ibmi=Base.getIbmi();
+
+      if(ibmi){
+        const rows = await ibmi.runSQL(query);
+        return rows.map(row => ({
+          library: String(row.PROGRAM_LIBRARY),
+          object: String(row.PROGRAM_NAME),
+          symbol: String(row.SYMBOL_NAME),
+          usage: String(row.SYMBOL_USAGE)
+        }));
+      }      
     }
   }
 }

@@ -1,8 +1,21 @@
-import { CustomDocument, Uri } from "vscode";
+import { CustomDocument, Uri, extensions } from "vscode";
+import IBMi from "@halcyontech/vscode-ibmi-types/api/IBMi";
 
 export default abstract class Base implements CustomDocument {
   public failedFetch: boolean = false;
-  constructor(readonly uri: Uri, readonly library: string, readonly name: string) { }
+
+  constructor(readonly uri: Uri, readonly library: string, readonly name: string) {
+  }
+
+  static getIbmi(): IBMi|null{
+    const ibmiExt = extensions.getExtension<{ instance: IBMi }>("HalcyonTechLtd.code-for-ibmi");
+    if(ibmiExt?.exports?.instance){
+      return ibmiExt?.exports?.instance;
+    } else {
+      console.dir("come")
+      throw new Error(`No connection`);
+    }
+  }
 
   dispose(): void {
     //throw new Error("Method not implemented.");
