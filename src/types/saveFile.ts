@@ -1,9 +1,10 @@
 import { CommandResult, FilteredItem, IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { basename } from 'path';
 import * as vscode from 'vscode';
-import { Code4i, IBMI_OBJECT_NAME, getQSYSObjectPath, makeid } from '../tools';
+import { IBMI_OBJECT_NAME, getQSYSObjectPath } from '../tools';
 import { Components } from '../webviewToolkit';
 import Base from "./base";
+import { getInstance, getVSCodeTools } from '../ibmi';
 
 export namespace SaveFileActions {
     export const register = (context: vscode.ExtensionContext) => {
@@ -35,12 +36,14 @@ export namespace SaveFileActions {
                     error: ''
                 };
 
-                const connection = Code4i.getConnection();
+                const ibmi = getInstance();
+                const connection = ibmi?.getConnection();
                 if (connection) {
-                    const tempRemotePath = `${Code4i.getConfig().tempDir}/${library}_${name}.savf`;
+                    const config = connection.getConfig();
+                    const tempRemotePath = `${config.tempDir}/${library}_${name}.savf`;
 
                     progress.report({ message: 'Copying to temporary stream file...' });
-                    const copyToStreamFile: CommandResult = await Code4i.runCommand({
+                    const copyToStreamFile: CommandResult = await connection.runCommand({
                         command: `CPYTOSTMF FROMMBR('${qsysPath}') TOSTMF('${tempRemotePath}') STMFOPT(*REPLACE)`,
                         environment: `ile`
                     });
@@ -54,7 +57,7 @@ export namespace SaveFileActions {
                             result.error = String(error);
                         }
                         finally {
-                            await Code4i.runCommand({
+                            await connection.runCommand({
                                 command: `rm -f ${tempRemotePath}`,
                                 environment: `pase`
                             });
@@ -124,33 +127,39 @@ export namespace SaveFileActions {
                             }) || '').toUpperCase();
                         }
                         if (name) {
-                            const remotePath = `${Code4i.getConfig().tempDir}/${name}_${makeid()}.savf`;
-                            try {
-                                progress.report({ message: `uploading ${fileName} to IFS` });
-                                await Code4i.getConnection().uploadFiles([{local: localPath, remote: remotePath}]);
+                            const ibmi = getInstance();
+                            const connection = ibmi?.getConnection();
+                            if (connection) {
+                                const config = connection.getConfig();
+                                const tools = getVSCodeTools();
+                                const remotePath = `${config.tempDir}/${name}_${tools!.makeid()}.savf`;
+                                try {
+                                    progress.report({ message: `uploading ${fileName} to IFS` });
+                                    await connection.uploadFiles([{ local: localPath, remote: remotePath }]);
 
-                                progress.report({ message: `restoring ${fileName} as SAVF`, increment });
+                                    progress.report({ message: `restoring ${fileName} as SAVF`, increment });
 
-                                const copyFromStreamFile = await Code4i.runCommand({
-                                    command: `CPYFRMSTMF FROMSTMF('${remotePath}') TOMBR('${getQSYSObjectPath(filterItem.filter.library, name, 'FILE')}') MBROPT(*REPLACE)`
-                                });
-                                if (copyFromStreamFile.code !== 0) {
-                                    result.successful = false;
-                                    result.error = copyFromStreamFile.stderr;
+                                    const copyFromStreamFile = await connection.runCommand({
+                                        command: `CPYFRMSTMF FROMSTMF('${remotePath}') TOMBR('${getQSYSObjectPath(filterItem.filter.library, name, 'FILE')}') MBROPT(*REPLACE)`
+                                    });
+                                    if (copyFromStreamFile.code !== 0) {
+                                        result.successful = false;
+                                        result.error = copyFromStreamFile.stderr;
+                                    }
+                                    else {
+                                        uploaded++;
+                                    }
+                                    progress.report({ increment });
                                 }
-                                else{
-                                    uploaded++;
+                                finally {
+                                    await connection.runCommand({
+                                        command: `rm -f ${remotePath}`,
+                                        environment: `pase`
+                                    });
                                 }
-                                progress.report({ increment });
-                            }
-                            finally {
-                                await Code4i.runCommand({
-                                    command: `rm -f ${remotePath}`,
-                                    environment: `pase`
-                                });
                             }
                         }
-                        else{
+                        else {
                             //Skipped
                             progress.report({ increment: increment * 2 });
                         }
@@ -225,38 +234,42 @@ export class SaveFile extends Base {
     private readonly spooledFiles: SpooledFile[] = [];
 
     async fetch() {
-        const savf: CommandResult = await Code4i.runCommand({
-            command: `DSPSAVF FILE(${this.library}/${this.name})`,
-            environment: `ile`
-        });
+        const ibmi = getInstance();
+        const connection = ibmi?.getConnection();
+        if (connection) {
+            const savf: CommandResult = await connection.runCommand({
+                command: `DSPSAVF FILE(${this.library}/${this.name})`,
+                environment: `ile`
+            });
 
-        if (savf.code === 0 && savf.stdout) {
-            this.parseOutput(savf.stdout);
-            //First two entries are library and name
-            this.headers.shift();
-            this.headers.shift();
-        }
+            if (savf.code === 0 && savf.stdout) {
+                this.parseOutput(savf.stdout);
+                //First two entries are library and name
+                this.headers.shift();
+                this.headers.shift();
+            }
 
-        const stat: CommandResult = await Code4i.runCommand({
-            command: `ls -l ${this.qsysPath} | awk '{print $5}'`,
-            environment: `pase`
-        });
+            const stat: CommandResult = await connection.runCommand({
+                command: `ls -l ${this.qsysPath} | awk '{print $5}'`,
+                environment: `pase`
+            });
 
-        if (stat.code === 0 && stat.stdout) {
-            const size = Number(stat.stdout);
-            if (!isNaN(size)) {
-                this.headers.unshift({ label: "Size", value: `${size.toLocaleString()} bytes` });
-                if (size / GIGABYTE > 1) {
-                    this.size = `${(size / GIGABYTE).toFixed(3)} Gb`;
-                }
-                else if (size / MEGABYTE > 1) {
-                    this.size = `${(size / MEGABYTE).toFixed(3)} Mb`;
-                }
-                else if (size / KILOBYTE > 1) {
-                    this.size = `${(size / KILOBYTE).toFixed(3)} Kb`;
-                }
-                else {
-                    this.size = `${size} b`;
+            if (stat.code === 0 && stat.stdout) {
+                const size = Number(stat.stdout);
+                if (!isNaN(size)) {
+                    this.headers.unshift({ label: "Size", value: `${size.toLocaleString()} bytes` });
+                    if (size / GIGABYTE > 1) {
+                        this.size = `${(size / GIGABYTE).toFixed(3)} Gb`;
+                    }
+                    else if (size / MEGABYTE > 1) {
+                        this.size = `${(size / MEGABYTE).toFixed(3)} Mb`;
+                    }
+                    else if (size / KILOBYTE > 1) {
+                        this.size = `${(size / KILOBYTE).toFixed(3)} Kb`;
+                    }
+                    else {
+                        this.size = `${size} b`;
+                    }
                 }
             }
         }
@@ -367,7 +380,7 @@ function renderHeaders(size: string, headers: Header[]): string {
         h => h.label,
         h => h.value,
         headers
-        )}
+    )}
     ${Components.divider()}
     ${Components.button(`Download${size ? ` (${size})` : ''}`, { action: ACTION_DOWNLOAD, icon: { name: "cloud-download" } })}`;
 }

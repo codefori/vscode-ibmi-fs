@@ -1,5 +1,4 @@
-import * as vscode from 'vscode';
-import { Code4i } from '../tools';
+import { getInstance } from '../ibmi';
 import { Components } from '../webviewToolkit';
 import Base from "./base";
 
@@ -15,13 +14,17 @@ export class Command extends Base {
     private commandInfo: CommandDetail[] = [];
 
     async fetch() {
-        const command = await Code4i.runCommand({
-            command: `DSPCMD CMD(${this.library}/${this.name})`,
-            environment: `ile`
-        });
+        const ibmi = getInstance();
+        const connection = ibmi?.getConnection();
+        if (connection) {
+            const command = await connection.runCommand({
+                command: `DSPCMD CMD(${this.library}/${this.name})`,
+                environment: `ile`
+            });
 
-        if (command.code === 0 && command.stdout) {
-            this.commandInfo = parseOutput(command.stdout);
+            if (command.code === 0 && command.stdout) {
+                this.commandInfo = parseOutput(command.stdout);
+            }
         }
     }
 

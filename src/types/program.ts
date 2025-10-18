@@ -1,9 +1,7 @@
-import * as vscode from 'vscode';
 import Base from "./base";
 import { Components } from "../webviewToolkit";
-import { Code4i } from '../tools';
-import IBMiContent from '@halcyontech/vscode-ibmi-types/api/IBMiContent';
 import IBMi from '@halcyontech/vscode-ibmi-types/api/IBMi';
+import { getInstance } from '../ibmi';
 
 export default class Program extends Base {
 
@@ -17,17 +15,16 @@ export default class Program extends Base {
   private exportedSymbols?: ILEExport[];
 
   async fetch(): Promise<void> {
-
     const library = this.library.toUpperCase();
     const name = this.name.toUpperCase();
 
-    const ibmi=Base.getIbmi();
-    
-    if(ibmi){
-      await this.loadProgramInfoColumns(ibmi);
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      await this.loadProgramInfoColumns(connection);
 
       //https://www.ibm.com/docs/en/i/7.4?topic=services-program-info-view
-      const [programInfo] = await ibmi.runSQL(`Select ${this.selectClause} From QSYS2.PROGRAM_INFO Where PROGRAM_LIBRARY = '${library}' And PROGRAM_NAME = '${name}'`);
+      const [programInfo] = await connection.runSQL(`Select ${this.selectClause} From QSYS2.PROGRAM_INFO Where PROGRAM_LIBRARY = '${library}' And PROGRAM_NAME = '${name}'`);
 
       this.type = String(programInfo.OBJECT_TYPE);
 
@@ -36,11 +33,11 @@ export default class Program extends Base {
 
       [this.boundModules, this.boundServicePrograms, this.exportedSymbols] =
         await Promise.all([
-          getBoundModules(library, name, ibmi),
-          getBoundServicePrograms(library, name, ibmi),
-          getServiceProgramExports(library, name, ibmi)
+          getBoundModules(library, name, connection),
+          getBoundServicePrograms(library, name, connection),
+          getServiceProgramExports(library, name, connection)
         ]);
-      }
+    }
   }
 
   private async loadProgramInfoColumns(ibmi: IBMi) {

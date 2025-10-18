@@ -1,8 +1,7 @@
-import * as vscode from 'vscode';
 import Base from "./base";
 import { Components } from "../webviewToolkit";
-import { Code4i } from '../tools';
 import { CommandResult } from '@halcyontech/vscode-ibmi-types';
+import { getInstance } from "../ibmi";
 
 interface DataAreaInfo {
   value: string
@@ -20,10 +19,10 @@ export class DataArea extends Base {
   };
 
   async fetch(): Promise<void> {
-    const ibmi=Base.getIbmi();
-
-    if(ibmi){
-      const [dtaara] = await ibmi.runSQL(
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      const [dtaara] = await connection.runSQL(
         `Select DATA_AREA_TYPE, LENGTH, DECIMAL_POSITIONS, DATA_AREA_VALUE
                 From TABLE(QSYS2.DATA_AREA_INFO(
                     DATA_AREA_NAME => '${this.name}',
@@ -35,7 +34,7 @@ export class DataArea extends Base {
       this.dataArea.value = dtaara.DATA_AREA_VALUE?.toString() || "";
       this.dataArea.length = Number(dtaara.LENGTH!);
       this.dataArea.decimalPosition = Number(dtaara.DECIMAL_POSITIONS || 0);
-    }   
+    }
   }
 
   generateHTML(): string {
@@ -86,22 +85,26 @@ export class DataArea extends Base {
   }
 
   async save(): Promise<void> {
-    let value;
-    if (this.dataArea.type === "*DEC") {
-      this.checkDecimal(this.dataArea.value);
-      value = this.dataArea.value;
-    }
-    else {
-      value = `'${this.dataArea.value}'`;;
-    }
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      let value;
+      if (this.dataArea.type === "*DEC") {
+        this.checkDecimal(this.dataArea.value);
+        value = this.dataArea.value;
+      }
+      else {
+        value = `'${this.dataArea.value}'`;;
+      }
 
-    const command: CommandResult = await Code4i.runCommand({
-      command: `CHGDTAARA DTAARA(${this.library}/${this.name}) VALUE(${value})`,
-      environment: `ile`
-    });
+      const command: CommandResult = await connection.runCommand({
+        command: `CHGDTAARA DTAARA(${this.library}/${this.name}) VALUE(${value})`,
+        environment: `ile`
+      });
 
-    if (command.code !== 0) {
-      throw new Error(command.stderr);
+      if (command.code !== 0) {
+        throw new Error(command.stderr);
+      }
     }
   }
 }
