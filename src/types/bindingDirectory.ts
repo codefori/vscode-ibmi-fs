@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import Base from "./base";
-import { makeid, Code4i } from '../tools';
+import { getInstance, getVSCodeTools } from '../ibmi';
 
 enum EntryStatus {
   existed,
@@ -32,30 +32,38 @@ export default class BindingDirectory extends Base {
   exports: ILESymbol[] | undefined;
 
   async fetch(): Promise<void> {
-    const tempLib = Code4i.getTempLibrary();
-    const tempName = makeid();
-    
-    const command = await Code4i.runCommand({
-      command: `DSPBNDDIR BNDDIR(${this.library}/${this.name}) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${tempName})`,
-      environment: `ile`
-    });
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      const content = connection.getContent();
+      const config = connection.getConfig();
+      const tools = getVSCodeTools();
 
-    if (command.code === 0) {
-      const rows = await Code4i.getTable(tempLib, tempName);
-      const results: Entry[] = rows.map(row => ({
-        object: String(row.BNOBNM),
-        library: String(row.BNOLNM),
-        type: String(row.BNOBTP),
-        activation: String(row.BNOACT),
-        creation: {
-          date: Number(row.BNODAT),
-          time: Number(row.BNOTIM),
-        },
-        status: EntryStatus.existed
-      }));
+      const tempLib = config!.tempLibrary;
+      const tempName = tools!.makeid();
 
-      this.entries = results;
-      this.exports = await this.getExports();
+      const command = await connection.runCommand({
+        command: `DSPBNDDIR BNDDIR(${this.library}/${this.name}) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${tempName})`,
+        environment: `ile`
+      });
+
+      if (command.code === 0) {
+        const rows = await content.getTable(tempLib, tempName);
+        const results: Entry[] = rows.map((row: any) => ({
+          object: String(row.BNOBNM),
+          library: String(row.BNOLNM),
+          type: String(row.BNOBTP),
+          activation: String(row.BNOACT),
+          creation: {
+            date: Number(row.BNODAT),
+            time: Number(row.BNOTIM),
+          },
+          status: EntryStatus.existed
+        }));
+
+        this.entries = results;
+        this.exports = await this.getExports();
+      }
     }
   }
 
@@ -149,40 +157,44 @@ export default class BindingDirectory extends Base {
   }
 
   async save(): Promise<void> {
-    if (this.entries) {
-      const deleted = this.entries?.filter(entry => entry.status === EntryStatus.deleted);
-      const created = this.entries?.filter(entry => entry.status === EntryStatus.created);
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      if (this.entries) {
+        const deleted = this.entries?.filter(entry => entry.status === EntryStatus.deleted);
+        const created = this.entries?.filter(entry => entry.status === EntryStatus.created);
 
-      for (const currentEntry of deleted) {
-        // For some reason, BNDDIR commands always post to standard out...
-        const command = await Code4i.runCommand({
-          command: `RMVBNDDIRE BNDDIR(${this.library}/${this.name}) OBJ(${currentEntry.library}/${currentEntry.object})`,
-          environment: `ile`
-        });
+        for (const currentEntry of deleted) {
+          // For some reason, BNDDIR commands always post to standard out...
+          const command = await connection.runCommand({
+            command: `RMVBNDDIRE BNDDIR(${this.library}/${this.name}) OBJ(${currentEntry.library}/${currentEntry.object})`,
+            environment: `ile`
+          });
 
-        if (!command.stderr.startsWith(`CPD5D1B`)) {
-          throw new Error(command.stderr);
+          if (!command.stderr.startsWith(`CPD5D1B`)) {
+            throw new Error(command.stderr);
+          }
+
+          const existingIndex = this.entries.findIndex(entry => entry.library === currentEntry.library && entry.object === currentEntry.object);
+          if (existingIndex) {
+            this.entries.splice(existingIndex, 1);
+          }
         }
 
-        const existingIndex = this.entries.findIndex(entry => entry.library === currentEntry.library && entry.object === currentEntry.object);
-        if (existingIndex) {
-          this.entries.splice(existingIndex, 1);
+        if (created.length > 0) {
+          const command = await connection.runCommand({
+            command: `ADDBNDDIRE BNDDIR(${this.library}/${this.name}) OBJ(${created.map(currentEntry => `(${currentEntry.library}/${currentEntry.object} ${currentEntry.type} ${currentEntry.activation})`).join(` `)})`,
+            environment: `ile`
+          });
+
+          if (!command.stderr.startsWith(`CPD5D0A`)) {
+            throw new Error(command.stderr);
+          }
+
+          created.forEach(currentEntry => {
+            currentEntry.status = EntryStatus.existed;
+          });
         }
-      }
-
-      if (created.length > 0) {
-        const command = await Code4i.runCommand({
-          command: `ADDBNDDIRE BNDDIR(${this.library}/${this.name}) OBJ(${created.map(currentEntry => `(${currentEntry.library}/${currentEntry.object} ${currentEntry.type} ${currentEntry.activation})`).join(` `)})`,
-          environment: `ile`
-        });
-
-        if (!command.stderr.startsWith(`CPD5D0A`)) {
-          throw new Error(command.stderr);
-        }
-
-        created.forEach(currentEntry => {
-          currentEntry.status = EntryStatus.existed;
-        });
       }
     }
   }
@@ -250,10 +262,10 @@ export default class BindingDirectory extends Base {
   }
 
   private async getExports(): Promise<ILESymbol[] | undefined> {
-
-    const connection = Code4i.getConnection();
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
     if (connection) {
-      const config = Code4i.getConfig();
+      const config = connection.getConfig();
       const libraryList = [config.currentLibrary, ...config.libraryList];
       const libraryInList = libraryList.map(lib => `'${lib.toUpperCase()}'`).join(`, `);
 
@@ -272,17 +284,13 @@ export default class BindingDirectory extends Base {
         `  (c.ENTRY_LIBRARY = b.PROGRAM_LIBRARY or (c.ENTRY_LIBRARY = '*LIBL' and b.PROGRAM_LIBRARY in (${libraryInList})))`,
       ].join(` `);
 
-      const ibmi=Base.getIbmi();
-
-      if(ibmi){
-        const rows = await ibmi.runSQL(query);
-        return rows.map(row => ({
-          library: String(row.PROGRAM_LIBRARY),
-          object: String(row.PROGRAM_NAME),
-          symbol: String(row.SYMBOL_NAME),
-          usage: String(row.SYMBOL_USAGE)
-        }));
-      }      
+      const rows = await connection.runSQL(query);
+      return rows.map(row => ({
+        library: String(row.PROGRAM_LIBRARY),
+        object: String(row.PROGRAM_NAME),
+        symbol: String(row.SYMBOL_NAME),
+        usage: String(row.SYMBOL_USAGE)
+      }));
     }
   }
 }

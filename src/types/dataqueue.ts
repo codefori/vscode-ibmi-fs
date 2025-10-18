@@ -1,9 +1,9 @@
 import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
-import { Code4i } from '../tools';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
+import { getInstance } from '../ibmi';
 
 const ACTION_CLEAR = "clear";
 const ACTION_SEND = "send";
@@ -20,9 +20,16 @@ export namespace DataQueueActions {
         const library = item.library.toUpperCase();
         const name = item.name.toUpperCase();
         if (await vscode.window.showWarningMessage(`Are you sure you want to clear Data Queue ${library}/${name}?`, { modal: true }, "Clear")) {
-            await Base.getIbmi().runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
-            vscode.window.showInformationMessage(`Data Queue ${library}/${name} cleared.`);
-            return true;
+            const ibmi = getInstance();
+            const connection = ibmi?.getConnection();
+            if (connection) {
+                await connection.runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
+                vscode.window.showInformationMessage(`Data Queue ${library}/${name} cleared.`);
+                return true;
+            } else {
+                vscode.window.showErrorMessage(`Not connected to IBM i`);
+                return false;
+            }
         }
         else {
             return false;
@@ -61,10 +68,17 @@ export namespace DataQueueActions {
                 }
             });
             if (data) {
-                await Base.getIbmi().runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
+                const ibmi = getInstance();
+                const connection = ibmi?.getConnection();
+                if (connection) {
+                    await connection.runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
               DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
-                vscode.window.showInformationMessage(`Data successfully sent to ${dataQueue.library}/${dataQueue.name}.`);
-                return true;
+                    vscode.window.showInformationMessage(`Data successfully sent to ${dataQueue.library}/${dataQueue.name}.`);
+                    return true;
+                } else {
+                    vscode.window.showErrorMessage(`Not connected to IBM i`);
+                    return false;
+                }
             }
         }
         return false;
@@ -101,68 +115,65 @@ export class DataQueue extends Base {
         await this._fetchEntries();
     }
 
-    get content() {
-        const content = Code4i.getContent();
-        if (content) {
-            return content;
-        }
-        else {
-            throw new Error("No connection.");
-        }
-    }
-
     async fetchInfo() {
-        const [dtaq] = await this.ibmi.runSQL(
-            `Select * From QSYS2.DATA_QUEUE_INFO
+        const ibmi = getInstance();
+        const connection = ibmi?.getConnection();
+        if (connection) {
+            const [dtaq] = await connection.runSQL(
+                `Select * From QSYS2.DATA_QUEUE_INFO
             Where DATA_QUEUE_NAME = '${this.name}' And
                   DATA_QUEUE_LIBRARY = '${this.library}'
             Fetch first row only`
-        );
+            );
 
-        this._info.type = String(dtaq.DATA_QUEUE_TYPE);
-        this._info.description = String(dtaq.TEXT_DESCRIPTION || "");
-        if (this._info.type === "STANDARD") {
-            this._info.maximumMessageLength = Number(dtaq.MAXIMUM_MESSAGE_LENGTH);
-            this._info.sequence = String(dtaq.SEQUENCE);
-            if (this._info.sequence === "KEYED") {
-                this._info.keyLength = Number(dtaq.KEY_LENGTH);
-                this._keyed = true;
+            this._info.type = String(dtaq.DATA_QUEUE_TYPE);
+            this._info.description = String(dtaq.TEXT_DESCRIPTION || "");
+            if (this._info.type === "STANDARD") {
+                this._info.maximumMessageLength = Number(dtaq.MAXIMUM_MESSAGE_LENGTH);
+                this._info.sequence = String(dtaq.SEQUENCE);
+                if (this._info.sequence === "KEYED") {
+                    this._info.keyLength = Number(dtaq.KEY_LENGTH);
+                    this._keyed = true;
+                }
+                this._info.includeSenderId = toBoolean(dtaq.INCLUDE_SENDER_ID);
+                this._info.currentMessages = Number(dtaq.CURRENT_MESSAGES);
+                this._info.maximumMessages = Number(dtaq.MAXIMUM_MESSAGES);
+                this._info.maximumSpecifiedMessages = Number(dtaq.SPECIFIED_MAXIMUM_MESSAGES);
+                if (this._info.maximumSpecifiedMessages === -1) {
+                    this._info.maximumSpecifiedMessages = "*MAX16MB";
+                }
+                else if (this._info.maximuSpecifiedMessages === -2) {
+                    this._info.maximuSpecifiedMessages = "*MAX2GB";
+                }
+                this._info.initialMessageAllocation = Number(dtaq.INITIAL_MESSAGE_ALLOCATION);
+                this._info.currentMessageAllocation = Number(dtaq.CURRENT_MESSAGE_ALLOCATION);
+                this._info.force = toBoolean(dtaq.FORCE);
+                this._info.automaticReclaim = toBoolean(dtaq.AUTOMATIC_RECLAIM);
+                this._info.lastReclaimOn = String(dtaq.LAST_RECLAIM_TIMESTAMP || "Never");
+                this._info.enforceDataQueueLocks = toBoolean(dtaq.ENFORCE_DATA_QUEUE_LOCKS);
             }
-            this._info.includeSenderId = toBoolean(dtaq.INCLUDE_SENDER_ID);
-            this._info.currentMessages = Number(dtaq.CURRENT_MESSAGES);
-            this._info.maximumMessages = Number(dtaq.MAXIMUM_MESSAGES);
-            this._info.maximumSpecifiedMessages = Number(dtaq.SPECIFIED_MAXIMUM_MESSAGES);
-            if (this._info.maximumSpecifiedMessages === -1) {
-                this._info.maximumSpecifiedMessages = "*MAX16MB";
-            }
-            else if (this._info.maximuSpecifiedMessages === -2) {
-                this._info.maximuSpecifiedMessages = "*MAX2GB";
-            }
-            this._info.initialMessageAllocation = Number(dtaq.INITIAL_MESSAGE_ALLOCATION);
-            this._info.currentMessageAllocation = Number(dtaq.CURRENT_MESSAGE_ALLOCATION);
-            this._info.force = toBoolean(dtaq.FORCE);
-            this._info.automaticReclaim = toBoolean(dtaq.AUTOMATIC_RECLAIM);
-            this._info.lastReclaimOn = String(dtaq.LAST_RECLAIM_TIMESTAMP || "Never");
-            this._info.enforceDataQueueLocks = toBoolean(dtaq.ENFORCE_DATA_QUEUE_LOCKS);
-        }
-        else { //DDM
-            this._info.remoteDataQueue = `${dtaq.REMOTE_DATA_QUEUE_LIBRARY}/${dtaq.MAXIMUM_MESSAGES}`;
-            this._info.remoteLocation = String(dtaq.REMOTE_LOCATION);
-            if (this._info.remoteLocation === "*RDB") {
-                this._info.relationalDatabaseName = String(dtaq.RELATIONAL_DATABASE_NAME);
-            }
-            else {
-                this._info.localLocation = String(dtaq.LOCAL_LOCATION);
-                this._info.mode = String(dtaq.MODE);
-                this._info.remoteNetworkId = String(dtaq.REMOTE_NETWORK_ID);
-                this._info.appcDeviceDescription = String(dtaq.APPC_DEVICE_DESCRIPTION);
+            else { //DDM
+                this._info.remoteDataQueue = `${dtaq.REMOTE_DATA_QUEUE_LIBRARY}/${dtaq.MAXIMUM_MESSAGES}`;
+                this._info.remoteLocation = String(dtaq.REMOTE_LOCATION);
+                if (this._info.remoteLocation === "*RDB") {
+                    this._info.relationalDatabaseName = String(dtaq.RELATIONAL_DATABASE_NAME);
+                }
+                else {
+                    this._info.localLocation = String(dtaq.LOCAL_LOCATION);
+                    this._info.mode = String(dtaq.MODE);
+                    this._info.remoteNetworkId = String(dtaq.REMOTE_NETWORK_ID);
+                    this._info.appcDeviceDescription = String(dtaq.APPC_DEVICE_DESCRIPTION);
+                }
             }
         }
     }
 
     private async _fetchEntries() {
-        this._entries.length = 0;
-        const entryRows = await this.ibmi.runSQL(`
+        const ibmi = getInstance();
+        const connection = ibmi?.getConnection();
+        if (connection) {
+            this._entries.length = 0;
+            const entryRows = await connection.runSQL(`
         Select MESSAGE_DATA, MESSAGE_ENQUEUE_TIMESTAMP, SENDER_JOB_NAME, SENDER_CURRENT_USER ${this._keyed ? ",KEY_DATA" : ""}
         From TABLE(QSYS2.DATA_QUEUE_ENTRIES(
             DATA_QUEUE_LIBRARY => '${this.library}',
@@ -170,7 +181,8 @@ export class DataQueue extends Base {
         ))
         Order By ORDINAL_POSITION`);
 
-        this._entries.push(...entryRows.map(toEntry));
+            this._entries.push(...entryRows.map(toEntry));
+        }
     }
 
     generateHTML(): string {
