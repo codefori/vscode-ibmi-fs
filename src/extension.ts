@@ -3,14 +3,14 @@
 import * as vscode from 'vscode';
 
 import ObjectProvider from './objectProvider';
-import { Code4i } from './tools';
 import { DataQueueActions } from './types/dataqueue';
 import { SaveFileActions } from './types/saveFile';
+import { loadBase } from './ibmi';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export async function activate(context: vscode.ExtensionContext) {
-	await Code4i.initialize();
+	loadBase();
 
 	context.subscriptions.push(
 		vscode.window.registerCustomEditorProvider(`vscode-ibmi-fs.editor`, new ObjectProvider(), {
