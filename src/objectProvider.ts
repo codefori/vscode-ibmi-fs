@@ -7,6 +7,8 @@ import { DataArea } from './types/dataarea';
 import { DataQueue } from './types/dataqueue';
 import Program from './types/program';
 import { SaveFile } from './types/saveFile';
+import Jobq  from './types/jobq';
+import Jobd  from './types/jobd';
 import { generateError, generatePage } from './webviewToolkit';
 import path = require('path');
 
@@ -103,6 +105,12 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
 
       case `CMD`:
         return new Command(uri, library, objectName);
+
+      case `JOBQ`:
+        return new Jobq(uri, library, objectName);
+
+      case `JOBD`:
+        return new Jobd(uri, library, objectName);
 
       case `DTAQ`:
         return new DataQueue(uri, library, objectName);
