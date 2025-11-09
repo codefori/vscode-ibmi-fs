@@ -58,6 +58,9 @@
           },
           {
             "filenamePattern": "object*/**/*.JOBD"
+          },
+          {
+            "filenamePattern": "object*/**/*.OUTQ"
           }
         ],
         "priority": "default"
@@ -87,6 +90,54 @@
         "title": "Send data",
         "category": "IBM i FS",
         "icon": "arrow-right"
+      }, 
+      {
+        "command": "vscode-ibmi-fs.HldJobq",
+        "title": "Hold Jobq",
+        "category": "IBM i FS",
+        "icon": "arrow-right"
+      },
+      {
+        "command": "vscode-ibmi-fs.RlsJobq",
+        "title": "Release Jobq",
+        "category": "IBM i FS",
+        "icon": "arrow-right"
+      },
+      {
+        "command": "vscode-ibmi-fs.ClrJobq",
+        "title": "Clear Jobq",
+        "category": "IBM i FS",
+        "icon": "arrow-right"
+      },
+      {
+        "command": "vscode-ibmi-fs.ClrOutq",
+        "title": "Clear Outq",
+        "category": "IBM i FS",
+        "icon": "arrow-right"
+      },
+      {
+        "command": "vscode-ibmi-fs.GenPdf",
+        "title": "Generate PDF",
+        "category": "IBM i FS",
+        "icon": "arrow-right"
+      },
+      {
+        "command": "vscode-ibmi-fs.DelSpool",
+        "title": "Delete spool",
+        "category": "IBM i FS",
+        "icon": "arrow-right"
+      },
+      {
+        "command": "vscode-ibmi-fs.DelOldSpool",
+        "title": "Delete old spools",
+        "category": "IBM i FS",
+        "icon": "arrow-right"
+      },
+      {
+        "command": "vscode-ibmi-fs.ChgDtaara",
+        "title": "Change DTAARA",
+        "category": "IBM i FS",
+        "icon": "arrow-right"
       }
     ],
     "menus": {
@@ -110,6 +161,46 @@
           "command": "vscode-ibmi-fs.clearDataQueue",
           "when": "view == objectBrowser && viewItem == object.dtaq",
           "group": "5_DtaqAction@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.HldJobq",
+          "when": "view == objectBrowser && viewItem == object.jobq",
+          "group": "5_JobqAction@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.RlsJobq",
+          "when": "view == objectBrowser && viewItem == object.jobq",
+          "group": "5_JobqAction@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.ClrJobq",
+          "when": "view == objectBrowser && viewItem == object.jobq",
+          "group": "5_JobqAction@3"
+        },
+        {
+          "command": "vscode-ibmi-fs.ClrOutq",
+          "when": "view == objectBrowser && viewItem == object.outq",
+          "group": "5_OutqAction@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.GenPdf",
+          "when": "view == objectBrowser && viewItem == object.outq",
+          "group": "5_OutqAction@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.DelSpool",
+          "when": "view == objectBrowser && viewItem == object.outq",
+          "group": "5_OutqAction@3"
+        },
+        {
+          "command": "vscode-ibmi-fs.DelOldSpool",
+          "when": "view == objectBrowser && viewItem == object.outq",
+          "group": "5_OutqAction@4"
+        },
+        {
+          "command": "vscode-ibmi-fs.ChgDtaara",
+          "when": "view == objectBrowser && viewItem == object.dtaara",
+          "group": "5_DtaaraAction@1"
         }
       ],
       "commandPalette": [
@@ -127,6 +218,38 @@
         },
         {
           "command": "vscode-ibmi-fs.sendToDataQueue",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.HldJobq",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.RlsJobq",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.ClrJobq",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.ClrOutq",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.GenPdf",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.DelSpool",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.DelOldSpool",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.ChgDtaara",
           "when": "never"
         }
       ]

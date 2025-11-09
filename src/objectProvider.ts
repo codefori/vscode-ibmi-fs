@@ -9,6 +9,7 @@ import Program from './types/program';
 import { SaveFile } from './types/saveFile';
 import Jobq  from './types/jobq';
 import Jobd  from './types/jobd';
+import Outq  from './types/outq';
 import { generateError, generatePage } from './webviewToolkit';
 import path = require('path');
 
@@ -105,6 +106,9 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
 
       case `CMD`:
         return new Command(uri, library, objectName);
+
+      case `OUTQ`:
+        return new Outq(uri, library, objectName);
 
       case `JOBQ`:
         return new Jobq(uri, library, objectName);

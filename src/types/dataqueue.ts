@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
+import { getColumns,generateTableHtml } from "../tools"; 
 
 const ACTION_CLEAR = "clear";
 const ACTION_SEND = "send";
@@ -58,12 +59,21 @@ export namespace DataQueueActions {
             }
         }) : "";
         if (!dataQueue.keyed || key) {
+            const fmt = await vscode.window.showInputBox({
+                placeHolder: "YES/NO",
+                title: `Is message in UTF8 format?`,
+                validateInput: fmt => {
+                    if (fmt.toUpperCase()!=='YES' && fmt.toUpperCase()!=='NO') {
+                        return `You need to put YES or NO`;
+                    }
+                }
+            });
             const data = await vscode.window.showInputBox({
-                placeHolder: "data",
-                title: `Enter data`,
+                placeHolder: "message",
+                title: `Enter message`,
                 validateInput: data => {
                     if (data.length > Number(dataQueue.maximumMessageLength)) {
-                        return `Data is too long (maximum ${dataQueue.maximumMessageLength} characters)`;
+                        return `Message is too long (maximum ${dataQueue.maximumMessageLength} characters)`;
                     }
                 }
             });
@@ -71,8 +81,13 @@ export namespace DataQueueActions {
                 const ibmi = getInstance();
                 const connection = ibmi?.getConnection();
                 if (connection) {
-                    await connection.runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
-              DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
+                    if(fmt==='YES'){
+                        await connection.runSQL(`CALL QSYS2.SEND_DATA_QUEUE_UTF8(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
+                            DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
+                    } else {
+                        await connection.runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
+                            DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
+                    }
                     vscode.window.showInformationMessage(`Data successfully sent to ${dataQueue.library}/${dataQueue.name}.`);
                     return true;
                 } else {
@@ -88,6 +103,7 @@ export namespace DataQueueActions {
 interface Entry {
     key?: string
     data: string
+    datautf8: string
     timestamp: string
     senderJob: string
     senderUser: string
@@ -97,6 +113,9 @@ export class DataQueue extends Base {
     private readonly _info: Record<string, string | boolean | number> = {};
     private readonly _entries: Entry[] = [];
     private _keyed = false;
+    columns: Map<string, string> = new Map();
+    selectClause: string | undefined;
+    private dtaq?:any;
 
     get keyed() {
         return this._keyed;
@@ -118,53 +137,55 @@ export class DataQueue extends Base {
     async fetchInfo() {
         const ibmi = getInstance();
         const connection = ibmi?.getConnection();
-        if (connection) {
-            const [dtaq] = await connection.runSQL(
-                `Select * From QSYS2.DATA_QUEUE_INFO
-            Where DATA_QUEUE_NAME = '${this.name}' And
-                  DATA_QUEUE_LIBRARY = '${this.library}'
-            Fetch first row only`
-            );
 
-            this._info.type = String(dtaq.DATA_QUEUE_TYPE);
-            this._info.description = String(dtaq.TEXT_DESCRIPTION || "");
-            if (this._info.type === "STANDARD") {
-                this._info.maximumMessageLength = Number(dtaq.MAXIMUM_MESSAGE_LENGTH);
-                this._info.sequence = String(dtaq.SEQUENCE);
-                if (this._info.sequence === "KEYED") {
-                    this._info.keyLength = Number(dtaq.KEY_LENGTH);
-                    this._keyed = true;
-                }
-                this._info.includeSenderId = toBoolean(dtaq.INCLUDE_SENDER_ID);
-                this._info.currentMessages = Number(dtaq.CURRENT_MESSAGES);
-                this._info.maximumMessages = Number(dtaq.MAXIMUM_MESSAGES);
-                this._info.maximumSpecifiedMessages = Number(dtaq.SPECIFIED_MAXIMUM_MESSAGES);
-                if (this._info.maximumSpecifiedMessages === -1) {
-                    this._info.maximumSpecifiedMessages = "*MAX16MB";
-                }
-                else if (this._info.maximuSpecifiedMessages === -2) {
-                    this._info.maximuSpecifiedMessages = "*MAX2GB";
-                }
-                this._info.initialMessageAllocation = Number(dtaq.INITIAL_MESSAGE_ALLOCATION);
-                this._info.currentMessageAllocation = Number(dtaq.CURRENT_MESSAGE_ALLOCATION);
-                this._info.force = toBoolean(dtaq.FORCE);
-                this._info.automaticReclaim = toBoolean(dtaq.AUTOMATIC_RECLAIM);
-                this._info.lastReclaimOn = String(dtaq.LAST_RECLAIM_TIMESTAMP || "Never");
-                this._info.enforceDataQueueLocks = toBoolean(dtaq.ENFORCE_DATA_QUEUE_LOCKS);
+        if (connection) {
+            this.columns = await getColumns(connection,'DATA_QUEUE_INFO');
+            let sql: string;
+
+            this.dtaq = await connection. runSQL(
+                `SELECT DATA_QUEUE_TYPE
+                FROM QSYS2.DATA_QUEUE_INFO
+                WHERE DATA_QUEUE_NAME = '${this.name}' AND DATA_QUEUE_LIBRARY = '${this.library}'
+                Fetch first row only`)
+
+            if(this.dtaq[0].DATA_QUEUE_TYPE==='DDM'){
+                sql=`SELECT DATA_QUEUE_NAME,
+                    DATA_QUEUE_LIBRARY,
+                    DATA_QUEUE_TYPE,
+                    TEXT_DESCRIPTION,
+                    REMOTE_DATA_QUEUE_LIBRARY,
+                    REMOTE_DATA_QUEUE,
+                    REMOTE_LOCATION,
+                    RELATIONAL_DATABASE_NAME,
+                    APPC_DEVICE_DESCRIPTION,
+                    LOCAL_LOCATION,
+                    "MODE",
+                    REMOTE_NETWORK_ID`
+            } else {
+                sql=`SELECT DATA_QUEUE_NAME,
+                    DATA_QUEUE_LIBRARY,
+                    DATA_QUEUE_TYPE,
+                    MAXIMUM_MESSAGE_LENGTH,
+                    "SEQUENCE",
+                    KEY_LENGTH,
+                    INCLUDE_SENDER_ID,
+                    CURRENT_MESSAGES,
+                    MAXIMUM_MESSAGES,
+                    SPECIFIED_MAXIMUM_MESSAGES,
+                    INITIAL_MESSAGE_ALLOCATION,
+                    CURRENT_MESSAGE_ALLOCATION,
+                    FORCE,
+                    AUTOMATIC_RECLAIM,
+                    LAST_RECLAIM_TIMESTAMP,
+                    ENFORCE_DATA_QUEUE_LOCKS,
+                    TEXT_DESCRIPTION`
             }
-            else { //DDM
-                this._info.remoteDataQueue = `${dtaq.REMOTE_DATA_QUEUE_LIBRARY}/${dtaq.MAXIMUM_MESSAGES}`;
-                this._info.remoteLocation = String(dtaq.REMOTE_LOCATION);
-                if (this._info.remoteLocation === "*RDB") {
-                    this._info.relationalDatabaseName = String(dtaq.RELATIONAL_DATABASE_NAME);
-                }
-                else {
-                    this._info.localLocation = String(dtaq.LOCAL_LOCATION);
-                    this._info.mode = String(dtaq.MODE);
-                    this._info.remoteNetworkId = String(dtaq.REMOTE_NETWORK_ID);
-                    this._info.appcDeviceDescription = String(dtaq.APPC_DEVICE_DESCRIPTION);
-                }
-            }
+
+            sql=sql.trim()+` FROM QSYS2.DATA_QUEUE_INFO
+                WHERE DATA_QUEUE_NAME = '${this.name}' AND DATA_QUEUE_LIBRARY = '${this.library}'
+                Fetch first row only`
+
+            this.dtaq = await connection. runSQL(sql)
         }
     }
 
@@ -174,7 +195,7 @@ export class DataQueue extends Base {
         if (connection) {
             this._entries.length = 0;
             const entryRows = await connection.runSQL(`
-        Select MESSAGE_DATA, MESSAGE_ENQUEUE_TIMESTAMP, SENDER_JOB_NAME, SENDER_CURRENT_USER ${this._keyed ? ",KEY_DATA" : ""}
+        Select MESSAGE_DATA, MESSAGE_DATA_UTF8, MESSAGE_ENQUEUE_TIMESTAMP, SENDER_JOB_NAME, SENDER_CURRENT_USER ${this._keyed ? ",KEY_DATA" : ""}
         From TABLE(QSYS2.DATA_QUEUE_ENTRIES(
             DATA_QUEUE_LIBRARY => '${this.library}',
             DATA_QUEUE => '${this.name}'
@@ -188,7 +209,8 @@ export class DataQueue extends Base {
     generateHTML(): string {
         return Components.panels([
             { title: "Data Queue", content: this.renderDataQueuePanel() },
-            { title: "Messages", badge: this._entries.length, content: renderEntries(this._keyed, this._entries) }
+            { title: "Messages", badge: this._entries.length, content: renderEntries(this._keyed, this._entries, false) },
+            { title: "Messages UTF8", badge: this._entries.length, content: renderEntries(this._keyed, this._entries, true) }
         ], { style: "height:100vh" });
     }
 
@@ -218,17 +240,23 @@ export class DataQueue extends Base {
     }
 
     private renderDataQueuePanel(): string {
-        return /*html*/ `${Components.keyValueTable(infoKey, infoValue, Object.entries(this._info))}
+
+        let html=generateTableHtml(this.columns,this.dtaq);
+        html=html.trim()+`
         ${Components.divider()}
-        ${Components.button("Send data", { action: ACTION_SEND, icon: { name: "arrow-right", left: true } })}
-        ${Components.button("Clear", { action: ACTION_CLEAR, appearance: "secondary", icon: { name: "clear-all", left: true } })}
-        `;
+        </br>
+        ${Components.button("Send message 💬", { action: ACTION_SEND, style:"width:100%; text-align: center" })}
+        </br>
+        ${Components.button("Clear 🧹", { action: ACTION_CLEAR, appearance: "secondary", style:"width:100%; text-align: center" })}`;
+
+        return html;
     }
 }
 
 function toEntry(row: Tools.DB2Row): Entry {
     return {
         data: String(row.MESSAGE_DATA),
+        datautf8: String(row.MESSAGE_DATA_UTF8),
         timestamp: String(row.MESSAGE_ENQUEUE_TIMESTAMP),
         key: row.KEY_DATA ? String(row.KEY_DATA) : undefined,
         senderJob: String(row.SENDER_JOB_NAME || '-'),
@@ -236,39 +264,22 @@ function toEntry(row: Tools.DB2Row): Entry {
     };
 }
 
-function infoKey(entry: [string, string | number | boolean]) {
-    return entry[0].split('')
-        .map((letter, index) => (index === 0 || letter.toUpperCase() === letter) ? ` ${letter.toUpperCase()}` : letter)
-        .join('')
-        .trim();
-}
-
-function infoValue(entry: [string, string | number | boolean]) {
-    let value = entry[1];
-    if (typeof value === "boolean") {
-        return value ? "✔" : "✖"; //I can't display codicons 😕
-    }
-    else if (typeof value === "number") {
-        return Components.badge(value);
-    }
-    else {
-        return value;
-    }
-}
-
-function renderEntries(keyed: boolean, entries: Entry[]) {
+function renderEntries(keyed: boolean, entries: Entry[], isUtf8: boolean) {
     const columns: Components.Column<Entry>[] = [];
     if (keyed) {
         columns.push({ title: "Key", size: "1fr", cellValue: e => e.key! });
     }
 
     columns.push(
-        { title: "Data", size: "3fr", cellValue: e => e.data }
+        { title: "Timestamp", size: "0.5fr", cellValue: e => e.timestamp },
+        { title: "User", size: "0.5fr", cellValue: e => e.senderUser },
     );
 
-    return Components.dataGrid<Entry>({ stickyHeader: true, columns: columns }, entries);
-}
+    if(isUtf8){
+        columns.push({ title: "Message", size: "3fr", cellValue: e => e.datautf8 });
+    } else {
+        columns.push({ title: "Message", size: "3fr", cellValue: e => e.data });
+    }
 
-function toBoolean(value: any) {
-    return value === "YES";
+    return Components.dataGrid<Entry>({ stickyHeader: true, columns: columns }, entries);
 }

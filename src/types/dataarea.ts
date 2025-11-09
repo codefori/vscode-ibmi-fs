@@ -1,124 +1,203 @@
 import Base from "./base";
+import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
-import { CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
+import { getColumns, generateTableHtml } from "../tools";
+import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
+import * as vscode from 'vscode';
 
-interface DataAreaInfo {
-  value: string
-  type: string
-  length: number
-  decimalPosition: number
+const ACTION_CHG = "chg";
+
+export namespace DtaaraActions {
+  export const register = (context: vscode.ExtensionContext) => {
+      context.subscriptions.push(
+          vscode.commands.registerCommand("vscode-ibmi-fs.ChgDtaara", chgDtaara),
+      );
+  };
+
+  function checkDecimal(value: string, dta: Tools.DB2Row[]): boolean {
+    if (value) {
+      const max = (Math.pow(10, Number(dta[0].LENGTH)) - 1) / (Number(dta[0].DECIMAL_POSITIONS) ? Math.pow(10, Number(dta[0].DECIMAL_POSITIONS)) : 1);
+      const min = max * -1;
+      const number = Number(value);
+      if (isNaN(number)) {
+        return false
+      } else if (number > max || number < min) {
+        return false
+      } else {
+        return true;
+      }
+    } else {
+      return false;
+    }
+  };
+
+  export const chgDtaara = async (item: IBMiObject | DataArea, dta: Tools.DB2Row[], curvalue: string): Promise<boolean> => {
+    const library = item.library.toUpperCase();
+    const name = item.name.toUpperCase();
+
+    let newvalue=null;
+
+    switch(dta[0].DATA_AREA_TYPE){
+      case `*DEC`:
+        newvalue = await vscode.window.showInputBox({
+            title: `Change DTAARA value`,
+            value: curvalue,
+            validateInput: newvalue => {
+              if (checkDecimal(newvalue,dta)) {
+                  return `The value lenght must be a number`;
+              }
+            }
+          });
+          break;
+
+      case `*LGL`:
+          newvalue = await vscode.window.showInputBox({
+            title: `Change DTAARA value`,
+            value: curvalue,
+            validateInput: newvalue => {
+              if (isNaN(Number(newvalue)) || (Number(newvalue) !==0&&Number(newvalue)!==1)) {
+                  return `For *LGL dtaara value must be 0 or 1`;
+              }
+            }
+          });
+          break;
+
+      case `*CHAR`:
+          newvalue = await vscode.window.showInputBox({
+            title: `Change DTAARA value`,
+            value: curvalue,
+            validateInput: newvalue => {
+              if (newvalue.length>Number(dta[0].LENGTH)) {
+                  return `The value lenght must be less or equals than ${dta[0].LENGTH} characters`;
+              }
+            }
+          });
+          break;
+    }
+
+    if(newvalue){
+      const ibmi = getInstance();
+      const connection = ibmi?.getConnection();
+      if (connection) {
+
+        const command: CommandResult = await connection.runCommand({
+          command: `CHGDTAARA DTAARA(${library}/${name}) VALUE('${newvalue}')`,
+          environment: `ile`
+        });
+
+        if (command.code === 0) {
+            vscode.window.showInformationMessage(`Data Area ${library}/${name} changed.`);
+            return true;
+          } else {
+            vscode.window.showErrorMessage(`Unable change Data Area ${library}/${name}`);
+            return false;
+          }
+        } else {
+          vscode.window.showErrorMessage(`Not connected to IBM i`);
+          return false;
+        }
+      } else {
+        return false;
+    }
+  }
 }
 
 export class DataArea extends Base {
-  private dataArea: DataAreaInfo = {
-    value: "",
-    type: "",
-    length: 0,
-    decimalPosition: 0
-  };
+  columns: Map<string, string> = new Map();
+  private dta: any
+  private dtavalue: any
 
   async fetch(): Promise<void> {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      const [dtaara] = await connection.runSQL(
-        `Select DATA_AREA_TYPE, LENGTH, DECIMAL_POSITIONS, DATA_AREA_VALUE
-                From TABLE(QSYS2.DATA_AREA_INFO(
-                    DATA_AREA_NAME => '${this.name}',
-                    DATA_AREA_LIBRARY => '${this.library}'))
-                Fetch first row only`
-      );
+      
+      this.columns = await getColumns(connection,'DATA_AREA_INFO');
+      this.dta = await connection. runSQL(
+                `SELECT DATA_AREA_TYPE
+                 from QSYS2.DATA_AREA_INFO
+                 WHERE DATA_AREA_NAME = '${this.name}' AND DATA_AREA_LIBRARY = '${this.library}'
+                 Fetch first row only`)
 
-      this.dataArea.type = dtaara.DATA_AREA_TYPE!.toString();
-      this.dataArea.value = dtaara.DATA_AREA_VALUE?.toString() || "";
-      this.dataArea.length = Number(dtaara.LENGTH!);
-      this.dataArea.decimalPosition = Number(dtaara.DECIMAL_POSITIONS || 0);
+      let sql=""
+
+      if(this.dta[0].DATA_AREA_TYPE!=='*DEC'){
+        sql=`select DATA_AREA_NAME,
+          DATA_AREA_LIBRARY,
+          DATA_AREA_TYPE,
+          LENGTH,
+          TEXT_DESCRIPTION `
+      } else {
+        sql=`select DATA_AREA_NAME,
+          DATA_AREA_LIBRARY,
+          DATA_AREA_TYPE,
+          DECIMAL_POSITIONS,
+          LENGTH,
+          TEXT_DESCRIPTION `
+      } 
+
+      sql=sql.trim()+` from QSYS2.DATA_AREA_INFO
+          WHERE DATA_AREA_NAME = '${this.name}' AND DATA_AREA_LIBRARY = '${this.library}'
+          Fetch first row only`;
+
+      this.dta = await connection. runSQL(sql)
+      this.dtavalue = await connection. runSQL(`SELECT DATA_AREA_VALUE
+                 from QSYS2.DATA_AREA_INFO
+                 WHERE DATA_AREA_NAME = '${this.name}' AND DATA_AREA_LIBRARY = '${this.library}'
+                 Fetch first row only`)
     }
+        
+  }
+
+  generateTableHtmlCODE(columns: Map<string, string>, obj: any): string {
+  
+      let html=`<vscode-data-grid>`;
+  
+      columns.forEach((label, key) => {
+      if(key in obj[0]){
+          let value = obj[0][key as keyof typeof obj];
+          if(!value)
+          value="-"
+          html=html.trim()+`<vscode-data-grid-row>
+          <vscode-data-grid-cell grid-column="1"><b>${label}</b></vscode-data-grid-cell>
+          <vscode-data-grid-cell grid-column="2"><code>${value}</code></vscode-data-grid-cell>
+          </vscode-data-grid-row>`;
+      }
+      });
+  
+      html=html.trim()+`</vscode-data-grid>`;
+  
+      return html;
   }
 
   generateHTML(): string {
-    const info = this.dataArea;
-    return /* html */`
-    <p>
-      <h3>Type: <code>${info.type}</code></h3>
-      ${info.type !== "*LGL" ? /* html */ `<h3>Length: <code>${info.length}</code></h3>` : ''}
-      ${info.type === "*DEC" ? /* html */ `<h3>Decimal position: <code>${info.decimalPosition}</code></h3>` : ''}
-    </p>
-    ${Components.divider()}
-    <p>${renderValueField(info)}</p>`;
-  }
+  
+        let html=generateTableHtml(this.columns,this.dta);
+        html=html.trim()+`
+            ${Components.divider()}
+            </br>
+            ${Components.button("Change value ✏️", { action: ACTION_CHG, style:"width:100%; text-align: center"})}`;
+  
+        return html;
+    }
 
   async handleAction(data: any): Promise<HandleActionResult> {
-    this.dataArea.value = this.getValue(data.value).toString();
-    // We don't want to rerender. 
-    return {
-      dirty: true
-    };
-  }
-
-  private getValue(value: string | boolean) {
-    switch (this.dataArea.type) {
-      case `*DEC`:
-        return value || "0";
-
-      case `*LGL`:
-        return `${value ? '1' : '0'}`;
-
-      default:
-        return `${value}`.replace(/\s/g, " ");
-    }
-  }
-
-  private checkDecimal(value: string) {
-    if (value) {
-      const max = (Math.pow(10, this.dataArea.length) - 1) / (this.dataArea.decimalPosition ? Math.pow(10, this.dataArea.decimalPosition) : 1);
-      const min = max * -1;
-      const number = Number(value);
-      if (isNaN(number)) {
-        throw new Error(`Value '${value}' is not a number.`);
+    const uri = vscode.Uri.parse(data.href);
+      let refetch = false;
+      switch (uri.path) {
+          case ACTION_CHG:
+              if (await DtaaraActions.chgDtaara(this, this.dta, this.dtavalue[0].DATA_AREA_VALUE)) {
+                  refetch = true;
+              }
+              break;
       }
-      else if (number > max || number < min) {
-        throw new Error(`Value must be comprised between ${min} and ${max}.`);
+      if (refetch) {
+          await this.fetch();
       }
-    }
-  }
+      return { rerender: refetch };
+  }  
 
   async save(): Promise<void> {
-    const ibmi = getInstance();
-    const connection = ibmi?.getConnection();
-    if (connection) {
-      let value;
-      if (this.dataArea.type === "*DEC") {
-        this.checkDecimal(this.dataArea.value);
-        value = this.dataArea.value;
-      }
-      else {
-        value = `'${this.dataArea.value}'`;;
-      }
-
-      const command: CommandResult = await connection.runCommand({
-        command: `CHGDTAARA DTAARA(${this.library}/${this.name}) VALUE(${value})`,
-        environment: `ile`
-      });
-
-      if (command.code !== 0) {
-        throw new Error(command.stderr);
-      }
-    }
-  }
-}
-
-function renderValueField(info: DataAreaInfo) {
-  switch (info.type) {
-    case `*LGL`:
-      return Components.checkbox("value", "Logical value", { checked: info.value === `1`, });
-
-    case `*DEC`:
-      const size = info.length + (info.decimalPosition ? 1 : 0);
-      return Components.textField("value", "Decimal value", { maxlength: size, value: info.value });
-
-    default:
-      return Components.textArea("value", "Character value", { value: info.value || '', maxlength: info.length, cols: 100, rows: 3 });
   }
 }
