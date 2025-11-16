@@ -2,7 +2,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, generateTableHtml } from "../tools";
+import { getColumns, generateTableHtmlCode } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 
@@ -106,7 +106,6 @@ export namespace DtaaraActions {
 export class DataArea extends Base {
   columns: Map<string, string> = new Map();
   private dta: any
-  private dtavalue: any
 
   async fetch(): Promise<void> {
     const ibmi = getInstance();
@@ -120,60 +119,24 @@ export class DataArea extends Base {
                  WHERE DATA_AREA_NAME = '${this.name}' AND DATA_AREA_LIBRARY = '${this.library}'
                  Fetch first row only`)
 
-      let sql=""
-
-      if(this.dta[0].DATA_AREA_TYPE!=='*DEC'){
-        sql=`select DATA_AREA_NAME,
+      let sql =`select DATA_AREA_NAME,
+          DATA_AREA_VALUE,
           DATA_AREA_LIBRARY,
           DATA_AREA_TYPE,
           LENGTH,
-          TEXT_DESCRIPTION `
-      } else {
-        sql=`select DATA_AREA_NAME,
-          DATA_AREA_LIBRARY,
-          DATA_AREA_TYPE,
-          DECIMAL_POSITIONS,
-          LENGTH,
-          TEXT_DESCRIPTION `
-      } 
-
-      sql=sql.trim()+` from QSYS2.DATA_AREA_INFO
+          TEXT_DESCRIPTION ${this.dta[0].DATA_AREA_TYPE==='*DEC' ? ', DECIMAL_POSITIONS' : ''}
+          from QSYS2.DATA_AREA_INFO
           WHERE DATA_AREA_NAME = '${this.name}' AND DATA_AREA_LIBRARY = '${this.library}'
           Fetch first row only`;
 
       this.dta = await connection. runSQL(sql)
-      this.dtavalue = await connection. runSQL(`SELECT DATA_AREA_VALUE
-                 from QSYS2.DATA_AREA_INFO
-                 WHERE DATA_AREA_NAME = '${this.name}' AND DATA_AREA_LIBRARY = '${this.library}'
-                 Fetch first row only`)
     }
         
   }
 
-  generateTableHtmlCODE(columns: Map<string, string>, obj: any): string {
-  
-      let html=`<vscode-data-grid>`;
-  
-      columns.forEach((label, key) => {
-      if(key in obj[0]){
-          let value = obj[0][key as keyof typeof obj];
-          if(!value)
-          value="-"
-          html=html.trim()+`<vscode-data-grid-row>
-          <vscode-data-grid-cell grid-column="1"><b>${label}</b></vscode-data-grid-cell>
-          <vscode-data-grid-cell grid-column="2"><code>${value}</code></vscode-data-grid-cell>
-          </vscode-data-grid-row>`;
-      }
-      });
-  
-      html=html.trim()+`</vscode-data-grid>`;
-  
-      return html;
-  }
-
   generateHTML(): string {
   
-        let html=generateTableHtml(this.columns,this.dta);
+        let html=generateTableHtmlCode(this.columns,this.dta, `["DATA_AREA_VALUE"]`);
         html=html.trim()+`
             ${Components.divider()}
             </br>
@@ -187,7 +150,7 @@ export class DataArea extends Base {
       let refetch = false;
       switch (uri.path) {
           case ACTION_CHG:
-              if (await DtaaraActions.chgDtaara(this, this.dta, this.dtavalue[0].DATA_AREA_VALUE)) {
+              if (await DtaaraActions.chgDtaara(this, this.dta, this.dta[0].DATA_AREA_VALUE)) {
                   refetch = true;
               }
               break;

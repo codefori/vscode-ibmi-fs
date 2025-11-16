@@ -195,12 +195,12 @@ export class DataQueue extends Base {
         if (connection) {
             this._entries.length = 0;
             const entryRows = await connection.runSQL(`
-        Select MESSAGE_DATA, MESSAGE_DATA_UTF8, MESSAGE_ENQUEUE_TIMESTAMP, SENDER_JOB_NAME, SENDER_CURRENT_USER ${this._keyed ? ",KEY_DATA" : ""}
-        From TABLE(QSYS2.DATA_QUEUE_ENTRIES(
-            DATA_QUEUE_LIBRARY => '${this.library}',
-            DATA_QUEUE => '${this.name}'
-        ))
-        Order By ORDINAL_POSITION`);
+                Select MESSAGE_DATA, MESSAGE_DATA_UTF8, MESSAGE_ENQUEUE_TIMESTAMP, SENDER_JOB_NAME, SENDER_CURRENT_USER ${this._keyed ? ",KEY_DATA" : ""}
+                From TABLE(QSYS2.DATA_QUEUE_ENTRIES(
+                    DATA_QUEUE_LIBRARY => '${this.library}',
+                    DATA_QUEUE => '${this.name}'
+                ))
+                Order By ORDINAL_POSITION`);
 
             this._entries.push(...entryRows.map(toEntry));
         }

@@ -60,6 +60,29 @@ export function generateTableHtml(columns: Map<string, string>, obj: any): strin
     return html;
 }
 
+export function generateTableHtmlCode(columns: Map<string, string>, obj: any, inJson: string): string {
+
+    let lblarray:string[] = JSON.parse(inJson)
+
+    let html=`<vscode-data-grid>`;
+
+    columns.forEach((label, key) => {
+    if(key in obj[0]){
+        let value = obj[0][key as keyof typeof obj];
+        if(!value)
+        value="-"
+        html=html.trim()+`<vscode-data-grid-row>
+        <vscode-data-grid-cell grid-column="1"><b>${label}</b></vscode-data-grid-cell>
+        <vscode-data-grid-cell grid-column="2">${lblarray.includes(key)?'<code>'+value+'</code>':value}</vscode-data-grid-cell>
+        </vscode-data-grid-row>`;
+    }
+    });
+
+    html=html.trim()+`</vscode-data-grid>`;
+
+    return html;
+}
+
 export function infoValue(value: string | number | boolean) {
     if (typeof value === "boolean") {
         return value ? "✔" : "✖"; //I can't display codicons 😕
