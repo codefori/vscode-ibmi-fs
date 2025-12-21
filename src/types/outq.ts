@@ -66,12 +66,17 @@ export namespace OutputQueueActions {
             const ibmi = getInstance();
             const connection = ibmi?.getConnection();
             if (connection) {
-                const dltspl = await connection.runSQL(`CALL SYSTOOLS.DELETE_OLD_SPOOLED_FILES(DELETE_OLDER_THAN => CURRENT DATE - ${days} DAYS, 
-                                       P_OUTPUT_QUEUE_NAME => '${name}', 
-                                       P_OUTPUT_QUEUE_LIBRARY_NAME => '${library}', 
-                                       PREVIEW => 'NO')`);                
-                vscode.window.showInformationMessage(`Old spools from ${library}/${name} deleted.`);
-                return true;
+                try{
+                    await connection.runSQL(`CALL SYSTOOLS.DELETE_OLD_SPOOLED_FILES(DELETE_OLDER_THAN => CURRENT DATE - ${days} DAYS, 
+                                        P_OUTPUT_QUEUE_NAME => '${name}', 
+                                        P_OUTPUT_QUEUE_LIBRARY_NAME => '${library}', 
+                                        PREVIEW => 'NO')`);                
+                    vscode.window.showInformationMessage(`Old spools from ${library}/${name} deleted.`);
+                    return true;
+                } catch (error) {
+                    vscode.window.showErrorMessage(`An error occurred while deleteing old spool in OUTQ ${library}/${name}`);
+                    return false;
+                }
             } else {
                 vscode.window.showErrorMessage(`Not connected to IBM i`);
                 return false;

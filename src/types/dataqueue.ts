@@ -24,9 +24,14 @@ export namespace DataQueueActions {
             const ibmi = getInstance();
             const connection = ibmi?.getConnection();
             if (connection) {
-                await connection.runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
-                vscode.window.showInformationMessage(`Data Queue ${library}/${name} cleared.`);
-                return true;
+                try{
+                    await connection.runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
+                    vscode.window.showInformationMessage(`Data Queue ${library}/${name} cleared.`);
+                    return true;
+                } catch (error) {
+                    vscode.window.showErrorMessage(`An error occurred while clearing DTAQ ${library}/${name}`);
+                    return false;
+                }
             } else {
                 vscode.window.showErrorMessage(`Not connected to IBM i`);
                 return false;
@@ -81,15 +86,20 @@ export namespace DataQueueActions {
                 const ibmi = getInstance();
                 const connection = ibmi?.getConnection();
                 if (connection) {
-                    if(fmt==='YES'){
-                        await connection.runSQL(`CALL QSYS2.SEND_DATA_QUEUE_UTF8(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
-                            DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
-                    } else {
-                        await connection.runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
-                            DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
+                    try{
+                        if(fmt==='YES'){
+                            await connection.runSQL(`CALL QSYS2.SEND_DATA_QUEUE_UTF8(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
+                                DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
+                        } else {
+                            await connection.runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
+                                DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
+                        }
+                        vscode.window.showInformationMessage(`Data successfully sent to ${dataQueue.library}/${dataQueue.name}.`);
+                        return true;
+                    } catch (error) {
+                        vscode.window.showErrorMessage(`An error occurred while sending data to DTAQ ${dataQueue.library}/${dataQueue.name}`);
+                        return false;
                     }
-                    vscode.window.showInformationMessage(`Data successfully sent to ${dataQueue.library}/${dataQueue.name}.`);
-                    return true;
                 } else {
                     vscode.window.showErrorMessage(`Not connected to IBM i`);
                     return false;

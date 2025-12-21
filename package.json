@@ -61,6 +61,9 @@
           },
           {
             "filenamePattern": "object*/**/*.OUTQ"
+          },
+          {
+            "filenamePattern": "object*/**/*.USRSPC"
           }
         ],
         "priority": "default"
@@ -138,6 +141,12 @@
         "title": "Change DTAARA",
         "category": "IBM i FS",
         "icon": "arrow-right"
+      },
+      {
+        "command": "vscode-ibmi-fs.chgUsrspc",
+        "title": "Change USRSPC",
+        "category": "IBM i FS",
+        "icon": "arrow-right"
       }
     ],
     "menus": {
@@ -201,6 +210,11 @@
           "command": "vscode-ibmi-fs.ChgDtaara",
           "when": "view == objectBrowser && viewItem == object.dtaara",
           "group": "5_DtaaraAction@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.chgUsrspc",
+          "when": "view == objectBrowser && viewItem == object.usrspc",
+          "group": "5_UsrspcAction@1"
         }
       ],
       "commandPalette": [
@@ -250,6 +264,10 @@
         },
         {
           "command": "vscode-ibmi-fs.ChgDtaara",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.chgUsrspc",
           "when": "never"
         }
       ]

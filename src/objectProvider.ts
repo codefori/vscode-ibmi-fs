@@ -12,6 +12,7 @@ import Jobd  from './types/jobd';
 import Outq  from './types/outq';
 import { generateError, generatePage } from './webviewToolkit';
 import path = require('path');
+import { UserSpace } from './types/usrspc';
 
 export default class ObjectProvider implements vscode.CustomEditorProvider<Base> {
   // https://github.com/microsoft/vscode-extension-samples/blob/main/custom-editor-sample/src/pawDrawEditor.ts#L316
@@ -118,6 +119,9 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
 
       case `DTAQ`:
         return new DataQueue(uri, library, objectName);
+      
+      case `USRSPC`:
+        return new UserSpace(uri, library, objectName);
 
       case `FILE`:
         if (uri.fragment.toUpperCase() === 'SAVF') {
