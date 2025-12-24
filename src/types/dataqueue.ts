@@ -4,164 +4,217 @@ import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getColumns,generateTableHtml } from "../tools"; 
+import { getColumns, generateDetailTable, FastTableColumn, generateFastTable } from "../tools";
 
 const ACTION_CLEAR = "clear";
 const ACTION_SEND = "send";
 
+/**
+ * Namespace containing actions for Data Queue objects
+ */
 export namespace DataQueueActions {
-    export const register = (context: vscode.ExtensionContext) => {
-        context.subscriptions.push(
-            vscode.commands.registerCommand("vscode-ibmi-fs.sendToDataQueue", sendToDataQueue),
-            vscode.commands.registerCommand("vscode-ibmi-fs.clearDataQueue", clearDataQueue),
-        );
-    };
+  /**
+   * Register Data Queue commands with VS Code
+   * @param context - Extension context
+   */
+  export const register = (context: vscode.ExtensionContext) => {
+    context.subscriptions.push(
+      vscode.commands.registerCommand("vscode-ibmi-fs.sendToDataQueue", sendToDataQueue),
+      vscode.commands.registerCommand("vscode-ibmi-fs.clearDataQueue", clearDataQueue),
+    );
+  };
 
-    export const clearDataQueue = async (item: IBMiObject | DataQueue): Promise<boolean> => {
-        const library = item.library.toUpperCase();
-        const name = item.name.toUpperCase();
-        if (await vscode.window.showWarningMessage(`Are you sure you want to clear Data Queue ${library}/${name}?`, { modal: true }, "Clear")) {
-            const ibmi = getInstance();
-            const connection = ibmi?.getConnection();
-            if (connection) {
-                try{
-                    await connection.runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
-                    vscode.window.showInformationMessage(`Data Queue ${library}/${name} cleared.`);
-                    return true;
-                } catch (error) {
-                    vscode.window.showErrorMessage(`An error occurred while clearing DTAQ ${library}/${name}`);
-                    return false;
-                }
-            } else {
-                vscode.window.showErrorMessage(`Not connected to IBM i`);
-                return false;
-            }
+  /**
+   * Clear all messages from a Data Queue
+   * @param item - The Data Queue object or IBMiObject
+   * @returns True if successful, false otherwise
+   */
+  export const clearDataQueue = async (item: IBMiObject | Dtaq): Promise<boolean> => {
+    const library = item.library.toUpperCase();
+    const name = item.name.toUpperCase();
+    if (await vscode.window.showWarningMessage(`Are you sure you want to clear Data Queue ${library}/${name}?`, { modal: true }, "Clear")) {
+      const ibmi = getInstance();
+      const connection = ibmi?.getConnection();
+      if (connection) {
+        try {
+          await connection.runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
+          vscode.window.showInformationMessage(`Data Queue ${library}/${name} cleared.`);
+          return true;
+        } catch (error) {
+          vscode.window.showErrorMessage(`An error occurred while clearing DTAQ ${library}/${name}`);
+          return false;
         }
-        else {
-            return false;
-        }
-    };
-
-    export const sendToDataQueue = async (item: IBMiObject | DataQueue): Promise<boolean> => {
-        if ("keyed" in item) {
-            return _sendToDataQueue(item);
-        }
-        else {
-            const dataQueue: DataQueue = new DataQueue(vscode.Uri.file(''), item.library.toUpperCase(), item.name.toUpperCase());
-            await dataQueue.fetchInfo();
-            return _sendToDataQueue(dataQueue);
-        }
-    };
-
-    export const _sendToDataQueue = async (dataQueue: DataQueue): Promise<boolean> => {
-        const key = dataQueue.keyed ? await vscode.window.showInputBox({
-            placeHolder: "key data",
-            title: `Enter key data`,
-            validateInput: data => {
-                if (data.length > Number(dataQueue.keyLength)) {
-                    return `Key data is too long (maximum ${dataQueue.keyLength} characters)`;
-                }
-            }
-        }) : "";
-        if (!dataQueue.keyed || key) {
-            const fmt = await vscode.window.showInputBox({
-                placeHolder: "YES/NO",
-                title: `Is message in UTF8 format?`,
-                validateInput: fmt => {
-                    if (fmt.toUpperCase()!=='YES' && fmt.toUpperCase()!=='NO') {
-                        return `You need to put YES or NO`;
-                    }
-                }
-            });
-            const data = await vscode.window.showInputBox({
-                placeHolder: "message",
-                title: `Enter message`,
-                validateInput: data => {
-                    if (data.length > Number(dataQueue.maximumMessageLength)) {
-                        return `Message is too long (maximum ${dataQueue.maximumMessageLength} characters)`;
-                    }
-                }
-            });
-            if (data) {
-                const ibmi = getInstance();
-                const connection = ibmi?.getConnection();
-                if (connection) {
-                    try{
-                        if(fmt==='YES'){
-                            await connection.runSQL(`CALL QSYS2.SEND_DATA_QUEUE_UTF8(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
-                                DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
-                        } else {
-                            await connection.runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',                      
-                                DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
-                        }
-                        vscode.window.showInformationMessage(`Data successfully sent to ${dataQueue.library}/${dataQueue.name}.`);
-                        return true;
-                    } catch (error) {
-                        vscode.window.showErrorMessage(`An error occurred while sending data to DTAQ ${dataQueue.library}/${dataQueue.name}`);
-                        return false;
-                    }
-                } else {
-                    vscode.window.showErrorMessage(`Not connected to IBM i`);
-                    return false;
-                }
-            }
-        }
+      } else {
+        vscode.window.showErrorMessage(`Not connected to IBM i`);
         return false;
-    };
-}
-
-interface Entry {
-    key?: string
-    data: string
-    datautf8: string
-    timestamp: string
-    senderJob: string
-    senderUser: string
-}
-
-export class DataQueue extends Base {
-    private readonly _info: Record<string, string | boolean | number> = {};
-    private readonly _entries: Entry[] = [];
-    private _keyed = false;
-    columns: Map<string, string> = new Map();
-    selectClause: string | undefined;
-    private dtaq?:any;
-
-    get keyed() {
-        return this._keyed;
+      }
     }
-
-    get keyLength() {
-        return this._info.keyLength;
+    else {
+      return false;
     }
+  };
 
-    get maximumMessageLength() {
-        return this._info.maximumMessageLength;
+  /**
+   * Send a message to a Data Queue
+   * @param item - The Data Queue object or IBMiObject
+   * @returns True if successful, false otherwise
+   */
+  export const sendToDataQueue = async (item: IBMiObject | Dtaq): Promise<boolean> => {
+    if ("keyed" in item) {
+      return _sendToDataQueue(item);
     }
-
-    async fetch() {
-        await this.fetchInfo();
-        await this._fetchEntries();
+    else {
+      const dataQueue: Dtaq = new Dtaq(vscode.Uri.file(''), item.library.toUpperCase(), item.name.toUpperCase());
+      await dataQueue.fetchInfo();
+      return _sendToDataQueue(dataQueue);
     }
+  };
 
-    async fetchInfo() {
+  /**
+   * Internal function to send a message to a Data Queue
+   * @param dataQueue - The Data Queue object
+   * @returns True if successful, false otherwise
+   */
+  export const _sendToDataQueue = async (dataQueue: Dtaq): Promise<boolean> => {
+    // Get key data if this is a keyed data queue
+    const key = dataQueue.keyed ? await vscode.window.showInputBox({
+      placeHolder: "key data",
+      title: `Enter key data`,
+      validateInput: data => {
+        if (data.length > Number(dataQueue.keyLength)) {
+          return `Key data is too long (maximum ${dataQueue.keyLength} characters)`;
+        }
+      }
+    }) : "";
+    
+    if (!dataQueue.keyed || key) {
+      // Ask if message is in UTF8 format
+      const fmt = await vscode.window.showInputBox({
+        placeHolder: "YES/NO",
+        title: `Is message in UTF8 format?`,
+        validateInput: fmt => {
+          if (fmt.toUpperCase() !== 'YES' && fmt.toUpperCase() !== 'NO') {
+            return `You need to put YES or NO`;
+          }
+        }
+      });
+      
+      // Get the message data
+      const data = await vscode.window.showInputBox({
+        placeHolder: "message",
+        title: `Enter message`,
+        validateInput: data => {
+          if (data.length > Number(dataQueue.maximumMessageLength)) {
+            return `Message is too long (maximum ${dataQueue.maximumMessageLength} characters)`;
+          }
+        }
+      });
+      
+      if (data) {
         const ibmi = getInstance();
         const connection = ibmi?.getConnection();
-
         if (connection) {
-            this.columns = await getColumns(connection,'DATA_QUEUE_INFO');
-            let sql: string;
+          try {
+            // Use UTF8 or standard procedure based on user input
+            if (fmt === 'YES') {
+              await connection.runSQL(`CALL QSYS2.SEND_DATA_QUEUE_UTF8(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',
+                                DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
+            } else {
+              await connection.runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',
+                                DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
+            }
+            vscode.window.showInformationMessage(`Data successfully sent to ${dataQueue.library}/${dataQueue.name}.`);
+            return true;
+          } catch (error) {
+            vscode.window.showErrorMessage(`An error occurred while sending data to DTAQ ${dataQueue.library}/${dataQueue.name}`);
+            return false;
+          }
+        } else {
+          vscode.window.showErrorMessage(`Not connected to IBM i`);
+          return false;
+        }
+      }
+    }
+    return false;
+  };
+}
 
-            this.dtaq = await connection. runSQL(
-                `SELECT DATA_QUEUE_TYPE
-                FROM QSYS2.DATA_QUEUE_INFO
-                WHERE DATA_QUEUE_NAME = '${this.name}' AND DATA_QUEUE_LIBRARY = '${this.library}'
-                Fetch first row only`)
+/**
+ * Interface representing a Data Queue entry/message
+ */
+interface Entry {
+  /** Key data (for keyed data queues) */
+  key?: string
+  /** Message data in standard format */
+  data: string
+  /** Message data in UTF8 format */
+  datautf8: string
+  /** Timestamp when message was enqueued */
+  timestamp: string
+  /** Job name that sent the message */
+  senderJob: string
+  /** User who sent the message */
+  senderUser: string
+}
 
-            if(this.dtaq[0].DATA_QUEUE_TYPE==='DDM'){
-                sql=`SELECT DATA_QUEUE_NAME,
-                    DATA_QUEUE_LIBRARY,
-                    DATA_QUEUE_TYPE,
+/**
+ * Data Queue (DTAQ) object class
+ * Handles display and management of IBM i Data Queues
+ */
+export class Dtaq extends Base {
+  private readonly _info: Record<string, string | boolean | number> = {};
+  private readonly _entries: Entry[] = [];
+  private _keyed = false;
+  /** Column definitions for display */
+  columns: Map<string, string> = new Map();
+  selectClause: string | undefined;
+  /** Data queue information from database */
+  private dtaq?: any;
+
+  /** Whether this is a keyed data queue */
+  get keyed() {
+    return this._keyed;
+  }
+
+  /** Maximum key length for keyed data queues */
+  get keyLength() {
+    return this._info.keyLength;
+  }
+
+  /** Maximum message length */
+  get maximumMessageLength() {
+    return this._info.maximumMessageLength;
+  }
+
+  /**
+   * Fetch data queue information and entries
+   */
+  async fetch() {
+    await this.fetchInfo();
+    await this._fetchEntries();
+  }
+
+  /**
+   * Fetch data queue metadata from IBM i
+   */
+  async fetchInfo() {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+
+    if (connection) {
+      this.columns = await getColumns(connection, 'DATA_QUEUE_INFO');
+      let sql: string;
+
+      // First query to get data queue type
+      this.dtaq = await connection.runSQL(
+        `SELECT DATA_QUEUE_TYPE
+        FROM QSYS2.DATA_QUEUE_INFO
+        WHERE DATA_QUEUE_NAME = '${this.name}' AND DATA_QUEUE_LIBRARY = '${this.library}'
+        Fetch first row only`)
+
+      // Build SQL based on data queue type (DDM vs standard)
+      if (this.dtaq[0].DATA_QUEUE_TYPE === 'DDM') {
+        sql = `SELECT DATA_QUEUE_TYPE,
                     TEXT_DESCRIPTION,
                     REMOTE_DATA_QUEUE_LIBRARY,
                     REMOTE_DATA_QUEUE,
@@ -171,10 +224,8 @@ export class DataQueue extends Base {
                     LOCAL_LOCATION,
                     "MODE",
                     REMOTE_NETWORK_ID`
-            } else {
-                sql=`SELECT DATA_QUEUE_NAME,
-                    DATA_QUEUE_LIBRARY,
-                    DATA_QUEUE_TYPE,
+      } else {
+        sql = `SELECT DATA_QUEUE_TYPE,
                     MAXIMUM_MESSAGE_LENGTH,
                     "SEQUENCE",
                     KEY_LENGTH,
@@ -189,107 +240,172 @@ export class DataQueue extends Base {
                     LAST_RECLAIM_TIMESTAMP,
                     ENFORCE_DATA_QUEUE_LOCKS,
                     TEXT_DESCRIPTION`
-            }
+      }
 
-            sql=sql.trim()+` FROM QSYS2.DATA_QUEUE_INFO
+      sql = sql.trim() + ` FROM QSYS2.DATA_QUEUE_INFO
                 WHERE DATA_QUEUE_NAME = '${this.name}' AND DATA_QUEUE_LIBRARY = '${this.library}'
                 Fetch first row only`
 
-            this.dtaq = await connection. runSQL(sql)
-        }
+      this.dtaq = await connection.runSQL(sql)
     }
+  }
 
-    private async _fetchEntries() {
-        const ibmi = getInstance();
-        const connection = ibmi?.getConnection();
-        if (connection) {
-            this._entries.length = 0;
-            const entryRows = await connection.runSQL(`
-                Select MESSAGE_DATA, MESSAGE_DATA_UTF8, MESSAGE_ENQUEUE_TIMESTAMP, SENDER_JOB_NAME, SENDER_CURRENT_USER ${this._keyed ? ",KEY_DATA" : ""}
+  /**
+   * Fetch all entries/messages from the data queue
+   */
+  private async _fetchEntries() {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      this._entries.length = 0;
+      const entryRows = await connection.runSQL(`
+                Select MESSAGE_DATA,
+                MESSAGE_DATA_UTF8,
+                to_char(MESSAGE_ENQUEUE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') as MESSAGE_ENQUEUE_TIMESTAMP,
+                SENDER_JOB_NAME,
+                SENDER_CURRENT_USER ${this._keyed ? ",KEY_DATA" : ""}
                 From TABLE(QSYS2.DATA_QUEUE_ENTRIES(
                     DATA_QUEUE_LIBRARY => '${this.library}',
                     DATA_QUEUE => '${this.name}'
                 ))
                 Order By ORDINAL_POSITION`);
 
-            this._entries.push(...entryRows.map(toEntry));
+      this._entries.push(...entryRows.map(toEntry));
+    }
+  }
+
+  /**
+   * Generate HTML for the data queue view with tabs
+   * @returns HTML string
+   */
+  generateHTML(): string {
+    return Components.panels([
+      { title: "Data Queue", content: this.renderDataQueuePanel() },
+      { title: "Messages", badge: this._entries.length, content: renderEntries(this._keyed, this._entries, false) },
+      { title: "Messages UTF8", badge: this._entries.length, content: renderEntries(this._keyed, this._entries, true) }
+    ]);
+  }
+
+  /**
+   * Handle user actions from the webview
+   * @param data - Action data from the webview
+   * @returns Action result indicating if re-render is needed
+   */
+  async handleAction(data: any): Promise<HandleActionResult> {
+    const uri = vscode.Uri.parse(data.href);
+    let refetch = false;
+    switch (uri.path) {
+      case ACTION_CLEAR:
+        if (await DataQueueActions.clearDataQueue(this)) {
+          refetch = true;
+        }
+        break;
+
+      case ACTION_SEND:
+        if (await DataQueueActions.sendToDataQueue(this)) {
+          refetch = true;
         }
     }
-
-    generateHTML(): string {
-        return Components.panels([
-            { title: "Data Queue", content: this.renderDataQueuePanel() },
-            { title: "Messages", badge: this._entries.length, content: renderEntries(this._keyed, this._entries, false) },
-            { title: "Messages UTF8", badge: this._entries.length, content: renderEntries(this._keyed, this._entries, true) }
-        ], { style: "height:100vh" });
+    if (refetch) {
+      await this.fetch();
     }
+    return { rerender: refetch };
+  }
 
-    async handleAction(data: any): Promise<HandleActionResult> {
-        const uri = vscode.Uri.parse(data.href);
-        let refetch = false;
-        switch (uri.path) {
-            case ACTION_CLEAR:
-                if (await DataQueueActions.clearDataQueue(this)) {
-                    refetch = true;
-                }
-                break;
+  /**
+   * Save changes (not applicable for data queues)
+   */
+  async save() {
+    // Data queues don't have a save operation
+  }
 
-            case ACTION_SEND:
-                if (await DataQueueActions.sendToDataQueue(this)) {
-                    refetch = true;
-                }
+  /**
+   * Render the data queue information panel
+   * @returns HTML string for the panel
+   */
+  private renderDataQueuePanel(): string {
+    return generateDetailTable({
+      title: `Data Queue: ${this.library}/${this.name}`,
+      subtitle: 'Data Queue Information',
+      columns: this.columns,
+      data: this.dtaq,
+      actions: [
+        {
+          label: 'Send message 💬',
+          action: ACTION_SEND,
+          appearance: 'primary',
+          style: 'width: 100%; text-align: center;'
+        },
+        {
+          label: 'Clear 🧹',
+          action: ACTION_CLEAR,
+          appearance: 'secondary',
+          style: 'width: 100%; text-align: center;'
         }
-        if (refetch) {
-            await this.fetch();
-        }
-        return { rerender: refetch };
-    }
-
-    async save() {
-
-    }
-
-    private renderDataQueuePanel(): string {
-
-        let html=generateTableHtml(this.columns,this.dtaq);
-        html=html.trim()+`
-        ${Components.divider()}
-        </br>
-        ${Components.button("Send message 💬", { action: ACTION_SEND, style:"width:100%; text-align: center" })}
-        </br>
-        ${Components.button("Clear 🧹", { action: ACTION_CLEAR, appearance: "secondary", style:"width:100%; text-align: center" })}`;
-
-        return html;
-    }
+      ]
+    });
+  }
 }
 
+/**
+ * Convert a database row to an Entry object
+ * @param row - Database row from QSYS2.DATA_QUEUE_ENTRIES
+ * @returns Entry object
+ */
 function toEntry(row: Tools.DB2Row): Entry {
-    return {
-        data: String(row.MESSAGE_DATA),
-        datautf8: String(row.MESSAGE_DATA_UTF8),
-        timestamp: String(row.MESSAGE_ENQUEUE_TIMESTAMP),
-        key: row.KEY_DATA ? String(row.KEY_DATA) : undefined,
-        senderJob: String(row.SENDER_JOB_NAME || '-'),
-        senderUser: String(row.SENDER_CURRENT_USER || '-'),
-    };
+  return {
+    data: String(row.MESSAGE_DATA),
+    datautf8: String(row.MESSAGE_DATA_UTF8),
+    timestamp: String(row.MESSAGE_ENQUEUE_TIMESTAMP),
+    key: row.KEY_DATA ? String(row.KEY_DATA) : undefined,
+    senderJob: String(row.SENDER_JOB_NAME || '-'),
+    senderUser: String(row.SENDER_CURRENT_USER || '-'),
+  };
 }
 
+/**
+ * Render the entries table for messages
+ * @param keyed - Whether this is a keyed data queue
+ * @param entries - Array of entries to display
+ * @param isUtf8 - Whether to display UTF8 or standard format
+ * @returns HTML string for the entries table
+ */
 function renderEntries(keyed: boolean, entries: Entry[], isUtf8: boolean) {
-    const columns: Components.Column<Entry>[] = [];
-    if (keyed) {
-        columns.push({ title: "Key", size: "1fr", cellValue: e => e.key! });
-    }
+  const columns: FastTableColumn<Entry>[] = [
+    { title: "Timestamp", width: "0.5fr", getValue: e => e.timestamp },
+    { title: "User", width: "0.5fr", getValue: e => e.senderUser },
+  ];
 
-    columns.push(
-        { title: "Timestamp", size: "0.5fr", cellValue: e => e.timestamp },
-        { title: "User", size: "0.5fr", cellValue: e => e.senderUser },
-    );
+  if (isUtf8) {
+    columns.push({ title: "Message", width: "3fr", getValue: e => e.datautf8 });
+  } else {
+    columns.push({ title: "Message", width: "3fr", getValue: e => e.data });
+  }
 
-    if(isUtf8){
-        columns.push({ title: "Message", size: "3fr", cellValue: e => e.datautf8 });
-    } else {
-        columns.push({ title: "Message", size: "3fr", cellValue: e => e.data });
-    }
+  if (keyed) {
+    columns.push({ title: "Key", width: "1fr", getValue: e => e.key! });
+  }
 
-    return Components.dataGrid<Entry>({ stickyHeader: true, columns: columns }, entries);
+  let customStyles = "";
+
+  if(keyed){
+    customStyles = `
+      /* Custom styles for cells - specific to dataqueue entries table */
+      .dataqueue-entries-table vscode-data-grid-cell[grid-column="4"] {
+        color: var(--vscode-textLink-foreground);
+      }
+    `;
+  }
+
+  return `<div class="dataqueue-entries-table">` + generateFastTable({
+    title: ``,
+    subtitle: ``,
+    columns: columns,
+    data: entries,
+    stickyHeader: true,
+    emptyMessage: 'No message in this dtaq.',
+    customStyles: customStyles,
+    customScript: ""
+  }) + `</div>`;
+
 }

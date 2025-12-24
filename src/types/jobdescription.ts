@@ -1,21 +1,29 @@
 import Base from "./base";
 import { getInstance } from "../ibmi";
-import { getColumns } from "../tools";
-import { generateTableHtml } from "../tools";
+import { getColumns, generateDetailTable } from "../tools";
 
+/**
+ * Job Description (JOBD) object class
+ * Handles display of IBM i Job Description information
+ */
 export default class Jobd extends Base {
-  private jobd?:any;
+  /** Job description information from database */
+  private jobd?: any;
+  /** Column definitions for display */
   columns: Map<string, string> = new Map();
   selectClause: string | undefined;
 
+  /**
+   * Fetch job description information from IBM i
+   */
   async fetch(): Promise<void> {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      this.columns = await getColumns(connection,'JOB_DESCRIPTION_INFO');
+      this.columns = await getColumns(connection, 'JOB_DESCRIPTION_INFO');
 
-      this.jobd = await connection. runSQL(
-        `SELECT JOB_DESCRIPTION, JOB_DESCRIPTION_LIBRARY, AUTHORIZATION_NAME, JOB_DATE, ACCOUNTING_CODE, ROUTING_DATA, REQUEST_DATA,
+      this.jobd = await connection.runSQL(
+        `SELECT AUTHORIZATION_NAME, JOB_DATE, ACCOUNTING_CODE, ROUTING_DATA, REQUEST_DATA,
           LIBRARY_LIST_COUNT, LIBRARY_LIST, JOB_SWITCHES, TEXT_DESCRIPTION, JOB_QUEUE_LIBRARY, JOB_QUEUE, JOB_QUEUE_PRIORITY,
           HOLD_ON_JOB_QUEUE, OUTPUT_QUEUE_LIBRARY, OUTPUT_QUEUE, OUTPUT_QUEUE_PRIORITY, SPOOLED_FILE_ACTION, PRINTER_DEVICE,
           PRINT_TEXT, JOB_MESSAGE_QUEUE_MAXIMUM_SIZE, JOB_MESSAGE_QUEUE_FULL_ACTION, SYNTAX_CHECK_SEVERITY, JOB_END_SEVERITY,
@@ -28,16 +36,33 @@ export default class Jobd extends Base {
     }
   }
 
+  /**
+   * Generate HTML for the job description view
+   * @returns HTML string
+   */
   generateHTML(): string {
-    return generateTableHtml(this.columns,this.jobd);
+    return generateDetailTable({
+      title: `Job Description: ${this.library}/${this.name}`,
+      subtitle: 'Job Description Information',
+      columns: this.columns,
+      data: this.jobd
+    });
   }
 
+  /**
+   * Handle user actions from the webview
+   * @param data - Action data from the webview
+   * @returns Empty action result (no actions available)
+   */
   async handleAction(data: any): Promise<HandleActionResult> {
-    //Nothing to handle
+    // No actions to handle for job descriptions
     return {};
   }
 
+  /**
+   * Save changes (not applicable for job descriptions)
+   */
   async save(): Promise<void> {
-    //Nothing to save
+    // Job descriptions are read-only in this view
   }
 }

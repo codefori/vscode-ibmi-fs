@@ -64,6 +64,9 @@
           },
           {
             "filenamePattern": "object*/**/*.USRSPC"
+          },
+          {
+            "filenamePattern": "object*/**/*.MSGF"
           }
         ],
         "priority": "default"
@@ -93,7 +96,7 @@
         "title": "Send data",
         "category": "IBM i FS",
         "icon": "arrow-right"
-      }, 
+      },
       {
         "command": "vscode-ibmi-fs.HldJobq",
         "title": "Hold Jobq",
@@ -293,6 +296,7 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
+    "@microsoft/fast-element": "^2.9.1",
     "@vscode/webview-ui-toolkit": "^1.4.0"
   }
 }

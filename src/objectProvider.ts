@@ -1,24 +1,36 @@
 
 import * as vscode from 'vscode';
 import Base from './types/base';
-import BindingDirectory from './types/bindingDirectory';
-import { Command } from './types/command';
-import { DataArea } from './types/dataarea';
-import { DataQueue } from './types/dataqueue';
-import Program from './types/program';
-import { SaveFile } from './types/saveFile';
-import Jobq  from './types/jobq';
-import Jobd  from './types/jobd';
-import Outq  from './types/outq';
 import { generateError, generatePage } from './webviewToolkit';
 import path = require('path');
-import { UserSpace } from './types/usrspc';
 
+import BindingDirectory from './types/bindingDirectory';
+import { Command } from './types/command';
+import { Dtaara } from './types/dataarea';
+import { Dtaq } from './types/dataqueue';
+import Program from './types/program';
+import { SaveFile } from './types/saveFile';
+import Jobq from './types/jobqueue';
+import Jobd from './types/jobdescription';
+import Outq from './types/outq';
+import { Usrspc } from './types/userspace';
+import Msgf from './types/messagefile';
+
+/**
+ * Custom editor provider for IBM i objects
+ * Handles the display and editing of various IBM i object types in VS Code
+ * Reference: https://github.com/microsoft/vscode-extension-samples/blob/main/custom-editor-sample/src/pawDrawEditor.ts#L316
+ */
 export default class ObjectProvider implements vscode.CustomEditorProvider<Base> {
-  // https://github.com/microsoft/vscode-extension-samples/blob/main/custom-editor-sample/src/pawDrawEditor.ts#L316
   private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<vscode.CustomDocumentEditEvent<Base>>();
   public readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument.event;
 
+  /**
+   * Save the custom document
+   * @param document - The document to save
+   * @param cancellation - Cancellation token
+   * @returns Promise that resolves when save is complete
+   */
   saveCustomDocument(document: Base, cancellation: vscode.CancellationToken): Thenable<void> {
     if (!document.failedFetch) {
       return document.save();
@@ -26,18 +38,35 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
 
     return Promise.resolve();
   }
+
+  /**
+   * Save the custom document to a new location (not implemented)
+   */
   saveCustomDocumentAs(document: vscode.CustomDocument, destination: vscode.Uri, cancellation: vscode.CancellationToken): Thenable<void> {
     throw new Error('Method not implemented.');
   }
+
+  /**
+   * Revert the custom document to its last saved state (not implemented)
+   */
   revertCustomDocument(document: vscode.CustomDocument, cancellation: vscode.CancellationToken): Thenable<void> {
     throw new Error('Method not implemented.');
   }
+
+  /**
+   * Backup the custom document (not implemented)
+   */
   backupCustomDocument(document: vscode.CustomDocument, context: vscode.CustomDocumentBackupContext, cancellation: vscode.CancellationToken): Thenable<vscode.CustomDocumentBackup> {
     throw new Error('Method not implemented.');
   }
 
   /**
-   * Called prior to resolveCustomEditor to allow extension to talk to system to fetch object information
+   * Open a custom document
+   * Called prior to resolveCustomEditor to fetch object information from the system
+   * @param uri - The URI of the document to open
+   * @param openContext - Context for opening the document
+   * @param token - Cancellation token
+   * @returns Promise that resolves to the Base document object
    */
   async openCustomDocument(uri: vscode.Uri, openContext: vscode.CustomDocumentOpenContext, token: vscode.CancellationToken): Promise<Base> {
     const object = getTypeFile(uri);
@@ -54,7 +83,11 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
   }
 
   /**
-   * Called when the object is ready to be rendered
+   * Resolve and render the custom editor
+   * Called when the object is ready to be displayed in the webview
+   * @param document - The document to render
+   * @param webviewPanel - The webview panel to render into
+   * @param token - Cancellation token
    */
   async resolveCustomEditor(document: Base, webviewPanel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {
     webviewPanel.webview.options = {
@@ -64,7 +97,6 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
 
     if (document.failedFetch) {
       webviewPanel.webview.html = generateError(`Failed to fetch data. Please close this window.`);
-
     } else {
       webviewPanel.webview.html = generatePage(document.generateHTML());
       webviewPanel.webview.onDidReceiveMessage(async body => {
@@ -86,6 +118,11 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
   }
 }
 
+/**
+ * Create the appropriate object type based on the URI
+ * @param uri - The URI of the object to create
+ * @returns The appropriate Base subclass instance, or undefined if type is not supported
+ */
 function getTypeFile(uri: vscode.Uri): Base | undefined {
   const pieces = uri.path.split(`/`);
   if (pieces.length === 3) {
@@ -99,7 +136,7 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
         return new BindingDirectory(uri, library, objectName);
 
       case `DTAARA`:
-        return new DataArea(uri, library, objectName);
+        return new Dtaara(uri, library, objectName);
 
       case `PGM`:
       case `SRVPGM`:
@@ -118,10 +155,13 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
         return new Jobd(uri, library, objectName);
 
       case `DTAQ`:
-        return new DataQueue(uri, library, objectName);
-      
+        return new Dtaq(uri, library, objectName);
+
       case `USRSPC`:
-        return new UserSpace(uri, library, objectName);
+        return new Usrspc(uri, library, objectName);
+
+      case `MSGF`:
+        return new Msgf(uri, library, objectName);
 
       case `FILE`:
         if (uri.fragment.toUpperCase() === 'SAVF') {
