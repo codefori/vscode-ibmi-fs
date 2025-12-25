@@ -1,3 +1,21 @@
+/**
+ * Output Queue Management Module
+ *
+ * This module provides comprehensive functionality for managing IBM i Output Queues (OUTQ),
+ * their spooled files, and associated printer writers.
+ *
+ * Key Features:
+ * - Display output queue information and statistics
+ * - List all spooled files in a queue with details
+ * - Hold/Release/Clear output queues
+ * - Start/Stop printer writers
+ * - Generate PDF from spooled files
+ * - Delete individual or old spooled files
+ * - Dynamic UI based on queue and writer status
+ *
+ * @module outputqueue
+ */
+
 import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
@@ -6,8 +24,13 @@ import { getColumns, generateDetailTable, generateFastTable, FastTableColumn } f
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 
-const ACTION_CLR = "clr";
-const ACTION_DLT = "dltold";
+// Action constants for output queue operations
+const ACTION_CLR = "clr";     // Clear output queue action
+const ACTION_DLT = "dltold";  // Delete old spools action
+const ACTION_HLD = "hld";     // Hold output queue action
+const ACTION_RLS = "rls";     // Release output queue action
+const ACTION_STR = "str";     // Start writer action
+const ACTION_END = "end";     // End writer action
 
 /**
  * Namespace containing actions for Output Queue objects
@@ -20,6 +43,10 @@ export namespace OutputQueueActions {
   export const register = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
       vscode.commands.registerCommand("vscode-ibmi-fs.ClrOutq", clrOutq),
+      vscode.commands.registerCommand("vscode-ibmi-fs.HldOutq", hldOutq),
+      vscode.commands.registerCommand("vscode-ibmi-fs.RlsOutq", rlsOutq),
+      vscode.commands.registerCommand("vscode-ibmi-fs.StrWtr", strWtr),
+      vscode.commands.registerCommand("vscode-ibmi-fs.EndWtr", endWtr),
       vscode.commands.registerCommand("vscode-ibmi-fs.GenPdf", genPdf),
       vscode.commands.registerCommand("vscode-ibmi-fs.DelSpool", delSpool),
       vscode.commands.registerCommand("vscode-ibmi-fs.DelOldSpool", delOldSpl),
@@ -38,16 +65,172 @@ export namespace OutputQueueActions {
       const ibmi = getInstance();
       const connection = ibmi?.getConnection();
       if (connection) {
-        const hldjobq: CommandResult = await connection.runCommand({
+        const cmdrun: CommandResult = await connection.runCommand({
           command: `CLROUTQ ${library}/${name}`,
           environment: `ile`
         });
 
-        if (hldjobq.code === 0) {
-          vscode.window.showInformationMessage(`Output Queue ${library}/${name} held.`);
+        if (cmdrun.code === 0) {
+          vscode.window.showInformationMessage(`Output Queue ${library}/${name} cleared.`);
           return true;
         } else {
           vscode.window.showErrorMessage(`Unable to clear Output Queue ${library}/${name}`);
+          return false;
+        }
+      } else {
+        vscode.window.showErrorMessage(`Not connected to IBM i`);
+        return false;
+      }
+    }
+    else {
+      return false;
+    }
+  };
+
+  /**
+   * Hold an Output Queue
+   * Prevents new spooled files from being written to the queue
+   * @param item - The Output Queue object or IBMiObject
+   * @returns True if successful, false otherwise
+   */
+  export const hldOutq = async (item: IBMiObject | Outq): Promise<boolean> => {
+    const library = item.library.toUpperCase();
+    const name = item.name.toUpperCase();
+    // Show confirmation dialog to prevent accidental holds
+    if (await vscode.window.showWarningMessage(`Are you sure you want to hold Output Queue ${library}/${name}?`, { modal: true }, "Hold OUTQ")) {
+      const ibmi = getInstance();
+      const connection = ibmi?.getConnection();
+      if (connection) {
+        // Execute HLDOUTQ command on IBM i
+        const cmdrun: CommandResult = await connection.runCommand({
+          command: `HLDOUTQ OUTQ(${library}/${name})`,
+          environment: `ile`
+        });
+
+        // Check command execution result
+        if (cmdrun.code === 0) {
+          vscode.window.showInformationMessage(`Output Queue ${library}/${name} held.`);
+          return true;
+        } else {
+          vscode.window.showErrorMessage(`Unable to hold Output Queue ${library}/${name}`);
+          return false;
+        }
+      } else {
+        vscode.window.showErrorMessage(`Not connected to IBM i`);
+        return false;
+      }
+    }
+    else {
+      return false;
+    }
+  };
+
+  /**
+   * Release an Output Queue
+   * Allows spooled files to be written to the queue again
+   * @param item - The Output Queue object or IBMiObject
+   * @returns True if successful, false otherwise
+   */
+  export const rlsOutq = async (item: IBMiObject | Outq): Promise<boolean> => {
+    const library = item.library.toUpperCase();
+    const name = item.name.toUpperCase();
+    // Show confirmation dialog
+    if (await vscode.window.showWarningMessage(`Are you sure you want to release Output Queue ${library}/${name}?`, { modal: true }, "Release OUTQ")) {
+      const ibmi = getInstance();
+      const connection = ibmi?.getConnection();
+      if (connection) {
+        // Execute RLSOUTQ command on IBM i
+        const cmdrun: CommandResult = await connection.runCommand({
+          command: `RLSOUTQ OUTQ(${library}/${name})`,
+          environment: `ile`
+        });
+
+        // Check command execution result
+        if (cmdrun.code === 0) {
+          vscode.window.showInformationMessage(`Output Queue ${library}/${name} released.`);
+          return true;
+        } else {
+          vscode.window.showErrorMessage(`Unable to release Output Queue ${library}/${name}`);
+          return false;
+        }
+      } else {
+        vscode.window.showErrorMessage(`Not connected to IBM i`);
+        return false;
+      }
+    }
+    else {
+      return false;
+    }
+  };
+
+  /**
+   * End (stop) a printer writer
+   * Immediately stops the writer associated with the output queue
+   * @param item - The Output Queue object or IBMiObject
+   * @returns True if successful, false otherwise
+   */
+  export const endWtr = async (item: IBMiObject | Outq): Promise<boolean> => {
+    const library = item.library.toUpperCase();
+    const name = item.name.toUpperCase();
+    // Show confirmation dialog to prevent accidental termination
+    if (await vscode.window.showWarningMessage(`Are you sure you want to end writer ${name}?`, { modal: true }, "End Writer")) {
+      const ibmi = getInstance();
+      const connection = ibmi?.getConnection();
+      if (connection) {
+        // Execute ENDWTR command with immediate option
+        const cmdrun: CommandResult = await connection.runCommand({
+          command: `ENDWTR WTR(${name}) OPTION(*IMMED)`,
+          environment: `ile`
+        });
+
+        // Check command execution result
+        if (cmdrun.code === 0) {
+          vscode.window.showInformationMessage(`Writer ${name} ended.`);
+          return true;
+        } else {
+          vscode.window.showErrorMessage(`Unable to end writer ${name}`);
+          return false;
+        }
+      } else {
+        vscode.window.showErrorMessage(`Not connected to IBM i`);
+        return false;
+      }
+    }
+    else {
+      return false;
+    }
+  };
+
+  /**
+   * Start a printer writer
+   * Starts either a remote or local printer writer based on network connection type
+   * @param item - The Output Queue object or IBMiObject
+   * @param nettype - Network connection type (determines if remote or local writer)
+   * @returns True if successful, false otherwise
+   */
+  export const strWtr = async (item: IBMiObject | Outq, nettype: String): Promise<boolean> => {
+    const library = item.library.toUpperCase();
+    const name = item.name.toUpperCase();
+    // Show confirmation dialog
+    if (await vscode.window.showWarningMessage(`Are you sure you want to start writer ${name}?`, { modal: true }, "Start Writer")) {
+      const ibmi = getInstance();
+      const connection = ibmi?.getConnection();
+      if (connection) {
+        // Choose command based on network type:
+        // - STRRMTWTR for remote/network printers
+        // - STRPRTWTR for local printer devices
+        let cmd = nettype && nettype !== undefined ? `STRRMTWTR OUTQ(${library}/${name})`:`STRPRTWTR DEV(${name})`;
+        const cmdrun: CommandResult = await connection.runCommand({
+          command: cmd,
+          environment: `ile`
+        });
+
+        // Check command execution result
+        if (cmdrun.code === 0) {
+          vscode.window.showInformationMessage(`Writer ${name} started.`);
+          return true;
+        } else {
+          vscode.window.showErrorMessage(`Unable to start writer ${name}`);
           return false;
         }
       } else {
@@ -114,12 +297,12 @@ export namespace OutputQueueActions {
       const ibmi = getInstance();
       const connection = ibmi?.getConnection();
       if (connection) {
-        const hldjobq: CommandResult = await connection.runCommand({
+        const cmdrun: CommandResult = await connection.runCommand({
           command: `DLTSPLF FILE(${item.spoolname}) JOB(${item.job}) SPLNBR(${item.nbr})`,
           environment: `ile`
         });
 
-        if (hldjobq.code === 0) {
+        if (cmdrun.code === 0) {
           vscode.window.showInformationMessage(`Spool deleted.`);
           return true;
         } else {
@@ -338,26 +521,81 @@ export default class Outq extends Base {
    * Render the output queue information panel
    * @returns HTML string for the panel
    */
+  /**
+   * Render the output queue information panel with dynamic actions
+   * Actions are conditionally displayed based on queue status and writer configuration
+   * @returns HTML string for the panel
+   * @private
+   */
   private renderJobQueuePanel(): string {
+    // Build actions array dynamically based on queue and writer status
+    const actions = [];
+    const status = this.outq?.[0]?.OUTPUT_QUEUE_STATUS;
+    const wta = this.outq?.[0]?.WRITERS_TO_AUTOSTART;  // Writers to autostart
+    const now = this.outq?.[0]?.NUMBER_OF_WRITERS;     // Current number of writers
+
+    // Show "Hold" or "Release" button based on queue status
+    if(status!=='HELD'){
+      // Queue is not held, show Hold button
+       actions.push({
+        label: 'Hold ⏸️',
+        action: ACTION_HLD,
+        appearance: 'primary',
+        style: 'width: 100%; text-align: center;'
+      });
+    } else {
+      // Queue is held, show Release button
+      actions.push({
+        label: 'Release ▶️',
+        action: ACTION_RLS,
+        appearance: 'primary',
+        style: 'width: 100%; text-align: center;'
+      });
+    }
+
+    // Show writer control buttons only if writers are configured (wta > 0)
+    if(wta>0){
+      if(wta!==now){
+        // Not all writers are running, show Start button
+        actions.push({
+          label: 'Start writer 🖨️',
+          action: ACTION_STR,
+          appearance: 'primary',
+          style: 'width: 100%; text-align: center;'
+        });
+      } else {
+        // All writers are running, show Stop button
+        actions.push({
+          label: 'Stop writer 🛑',
+          action: ACTION_END,
+          appearance: 'primary',
+          style: 'width: 100%; text-align: center;'
+        });
+      }
+    }
+
+    // These actions are always available regardless of status
+    actions.push(
+      {
+        label: 'Delete old spools 📆',
+        action: ACTION_DLT,
+        appearance: 'secondary',
+        style: 'width: 100%; text-align: center;'
+      },{
+        label: 'Clear 🧹',
+        action: ACTION_CLR,
+        appearance: 'secondary',
+        style: 'width: 100%; text-align: center;'
+      }
+    );
+
+    // Generate the detail table with queue information and action buttons
     return generateDetailTable({
       title: `Output Queue: ${this.library}/${this.name}`,
       subtitle: 'Output Queue Information',
       columns: this.columns,
       data: this.outq,
-      actions: [
-        {
-          label: 'Delete old spools 📆',
-          action: ACTION_DLT,
-          appearance: 'secondary',
-          style: 'width: 100%; text-align: center;'
-        },
-        {
-          label: 'Clear 🧹',
-          action: ACTION_CLR,
-          appearance: 'secondary',
-          style: 'width: 100%; text-align: center;'
-        }
-      ]
+      actions: actions
     });
   }
 
@@ -381,11 +619,13 @@ export default class Outq extends Base {
   }
 
   /**
-   * Render the spooled files table
-   * @param entries - Array of spooled file entries
+   * Render the spooled files table with action buttons
+   * Each spool row displays download and delete actions
+   * @param entries - Array of spooled file entries to display
    * @returns HTML string for the table
    */
   renderEntries(entries: Entry[]) {
+    // Define table columns with their properties
     const columns: FastTableColumn<Entry>[] = [
       { title: "Name", width: "1fr", getValue: e => e.spoolname },
       { title: "Data", width: "1fr", getValue: e => e.spooldta },
@@ -393,12 +633,14 @@ export default class Outq extends Base {
       { title: "User", width: "1fr", getValue: e => e.spooluser },
       { title: "Job", width: "2fr", getValue: e => e.job },
       { title: "Number", width: "0.7fr", getValue: e => String(e.nbr) },
-      { title: "Timestamp", width: "2fr", getValue: e => e.spoolts },
+      { title: "Timestamp", width: "1.5fr", getValue: e => e.spoolts },
       { title: "Pages", width: "0.5fr", getValue: e => String(e.pages) },
       { title: "Size (KB)", width: "1fr", getValue: e => String(e.spoolsiz) },
       {
         title: "Actions",
-        width: "1fr", getValue: e => {
+        width: "1fr",
+        getValue: e => {
+          // Encode spool entry as URL parameter for action handlers
           const arg = encodeURIComponent(JSON.stringify(e));
           return `<vscode-button appearance="primary" href="action:genPdf?entry=${arg}">Download ⬇️</vscode-button>
                 <vscode-button appearance="secondary" href="action:delPdf?entry=${arg}">Delete ❌</vscode-button>`;
@@ -406,13 +648,15 @@ export default class Outq extends Base {
       }
     ];
 
+    // Custom CSS styles for the output queue entries table
     const customStyles = `
-        /* Custom styles for cells - specific to outq entries table */
+        /* Highlight spool names with link color for better visibility */
         .outq-entries-table vscode-data-grid-cell[grid-column="1"] {
             color: var(--vscode-textLink-foreground);
         }
         `;
 
+    // Generate and return the complete table HTML
     return `<div class="outq-entries-table">` + generateFastTable({
       title: ``,
       subtitle: ``,
@@ -427,28 +671,65 @@ export default class Outq extends Base {
 
   /**
    * Handle user actions from the webview
-   * @param data - Action data from the webview
+   * Routes action requests to appropriate handlers and manages UI refresh
+   * @param data - Action data from the webview containing href with action type and parameters
    * @returns Action result indicating if re-render is needed
    */
   async handleAction(data: any): Promise<HandleActionResult> {
+    // Parse the action URL to extract action type and parameters
     const uri = vscode.Uri.parse(data.href);
-    let refetch = false;
+    let refetch = false;  // Flag to determine if data needs to be refetched
     const params = new URLSearchParams(uri.query);
     let entryJson;
+    
+    // Route to appropriate action handler based on action type
     switch (uri.path) {
+      // Output Queue level actions
       case ACTION_CLR:
+        // Clear all spools from the queue
         if (await OutputQueueActions.clrOutq(this)) {
           refetch = true;
         }
         break;
 
       case ACTION_DLT:
+        // Delete old spools based on age
         if (await OutputQueueActions.delOldSpl(this)) {
           refetch = true;
         }
         break;
 
+      case ACTION_HLD:
+        // Hold the output queue
+        if (await OutputQueueActions.hldOutq(this)) {
+          refetch = true;
+        }
+        break;
+
+      case ACTION_RLS:
+        // Release the output queue
+        if (await OutputQueueActions.rlsOutq(this)) {
+          refetch = true;
+        }
+        break;
+      
+      case ACTION_STR:
+        // Start the printer writer
+        if (await OutputQueueActions.strWtr(this, this.outq[0].NETWORK_CONNECTION_TYPE)) {
+          refetch = true;
+        }
+        break;
+
+      case ACTION_END:
+        // End (stop) the printer writer
+        if (await OutputQueueActions.endWtr(this)) {
+          refetch = true;
+        }
+        break;
+
+      // Individual spool file actions
       case "genPdf":
+        // Generate and download PDF from spool file
         entryJson = params.get("entry");
         if (entryJson) {
           const entry: Entry = JSON.parse(decodeURIComponent(entryJson));
@@ -457,6 +738,7 @@ export default class Outq extends Base {
         break;
 
       case "delPdf":
+        // Delete a specific spool file
         entryJson = params.get("entry");
         if (entryJson) {
           const entry: Entry = JSON.parse(decodeURIComponent(entryJson));
@@ -467,16 +749,21 @@ export default class Outq extends Base {
         break;
     }
 
+    // If any action was successful, refetch data to update the UI
     if (refetch) {
       await this.fetch();
     }
+    
+    // Return result indicating whether the UI should be re-rendered
     return { rerender: refetch };
   }
 
   /**
    * Save changes (not applicable for output queues)
+   * Output queues are managed through IBM i commands, not direct editing
    */
   async save(): Promise<void> {
     // Output queues are read-only in this view
+    // All modifications are done through IBM i commands (CLROUTQ, HLDOUTQ, etc.)
   }
 }

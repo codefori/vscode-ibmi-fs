@@ -66,8 +66,7 @@ export default class MsgfFast extends Base {
                     ELSE null
                 END AS VALID_REPLY_VALUES
             FROM qsys2.message_file_data
-            WHERE message_file = '${this.name}' AND message_file_library = '${this.library}'
-            limit 500`)
+            WHERE message_file = '${this.name}' AND message_file_library = '${this.library}'`)
       this._entries = [];
       this._entries.push(...entryRows.map(this.toEntry));
     }

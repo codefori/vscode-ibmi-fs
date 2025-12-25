@@ -8,7 +8,7 @@ import { SaveFileActions } from './types/saveFile';
 import { loadBase } from './ibmi';
 import { DataAreaActions } from './types/dataarea';
 import { JobQueueActions } from './types/jobqueue';
-import { OutputQueueActions } from './types/outq';
+import { OutputQueueActions } from './types/outputqueue';
 import { UserSpaceActions } from './types/userspace';
 
 /**

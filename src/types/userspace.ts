@@ -1,3 +1,20 @@
+/**
+ * User Space Management Module
+ *
+ * This module provides functionality for managing IBM i User Spaces (USRSPC).
+ * User Spaces are objects that provide temporary or permanent storage for data
+ * that can be accessed by multiple programs.
+ *
+ * Key Features:
+ * - Display user space information and attributes
+ * - View user space content (hexadecimal and text representation)
+ * - Change user space data
+ * - Support for different user space sizes
+ * - Automatic space extension capabilities
+ *
+ * @module userspace
+ */
+
 import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
@@ -6,7 +23,8 @@ import { getColumns, generateDetailTable } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 
-const ACTION_CHG = "chg";
+// Action constant for user space operations
+const ACTION_CHG = "chg";  // Change user space content action
 
 /**
  * Namespace containing actions for User Space objects

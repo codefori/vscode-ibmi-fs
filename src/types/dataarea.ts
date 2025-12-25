@@ -1,3 +1,18 @@
+/**
+ * Data Area Management Module
+ *
+ * This module provides functionality for managing IBM i Data Areas (DTAARA).
+ * Data Areas are objects that store data that can be accessed by multiple programs.
+ *
+ * Key Features:
+ * - Display data area information and current value
+ * - View data area attributes (type, length, decimal positions)
+ * - Change data area content
+ * - Support for different data area types (*CHAR, *DEC, *LGL)
+ *
+ * @module dataarea
+ */
+
 import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
@@ -6,7 +21,8 @@ import { getColumns, generateDetailTable } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 
-const ACTION_CHG = "chg";
+// Action constant for data area operations
+const ACTION_CHG = "chg";  // Change data area value action
 
 /**
  * Namespace containing actions for Data Area objects
@@ -101,12 +117,12 @@ export namespace DataAreaActions {
       const ibmi = getInstance();
       const connection = ibmi?.getConnection();
       if (connection) {
-        const command: CommandResult = await connection.runCommand({
+        const cmdrun: CommandResult = await connection.runCommand({
           command: `CHGDTAARA DTAARA(${library}/${name}) VALUE('${newvalue}')`,
           environment: `ile`
         });
 
-        if (command.code === 0) {
+        if (cmdrun.code === 0) {
           vscode.window.showInformationMessage(`Data Area ${library}/${name} changed.`);
           return true;
         } else {

@@ -1,3 +1,21 @@
+/**
+ * Job Description Management Module
+ *
+ * This module provides functionality for viewing IBM i Job Descriptions (JOBD).
+ * Job Descriptions define the runtime environment and attributes for batch jobs,
+ * including job queues, output queues, libraries, and other job-related settings.
+ *
+ * Key Features:
+ * - Display job description information and attributes
+ * - View job queue associations
+ * - View output queue settings
+ * - View library list configuration
+ * - View job accounting and logging settings
+ * - Read-only view (no modification capabilities)
+ *
+ * @module jobdescription
+ */
+
 import Base from "./base";
 import { getInstance } from "../ibmi";
 import { getColumns, generateDetailTable } from "../tools";

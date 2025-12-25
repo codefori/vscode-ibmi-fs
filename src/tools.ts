@@ -215,6 +215,7 @@ export function generateDetailTable(options: DetailTableOptions): string {
 
   // Escape HTML for security
   const escapeHtml = (text: string | number): string => {
+    if (text === 0) return '0';
     if (text === null || text === undefined || text === '') return '-';
     const str = String(text);
     if (str === 'null' || str === 'undefined' || str.trim() === '') return '-';
@@ -233,9 +234,10 @@ export function generateDetailTable(options: DetailTableOptions): string {
   columns.forEach((label, key) => {
     if (key in data[0]) {
       let value = data[0][key as keyof typeof data];
-      if (!value) value = "-";
+      // Non sostituire 0 con "-", gestisci solo null/undefined/stringa vuota
+      if (value === null || value === undefined || value === '') value = "-";
       
-      const displayValue = codeColumns.includes(key) 
+      const displayValue = codeColumns.includes(key)
         ? `<code style="background: var(--vscode-textCodeBlock-background); padding: 2px 6px; border-radius: 3px; font-family: var(--vscode-editor-font-family);">${escapeHtml(value)}</code>`
         : escapeHtml(value);
       
@@ -371,6 +373,8 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
 
   // Escape HTML for security and handle null/undefined
   const escapeHtml = (text: string | number): string => {
+    // Gestisci esplicitamente lo zero come valore valido
+    if (text === 0) return '0';
     if (text === null || text === undefined || text === '') return '-';
     const str = String(text);
     // Check for string representations of null/undefined

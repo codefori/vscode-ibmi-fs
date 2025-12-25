@@ -1,3 +1,20 @@
+/**
+ * Data Queue Management Module
+ *
+ * This module provides functionality for managing IBM i Data Queues (DTAQ).
+ * Data Queues are objects used for inter-process communication, allowing programs
+ * to send and receive messages asynchronously.
+ *
+ * Key Features:
+ * - Display data queue information and attributes
+ * - View messages in the queue
+ * - Send new messages to the queue
+ * - Clear all messages from the queue
+ * - Support for keyed and non-keyed data queues
+ *
+ * @module dataqueue
+ */
+
 import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
@@ -6,8 +23,9 @@ import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getColumns, generateDetailTable, FastTableColumn, generateFastTable } from "../tools";
 
-const ACTION_CLEAR = "clear";
-const ACTION_SEND = "send";
+// Action constants for data queue operations
+const ACTION_CLEAR = "clear";  // Clear all messages action
+const ACTION_SEND = "send";    // Send message action
 
 /**
  * Namespace containing actions for Data Queue objects

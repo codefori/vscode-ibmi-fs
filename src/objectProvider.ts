@@ -12,7 +12,7 @@ import Program from './types/program';
 import { SaveFile } from './types/saveFile';
 import Jobq from './types/jobqueue';
 import Jobd from './types/jobdescription';
-import Outq from './types/outq';
+import Outq from './types/outputqueue';
 import { Usrspc } from './types/userspace';
 import Msgf from './types/messagefile';
 

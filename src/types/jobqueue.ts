@@ -1,3 +1,19 @@
+/**
+ * Job Queue Management Module
+ *
+ * This module provides functionality for managing IBM i Job Queues (JOBQ) and their associated jobs.
+ * It includes operations for holding, releasing, clearing job queues, and managing individual jobs.
+ *
+ * Key Features:
+ * - Display job queue information and statistics
+ * - List all jobs in a queue with their details
+ * - Hold/Release/Clear job queues
+ * - Hold/Release/End individual jobs
+ * - Dynamic UI based on queue and job status
+ *
+ * @module jobqueue
+ */
+
 import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
@@ -6,9 +22,10 @@ import { generateDetailTable, getColumns, generateFastTable, FastTableColumn } f
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 
-const ACTION_HLD = "hld";
-const ACTION_RLS = "rls";
-const ACTION_CLR = "clr";
+// Action constants for job queue operations
+const ACTION_HLD = "hld";  // Hold job queue action
+const ACTION_RLS = "rls";  // Release job queue action
+const ACTION_CLR = "clr";  // Clear job queue action
 
 /**
  * Namespace containing actions for Job Queue objects
@@ -23,6 +40,9 @@ export namespace JobQueueActions {
       vscode.commands.registerCommand("vscode-ibmi-fs.HldJobq", hldJobq),
       vscode.commands.registerCommand("vscode-ibmi-fs.RlsJobq", rlsJobq),
       vscode.commands.registerCommand("vscode-ibmi-fs.ClrJobq", clrJobq),
+      vscode.commands.registerCommand("vscode-ibmi-fs.HldJob", hldJob),
+      vscode.commands.registerCommand("vscode-ibmi-fs.RlsJob", rlsJob),
+      vscode.commands.registerCommand("vscode-ibmi-fs.EndJob", endJob),
     );
   };
 
@@ -38,12 +58,12 @@ export namespace JobQueueActions {
       const ibmi = getInstance();
       const connection = ibmi?.getConnection();
       if (connection) {
-        const hldjobq: CommandResult = await connection.runCommand({
+        const cmdrun: CommandResult = await connection.runCommand({
           command: `HLDJOBQ ${library}/${name}`,
           environment: `ile`
         });
 
-        if (hldjobq.code === 0) {
+        if (cmdrun.code === 0) {
           vscode.window.showInformationMessage(`Job Queue ${library}/${name} held.`);
           return true;
         } else {
@@ -72,12 +92,12 @@ export namespace JobQueueActions {
       const ibmi = getInstance();
       const connection = ibmi?.getConnection();
       if (connection) {
-        const rlsjobq: CommandResult = await connection.runCommand({
+        const cmdrun: CommandResult = await connection.runCommand({
           command: `RLSJOBQ ${library}/${name}`,
           environment: `ile`
         });
 
-        if (rlsjobq.code === 0) {
+        if (cmdrun.code === 0) {
           vscode.window.showInformationMessage(`Job Queue ${library}/${name} released.`);
           return true;
         } else {
@@ -106,16 +126,124 @@ export namespace JobQueueActions {
       const ibmi = getInstance();
       const connection = ibmi?.getConnection();
       if (connection) {
-        const clrjobq: CommandResult = await connection.runCommand({
+        const cmdrun: CommandResult = await connection.runCommand({
           command: `CLRJOBQ ${library}/${name}`,
           environment: `ile`
         });
 
-        if (clrjobq.code === 0) {
+        if (cmdrun.code === 0) {
           vscode.window.showInformationMessage(`Job Queue ${library}/${name} cleared.`);
           return true;
         } else {
           vscode.window.showErrorMessage(`Unable to clear Job Queue ${library}/${name}`);
+          return false;
+        }
+      } else {
+        vscode.window.showErrorMessage(`Not connected to IBM i`);
+        return false;
+      }
+    }
+    else {
+      return false;
+    }
+  };
+
+  /**
+   * Hold an individual job in the queue
+   * Prevents the job from executing until it is released
+   * @param item - The job entry to hold
+   * @returns True if successful, false otherwise
+   */
+  export const hldJob = async (item: Entry): Promise<boolean> => {
+    // Show confirmation dialog to prevent accidental holds
+    if (await vscode.window.showWarningMessage(`Are you sure you want to hold job ${item.job} ?`, { modal: true }, "Hold job")) {
+      const ibmi = getInstance();
+      const connection = ibmi?.getConnection();
+      if (connection) {
+        // Execute HLDJOB command on IBM i
+        const cmdrun: CommandResult = await connection.runCommand({
+          command: `HLDJOB JOB(${item.job})`,
+          environment: `ile`
+        });
+
+        // Check command execution result
+        if (cmdrun.code === 0) {
+          vscode.window.showInformationMessage(`Job held.`);
+          return true;
+        } else {
+          vscode.window.showErrorMessage(`Unable to hold selected job.`);
+          return false;
+        }
+      } else {
+        vscode.window.showErrorMessage(`Not connected to IBM i`);
+        return false;
+      }
+    }
+    else {
+      return false;
+    }
+  };
+
+  /**
+   * Release an individual job in the queue
+   * Allows a previously held job to execute
+   * @param item - The job entry to release
+   * @returns True if successful, false otherwise
+   */
+  export const rlsJob = async (item: Entry): Promise<boolean> => {
+    // Show confirmation dialog
+    if (await vscode.window.showWarningMessage(`Are you sure you want to release job ${item.job} ?`, { modal: true }, "Release job")) {
+      const ibmi = getInstance();
+      const connection = ibmi?.getConnection();
+      if (connection) {
+        // Execute RLSJOB command on IBM i
+        const cmdrun: CommandResult = await connection.runCommand({
+          command: `RLSJOB JOB(${item.job})`,
+          environment: `ile`
+        });
+
+        // Check command execution result
+        if (cmdrun.code === 0) {
+          vscode.window.showInformationMessage(`Job released.`);
+          return true;
+        } else {
+          vscode.window.showErrorMessage(`Unable to release selected job.`);
+          return false;
+        }
+      } else {
+        vscode.window.showErrorMessage(`Not connected to IBM i`);
+        return false;
+      }
+    }
+    else {
+      return false;
+    }
+  };
+
+  /**
+   * End (terminate) an individual job in the queue
+   * This is a destructive operation that stops the job
+   * @param item - The job entry to end
+   * @returns True if successful, false otherwise
+   */
+  export const endJob = async (item: Entry): Promise<boolean> => {
+    // Show confirmation dialog to prevent accidental termination
+    if (await vscode.window.showWarningMessage(`Are you sure you want to end job ${item.job} ?`, { modal: true }, "End job")) {
+      const ibmi = getInstance();
+      const connection = ibmi?.getConnection();
+      if (connection) {
+        // Execute ENDJOB command on IBM i
+        const cmdrun: CommandResult = await connection.runCommand({
+          command: `ENDJOB JOB(${item.job})`,
+          environment: `ile`
+        });
+
+        // Check command execution result
+        if (cmdrun.code === 0) {
+          vscode.window.showInformationMessage(`Job ended.`);
+          return true;
+        } else {
+          vscode.window.showErrorMessage(`Unable to end selected job.`);
           return false;
         }
       } else {
@@ -141,6 +269,8 @@ interface Entry {
   jobts: string
   /** Job scheduled timestamp */
   jobscd: string
+  /** Job status */
+  jobsts: string
 }
 
 /**
@@ -192,7 +322,7 @@ export default class Jobq extends Base {
       const entryRows = await connection.runSQL(
         `SELECT JOB_NAME,
                 SUBMITTER_JOB_NAME,
-                to_char(JOB_ENTERED_SYSTEM_TIME, 'yyyy-mm-dd HH24:mi') as JOB_ENTERED_SYSTEM_TIME,
+                to_char(JOB_ENTERED_SYSTEM_TIME, 'yyyy-mm-dd HH24:mi') as JOB_ENTERED_SYSTEM_TIME, JOB_QUEUE_STATUS,
                 case when JOB_SCHEDULED_TIME is not null then to_char(JOB_SCHEDULED_TIME, 'yyyy-mm-dd HH24:mi') else null end as JOB_SCHEDULED_TIME
             FROM SYSTOOLS.JOB_QUEUE_ENTRIES
             WHERE JOB_QUEUE_NAME = '${this.name}' AND JOB_QUEUE_LIBRARY = '${this.library}'`)
@@ -213,35 +343,50 @@ export default class Jobq extends Base {
   }
 
   /**
-   * Render the job queue information panel
+   * Render the job queue information panel with dynamic actions
+   * Actions are conditionally displayed based on the current queue status
    * @returns HTML string for the panel
+   * @private
    */
   private renderJobQueuePanel(): string {
+    // Build actions array dynamically based on queue status
+    const actions = [];
+    const status = this.jobq?.[0]?.JOB_QUEUE_STATUS;
+
+    // Show "Hold" button only if queue is not already held
+    // This prevents redundant operations and provides better UX
+    if (status !== 'HELD') {
+      actions.push({
+        label: 'Hold ⏸️',
+        action: ACTION_HLD,
+        appearance: 'primary',
+        style: 'width: 100%; text-align: center;'
+      });
+    } else {
+      // Show "Release" button only if queue is held
+      actions.push({
+        label: 'Release ▶️',
+        action: ACTION_RLS,
+        appearance: 'primary',
+        style: 'width: 100%; text-align: center;'
+      });
+    }
+
+    // "Clear" action is always available regardless of status
+    actions.push({
+      label: 'Clear 🧹',
+      action: ACTION_CLR,
+      appearance: 'secondary',
+      style: 'width: 100%; text-align: center;'
+    });
+
+    // Generate the detail table with queue information and action buttons
     return generateDetailTable({
       title: `Job Queue: ${this.library}/${this.name}`,
       subtitle: 'Job Queue Information',
       columns: this.columns,
       data: this.jobq,
-      actions: [
-        {
-          label: 'Hold ⏸️',
-          action: ACTION_HLD,
-          appearance: 'primary',
-          style: 'width: 100%; text-align: center;'
-        },
-        {
-          label: 'Release ▶️',
-          action: ACTION_RLS,
-          appearance: 'primary',
-          style: 'width: 100%; text-align: center;'
-        },
-        {
-          label: 'Clear 🧹',
-          action: ACTION_CLR,
-          appearance: 'secondary',
-          style: 'width: 100%; text-align: center;'
-        }
-      ]
+      actions: actions
     });
   }
 
@@ -256,6 +401,7 @@ export default class Jobq extends Base {
       submitter: String(row.SUBMITTER_JOB_NAME),
       jobts: String(row.JOB_ENTERED_SYSTEM_TIME),
       jobscd: String(row.JOB_SCHEDULED_TIME),
+      jobsts: String(row.JOB_QUEUE_STATUS),
     };
   }
 
@@ -264,21 +410,45 @@ export default class Jobq extends Base {
    * @param entries - Array of job entries
    * @returns HTML string for the table
    */
+  /**
+   * Render the jobs table with dynamic action buttons
+   * Each job row displays contextual actions based on its current status
+   * @param entries - Array of job entries to display
+   * @returns HTML string for the table
+   */
   renderEntries(entries: Entry[]) {
+    // Define table columns with their properties
     const columns: FastTableColumn<Entry>[] = [
       { title: "Job", width: "1fr", getValue: e => e.job },
       { title: "Submitter job", width: "1fr", getValue: e => e.submitter },
       { title: "Job entered time", width: "1fr", getValue: e => e.jobts },
       { title: "Job scheduled time", width: "1fr", getValue: e => e.jobscd },
+      { title: "Job status", width: "1fr", getValue: e => e.jobsts },
+      {
+        title: "Actions",
+        width: "1fr",
+        getValue: e => {
+          // Encode job entry as URL parameter for action handlers
+          const arg = encodeURIComponent(JSON.stringify(e));
+          
+          // Conditionally show Hold or Release button based on job status
+          // If job is HELD, show Release button; otherwise show Hold button
+          return `${e.jobsts!=='HELD'?'<vscode-button appearance="primary" href="action:hldJob?entry='+arg+'">Hold ⏸️</vscode-button>':
+            '<vscode-button appearance="primary" href="action:rlsJob?entry='+arg+'">Release ▶️</vscode-button>'}
+            <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">End ❌</vscode-button>`;
+        }
+      }
     ];
 
+    // Custom CSS styles for the job queue entries table
     const customStyles = `
-      /* Custom styles for cells - specific to jobqueue entries table */
+      /* Highlight job names with link color for better visibility */
       .jobqueue-entries-table vscode-data-grid-cell[grid-column="1"] {
         color: var(--vscode-textLink-foreground);
       }
     `;
 
+    // Generate and return the complete table HTML
     return `<div class="jobqueue-entries-table">` + generateFastTable({
       title: ``,
       subtitle: ``,
@@ -293,41 +463,91 @@ export default class Jobq extends Base {
 
   /**
    * Handle user actions from the webview
-   * @param data - Action data from the webview
+   * Routes action requests to appropriate handlers and manages UI refresh
+   * @param data - Action data from the webview containing href with action type and parameters
    * @returns Action result indicating if re-render is needed
    */
   async handleAction(data: any): Promise<HandleActionResult> {
+    // Parse the action URL to extract action type and parameters
     const uri = vscode.Uri.parse(data.href);
-    let refetch = false;
+    let refetch = false;  // Flag to determine if data needs to be refetched
+    let entryJson;
+    const params = new URLSearchParams(uri.query);
+    
+    // Route to appropriate action handler based on action type
     switch (uri.path) {
+      // Job Queue level actions
       case ACTION_HLD:
+        // Hold the entire job queue
         if (await JobQueueActions.hldJobq(this)) {
           refetch = true;
         }
         break;
 
       case ACTION_RLS:
+        // Release the entire job queue
         if (await JobQueueActions.rlsJobq(this)) {
           refetch = true;
         }
         break;
 
       case ACTION_CLR:
+        // Clear all jobs from the queue
         if (await JobQueueActions.clrJobq(this)) {
           refetch = true;
         }
         break;
+
+      // Individual job actions
+      case "hldJob":
+        // Hold a specific job in the queue
+        entryJson = params.get("entry");
+        if (entryJson) {
+          const entry: Entry = JSON.parse(decodeURIComponent(entryJson));
+          if(await JobQueueActions.hldJob(entry)){
+            refetch=true;
+          }
+        }
+        break;
+
+      case "rlsJob":
+        // Release a specific job in the queue
+        entryJson = params.get("entry");
+        if (entryJson) {
+          const entry: Entry = JSON.parse(decodeURIComponent(entryJson));
+          if(await JobQueueActions.rlsJob(entry)){
+            refetch=true;
+          }
+        }
+        break;
+
+      case "endJob":
+        // End (terminate) a specific job in the queue
+        entryJson = params.get("entry");
+        if (entryJson) {
+          const entry: Entry = JSON.parse(decodeURIComponent(entryJson));
+          if(await JobQueueActions.endJob(entry)){
+            refetch=true;
+          }
+        }
+        break;
     }
+    
+    // If any action was successful, refetch data to update the UI
     if (refetch) {
       await this.fetch();
     }
+    
+    // Return result indicating whether the UI should be re-rendered
     return { rerender: refetch };
   }
 
   /**
    * Save changes (not applicable for job queues)
+   * Job queues are managed through IBM i commands, not direct editing
    */
   async save(): Promise<void> {
     // Job queues are read-only in this view
+    // All modifications are done through IBM i commands (HLDJOBQ, RLSJOBQ, etc.)
   }
 }
