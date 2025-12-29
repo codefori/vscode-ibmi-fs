@@ -9,7 +9,7 @@ import { Command } from './types/command';
 import { Dtaara } from './types/dataarea';
 import { Dtaq } from './types/dataqueue';
 import Program from './types/program';
-import { SaveFile } from './types/saveFile';
+import { SaveFile } from './types/savefile';
 import Jobq from './types/jobqueue';
 import Jobd from './types/jobdescription';
 import Outq from './types/outputqueue';

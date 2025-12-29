@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 
 import ObjectProvider from './objectProvider';
 import { DataQueueActions } from './types/dataqueue';
-import { SaveFileActions } from './types/saveFile';
+import { SaveFileActions } from './types/savefile';
 import { loadBase } from './ibmi';
 import { DataAreaActions } from './types/dataarea';
 import { JobQueueActions } from './types/jobqueue';

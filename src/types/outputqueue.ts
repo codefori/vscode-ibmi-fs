@@ -337,7 +337,7 @@ export namespace OutputQueueActions {
     if (saveLocation) {
       const result = await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
-        title: `Generating PDF...`
+        title: `PDF genaration:`
       }, async progress => {
         const result = {
           successful: true,

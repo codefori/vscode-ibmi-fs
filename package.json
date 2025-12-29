@@ -86,6 +86,24 @@
         "icon": "cloud-upload"
       },
       {
+        "command": "vscode-ibmi-fs.clearSavf",
+        "title": "Clear Save file",
+        "category": "IBM i FS",
+        "icon": "clear-all"
+      },
+      {
+        "command": "vscode-ibmi-fs.savf",
+        "title": "Save to Save file",
+        "category": "IBM i FS",
+        "icon": "save"
+      },
+      {
+        "command": "vscode-ibmi-fs.restore",
+        "title": "Restore from Save file",
+        "category": "IBM i FS",
+        "icon": "folder-opened"
+      },
+      {
         "command": "vscode-ibmi-fs.clearDataQueue",
         "title": "Clear",
         "category": "IBM i FS",
@@ -207,6 +225,21 @@
           "group": "5_SavfAction@2"
         },
         {
+          "command": "vscode-ibmi-fs.clearSavf",
+          "when": "view == objectBrowser && viewItem == object.file.savf",
+          "group": "5_SavfAction@3"
+        },
+        {
+          "command": "vscode-ibmi-fs.savf",
+          "when": "view == objectBrowser && viewItem == filter",
+          "group": "5_SavfAction@4"
+        },
+        {
+          "command": "vscode-ibmi-fs.restore",
+          "when": "view == objectBrowser && viewItem == object.file.savf",
+          "group": "5_SavfAction@5"
+        },
+        {
           "command": "vscode-ibmi-fs.sendToDataQueue",
           "when": "view == objectBrowser && viewItem == object.dtaq",
           "group": "5_DtaqAction@1"
@@ -304,6 +337,18 @@
         },
         {
           "command": "vscode-ibmi-fs.uploadSavf",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.clearSavf",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.savf",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.restore",
           "when": "never"
         },
         {
