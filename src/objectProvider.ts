@@ -4,7 +4,6 @@ import Base from './types/base';
 import { generateError, generatePage } from './webviewToolkit';
 import path = require('path');
 
-import BindingDirectory from './types/bindingDirectory';
 import { Dtaara } from './types/dataarea';
 import { Dtaq } from './types/dataqueue';
 import { SaveFile } from './types/savefile';
@@ -15,6 +14,7 @@ import { Usrspc } from './types/userspace';
 import Msgf from './types/messagefile';
 import Cmd from './types/command';
 import { Pgm } from './types/program';
+import { Binddir } from './types/bindingDirectory';
 
 /**
  * Custom editor provider for IBM i objects
@@ -133,7 +133,7 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
 
     switch (type.toUpperCase()) {
       case `BNDDIR`:
-        return new BindingDirectory(uri, library, objectName);
+        return new Binddir(uri, library, objectName);
 
       case `DTAARA`:
         return new Dtaara(uri, library, objectName);

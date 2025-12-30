@@ -210,6 +210,18 @@
         "title": "Change USRSPC",
         "category": "IBM i FS",
         "icon": "arrow-right"
+      },
+      {
+        "command": "vscode-ibmi-fs.Addbnddire",
+        "title": "Add Binding Directory Entry",
+        "category": "IBM i FS",
+        "icon": "add"
+      },
+      {
+        "command": "vscode-ibmi-fs.Rmvbnddire",
+        "title": "Remove Binding Directory Entry",
+        "category": "IBM i FS",
+        "icon": "trash"
       }
     ],
     "menus": {
@@ -328,6 +340,16 @@
           "command": "vscode-ibmi-fs.chgUsrspc",
           "when": "view == objectBrowser && viewItem == object.usrspc",
           "group": "5_UsrspcAction@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.Addbnddire",
+          "when": "view == objectBrowser && viewItem == object.bnddir",
+          "group": "5_BinddirAction@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.Rmvbnddire",
+          "when": "view == objectBrowser && viewItem == object.bnddir",
+          "group": "5_BinddirAction@2"
         }
       ],
       "commandPalette": [
@@ -421,6 +443,14 @@
         },
         {
           "command": "vscode-ibmi-fs.chgUsrspc",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.Addbnddire",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.Rmvbnddire",
           "when": "never"
         }
       ]
