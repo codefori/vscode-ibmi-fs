@@ -179,6 +179,8 @@ export interface DetailTableOptions {
   customScript?: string;
   /** Show action buttons (optional) */
   actions?: DetailTableAction[];
+  /** Hide fields with null values (optional, default: false) */
+  hideNullValues?: boolean;
 }
 
 /**
@@ -210,7 +212,8 @@ export function generateDetailTable(options: DetailTableOptions): string {
     codeColumns = [],
     customStyles = '',
     customScript = '',
-    actions = []
+    actions = [],
+    hideNullValues = false
   } = options;
 
   // Escape HTML for security
@@ -234,6 +237,12 @@ export function generateDetailTable(options: DetailTableOptions): string {
   columns.forEach((label, key) => {
     if (key in data[0]) {
       let value = data[0][key as keyof typeof data];
+      
+      // Skip null/undefined/empty values if hideNullValues is enabled
+      if (hideNullValues && (value === null || value === undefined || value === '')) {
+        return;
+      }
+      
       // Non sostituire 0 con "-", gestisci solo null/undefined/stringa vuota
       if (value === null || value === undefined || value === '') value = "-";
       
@@ -452,7 +461,6 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     
     vscode-data-grid {
       width: 100%;
-      height: calc(100vh - 120px);
     }
     
     .empty-state {

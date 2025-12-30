@@ -337,7 +337,7 @@ export default class Jobq extends Base {
    */
   generateHTML(): string {
     return Components.panels([
-      { title: "Job Queue", content: this.renderJobQueuePanel() },
+      { title: "Detail", content: this.renderJobQueuePanel() },
       { title: "Jobs", badge: this._entries.length, content: this.renderEntries(this._entries) }
     ]);
   }

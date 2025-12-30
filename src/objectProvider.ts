@@ -7,7 +7,6 @@ import path = require('path');
 import BindingDirectory from './types/bindingDirectory';
 import { Dtaara } from './types/dataarea';
 import { Dtaq } from './types/dataqueue';
-import Program from './types/program';
 import { SaveFile } from './types/savefile';
 import Jobq from './types/jobqueue';
 import Jobd from './types/jobdescription';
@@ -15,6 +14,7 @@ import Outq from './types/outputqueue';
 import { Usrspc } from './types/userspace';
 import Msgf from './types/messagefile';
 import Cmd from './types/command';
+import { Pgm } from './types/program';
 
 /**
  * Custom editor provider for IBM i objects
@@ -140,7 +140,7 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
 
       case `PGM`:
       case `SRVPGM`:
-        return new Program(uri, library, objectName);
+        return new Pgm(uri, library, objectName);
 
       case `CMD`:
         return new Cmd(uri, library, objectName);

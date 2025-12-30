@@ -512,7 +512,7 @@ export default class Outq extends Base {
    */
   generateHTML(): string {
     return Components.panels([
-      { title: "Output Queue", content: this.renderJobQueuePanel() },
+      { title: "Detail", content: this.renderJobQueuePanel() },
       { title: "Spools", badge: this._entries.length, content: this.renderEntries(this._entries) }
     ]);
   }
@@ -595,7 +595,8 @@ export default class Outq extends Base {
       subtitle: 'Output Queue Information',
       columns: this.columns,
       data: this.outq,
-      actions: actions
+      actions: actions,
+      hideNullValues: true
     });
   }
 

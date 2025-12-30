@@ -298,7 +298,7 @@ export class Dtaq extends Base {
    */
   generateHTML(): string {
     return Components.panels([
-      { title: "Data Queue", content: this.renderDataQueuePanel() },
+      { title: "Detail", content: this.renderDataQueuePanel() },
       { title: "Messages", badge: this._entries.length, content: renderEntries(this._keyed, this._entries, false) },
       { title: "Messages UTF8", badge: this._entries.length, content: renderEntries(this._keyed, this._entries, true) }
     ]);

@@ -1382,7 +1382,7 @@ export class SaveFile extends Base {
   generateHTML(): string {
     const panels: Components.Panel[] = [
       {
-        title: "Header",
+        title: "Detail",
         content: this.renderSavfPanel(this.size, this.headers),
       },
     ];

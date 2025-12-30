@@ -106,7 +106,8 @@ export default class Cmd extends Base {
       title: `Command: ${this.library}/${this.name}`,
       subtitle: 'Command Information',
       columns: this.columns,
-      data: this.cmd
+      data: this.cmd,
+      hideNullValues: true
     });
   }
 
