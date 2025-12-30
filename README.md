@@ -15,13 +15,6 @@ Save files are special file objects used to store saved objects and libraries.
 - 💾 Save objects/libraries to save file
 - 📂 Restore objects/libraries from save file
 
-**Context Menu Actions:**
-- Download Save file
-- Upload Save file(s)
-- Clear Save file
-- Save to Save file
-- Restore from Save file
-
 ---
 
 ### 📨 Data Queues (DTAQ)
@@ -34,10 +27,6 @@ Data queues are objects used for inter-process communication, allowing programs 
 - 🗑️ Clear all messages from the queue
 - 🔑 Support for keyed and non-keyed data queues
 
-**Context Menu Actions:**
-- Send data
-- Clear
-
 ---
 
 ### 📝 Data Areas (DTAARA)
@@ -48,9 +37,6 @@ Data areas are objects that store data that can be accessed by multiple programs
 - 📋 View data area attributes (type, length, decimal positions)
 - ✏️ Change data area content
 - 🔢 Support for different data area types (*CHAR, *DEC, *LGL)
-
-**Context Menu Actions:**
-- Change DTAARA
 
 ---
 
@@ -67,16 +53,6 @@ Output queues manage spooled files and printer output.
 - 🗑️ Delete individual or old spooled files
 - 🎨 Dynamic UI based on queue and writer status
 
-**Context Menu Actions:**
-- Hold Outq
-- Release Outq
-- Clear Outq
-- Start Writer
-- End Writer
-- Generate PDF
-- Delete spool
-- Delete old spools
-
 ---
 
 ### 📋 Job Queues (JOBQ)
@@ -89,14 +65,6 @@ Job queues manage batch jobs waiting to be processed.
 - ⏸️ Hold/Release/End individual jobs
 - 🎨 Dynamic UI based on queue and job status
 
-**Context Menu Actions:**
-- Hold Jobq
-- Release Jobq
-- Clear Jobq
-- Hold Job
-- Release Job
-- End Job
-
 ---
 
 ### 💾 User Spaces (USRSPC)
@@ -108,9 +76,6 @@ User spaces provide temporary or permanent storage for data that can be accessed
 - ✏️ Change user space data at specific positions
 - 📏 Support for different user space sizes
 - 🔄 Automatic space extension capabilities
-
-**Context Menu Actions:**
-- Change USRSPC
 
 ---
 

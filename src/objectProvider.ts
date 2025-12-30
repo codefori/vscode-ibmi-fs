@@ -5,7 +5,6 @@ import { generateError, generatePage } from './webviewToolkit';
 import path = require('path');
 
 import BindingDirectory from './types/bindingDirectory';
-import { Command } from './types/command';
 import { Dtaara } from './types/dataarea';
 import { Dtaq } from './types/dataqueue';
 import Program from './types/program';
@@ -15,6 +14,7 @@ import Jobd from './types/jobdescription';
 import Outq from './types/outputqueue';
 import { Usrspc } from './types/userspace';
 import Msgf from './types/messagefile';
+import Cmd from './types/command';
 
 /**
  * Custom editor provider for IBM i objects
@@ -143,7 +143,7 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
         return new Program(uri, library, objectName);
 
       case `CMD`:
-        return new Command(uri, library, objectName);
+        return new Cmd(uri, library, objectName);
 
       case `OUTQ`:
         return new Outq(uri, library, objectName);
