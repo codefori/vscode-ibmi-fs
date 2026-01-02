@@ -118,6 +118,21 @@ Programs and service programs are executable objects.
 
 ---
 
+### 🧩 Modules (MODULE)
+Modules are compiled ILE objects that contain executable code and can be bound into programs or service programs.
+
+**Features:**
+- 📊 Display comprehensive module information
+- 📋 View module attributes (creation date, source file, compiler options)
+- 📏 Detailed size information (code size, data size, debug data)
+- 🔧 List all procedures defined in the module
+- 🔗 View imported and exported symbols
+- 📦 Display referenced system objects
+- ©️ Show copyright information
+- 🎨 Multi-tab interface for organized information display
+
+---
+
 ### ⚙️ Commands (CMD)
 Command objects define IBM i CL commands.
 

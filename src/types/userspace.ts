@@ -173,8 +173,7 @@ export class Usrspc extends Base {
       subtitle: 'User Space Information',
       columns: this.columns,
       data: this.usrspc,
-      codeColumns: ['DATA', 'DATA_BINARY'],
-      actions:[]
+      codeColumns: ['DATA', 'DATA_BINARY']
     });
   }
 

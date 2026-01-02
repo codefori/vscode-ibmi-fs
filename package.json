@@ -67,6 +67,9 @@
           },
           {
             "filenamePattern": "object*/**/*.MSGF"
+          },
+          {
+            "filenamePattern": "object*/**/*.MODULE"
           }
         ],
         "priority": "default"
@@ -318,131 +321,6 @@
         }
       ],
       "view/item/context": [
-        {
-          "command": "vscode-ibmi-fs.downloadSavf",
-          "when": "view == objectBrowser && viewItem == object.file.savf",
-          "group": "5_SavfAction@1"
-        },
-        {
-          "command": "vscode-ibmi-fs.uploadSavf",
-          "when": "view == objectBrowser && viewItem == filter",
-          "group": "5_SavfAction@2"
-        },
-        {
-          "command": "vscode-ibmi-fs.clearSavf",
-          "when": "view == objectBrowser && viewItem == object.file.savf",
-          "group": "5_SavfAction@3"
-        },
-        {
-          "command": "vscode-ibmi-fs.savf",
-          "when": "view == objectBrowser && viewItem == filter",
-          "group": "5_SavfAction@4"
-        },
-        {
-          "command": "vscode-ibmi-fs.restore",
-          "when": "view == objectBrowser && viewItem == object.file.savf",
-          "group": "5_SavfAction@5"
-        },
-        {
-          "command": "vscode-ibmi-fs.sendToDataQueue",
-          "when": "view == objectBrowser && viewItem == object.dtaq",
-          "group": "5_DtaqAction@1"
-        },
-        {
-          "command": "vscode-ibmi-fs.clearDataQueue",
-          "when": "view == objectBrowser && viewItem == object.dtaq",
-          "group": "5_DtaqAction@2"
-        },
-        {
-          "command": "vscode-ibmi-fs.HldJobq",
-          "when": "view == objectBrowser && viewItem == object.jobq",
-          "group": "5_JobqAction@1"
-        },
-        {
-          "command": "vscode-ibmi-fs.RlsJobq",
-          "when": "view == objectBrowser && viewItem == object.jobq",
-          "group": "5_JobqAction@2"
-        },
-        {
-          "command": "vscode-ibmi-fs.ClrJobq",
-          "when": "view == objectBrowser && viewItem == object.jobq",
-          "group": "5_JobqAction@3"
-        },
-        {
-          "command": "vscode-ibmi-fs.HldJob",
-          "when": "view == objectBrowser && viewItem == object.jobq",
-          "group": "5_JobqAction@4"
-        },
-        {
-          "command": "vscode-ibmi-fs.RlsJob",
-          "when": "view == objectBrowser && viewItem == object.jobq",
-          "group": "5_JobqAction@5"
-        },
-        {
-          "command": "vscode-ibmi-fs.EndJob",
-          "when": "view == objectBrowser && viewItem == object.jobq",
-          "group": "5_JobqAction@6"
-        },
-        {
-          "command": "vscode-ibmi-fs.HldOutq",
-          "when": "view == objectBrowser && viewItem == object.outq",
-          "group": "5_OutqAction@1"
-        },
-        {
-          "command": "vscode-ibmi-fs.RlsOutq",
-          "when": "view == objectBrowser && viewItem == object.outq",
-          "group": "5_OutqAction@2"
-        },
-        {
-          "command": "vscode-ibmi-fs.MngWtr",
-          "when": "view == objectBrowser && viewItem == object.outq",
-          "group": "5_OutqAction@3"
-        },
-        {
-          "command": "vscode-ibmi-fs.EndWtr",
-          "when": "view == objectBrowser && viewItem == object.outq",
-          "group": "5_OutqAction@4"
-        },
-        {
-          "command": "vscode-ibmi-fs.ClrOutq",
-          "when": "view == objectBrowser && viewItem == object.outq",
-          "group": "5_OutqAction@5"
-        },
-        {
-          "command": "vscode-ibmi-fs.GenPdf",
-          "when": "view == objectBrowser && viewItem == object.outq",
-          "group": "5_OutqAction@6"
-        },
-        {
-          "command": "vscode-ibmi-fs.DelSpool",
-          "when": "view == objectBrowser && viewItem == object.outq",
-          "group": "5_OutqAction@7"
-        },
-        {
-          "command": "vscode-ibmi-fs.DelOldSpool",
-          "when": "view == objectBrowser && viewItem == object.outq",
-          "group": "5_OutqAction@8"
-        },
-        {
-          "command": "vscode-ibmi-fs.ChgDtaara",
-          "when": "view == objectBrowser && viewItem == object.dtaara",
-          "group": "5_DtaaraAction@1"
-        },
-        {
-          "command": "vscode-ibmi-fs.chgUsrspc",
-          "when": "view == objectBrowser && viewItem == object.usrspc",
-          "group": "5_UsrspcAction@1"
-        },
-        {
-          "command": "vscode-ibmi-fs.Addbnddire",
-          "when": "view == objectBrowser && viewItem == object.bnddir",
-          "group": "5_BinddirAction@1"
-        },
-        {
-          "command": "vscode-ibmi-fs.Rmvbnddire",
-          "when": "view == objectBrowser && viewItem == object.bnddir",
-          "group": "5_BinddirAction@2"
-        }
       ],
       "commandPalette": [
         {

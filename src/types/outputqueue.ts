@@ -658,8 +658,6 @@ export default class Outq extends Base {
       subtitle: 'Output Queue Information',
       columns: this.columns,
       data: this.outq,
-      actions: [],
-      //actions: actions,
       hideNullValues: true
     });
   }
@@ -730,7 +728,6 @@ export default class Outq extends Base {
       stickyHeader: true,
       emptyMessage: 'No spools found in this outq.',
       customStyles: customStyles,
-      customScript: ""
     }) + `</div>`;
   }
 

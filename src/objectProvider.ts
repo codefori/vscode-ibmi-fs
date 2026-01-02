@@ -15,6 +15,7 @@ import Msgf from './types/messagefile';
 import Cmd from './types/command';
 import { Pgm } from './types/program';
 import { Binddir } from './types/bindingdirectory';
+import { Module } from './types/module';
 
 /**
  * Custom editor provider for IBM i objects
@@ -194,6 +195,9 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
 
       case `MSGF`:
         return new Msgf(uri, library, objectName);
+  
+      case `MODULE`:
+        return new Module(uri, library, objectName);
 
       case `FILE`:
         if (uri.fragment.toUpperCase() === 'SAVF') {

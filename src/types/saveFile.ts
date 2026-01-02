@@ -142,8 +142,7 @@ export namespace SaveFileActions {
   export const downloadSavf = async (target: IBMiObject | SaveFile) => {
     const library = target.library.toUpperCase();
     const name = target.name.toUpperCase();
-    const qsysPath = getQSYSObjectPath(library, name, "file");
-
+    
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
@@ -158,6 +157,17 @@ export namespace SaveFileActions {
         vscode.window.showErrorMessage(`Save file ${target.library}/${target.name} is empty`);
         return false;
       }
+
+      const libinfo = await connection.runSQL(`
+        SELECT
+          CASE
+              WHEN IASP_NAME = '*SYSBAS' THEN NULL
+              ELSE IASP_NAME
+          END AS IASP_NAME
+        FROM TABLE (qsys2.OBJECT_STATISTICS(OBJECT_SCHEMA => 'QSYS', OBJTYPELIST => 'LIB', OBJECT_NAME => '${target.library}'))`);
+
+      const qsysPath = libinfo[0].IASP_NAME ? getQSYSObjectPath(library, name, "file", undefined, String(libinfo[0].IASP_NAME)) :
+        getQSYSObjectPath(library, name, "FILE");
 
       // Prompt user to select save location
       const saveLocation = await vscode.window.showSaveDialog({
@@ -297,10 +307,21 @@ export namespace SaveFileActions {
             ]);
             progress.report({ message: `Save File uploaded...` });
 
+            const libinfo = await connection.runSQL(`
+              SELECT
+                CASE
+                    WHEN IASP_NAME = '*SYSBAS' THEN NULL
+                    ELSE IASP_NAME
+                END AS IASP_NAME
+              FROM TABLE (qsys2.OBJECT_STATISTICS(OBJECT_SCHEMA => 'QSYS', OBJTYPELIST => 'LIB', OBJECT_NAME => '${target.library}'))`);
+
+            const qsysPath = libinfo[0].IASP_NAME ? getQSYSObjectPath(target.library, target.name, "file", undefined, String(libinfo[0].IASP_NAME)) :
+              getQSYSObjectPath(target.library, target.name, "FILE");
+
             // Step 2: Copy from stream file to save file member
             progress.report({ message: `Copying Save File...` });
             const copyFromStreamFile = await connection.runCommand({
-              command: `CPYFRMSTMF FROMSTMF('${rmtpath}') TOMBR('${getQSYSObjectPath(target.library, target.name, "FILE")}') MBROPT(*REPLACE)`,
+              command: `CPYFRMSTMF FROMSTMF('${rmtpath}') TOMBR('${qsysPath}') MBROPT(*REPLACE)`,
             });
 
             if (copyFromStreamFile.code !== 0) {
@@ -1450,8 +1471,7 @@ export class SaveFile extends Base {
       title: `Save File: ${this.library}/${this.name}`,
       subtitle: "Save File Information",
       columns: columns,
-      data: data,
-      actions: [],
+      data: data
     });
   }
 
@@ -1595,7 +1615,6 @@ function renderObjects(entries: Object[]) {
       stickyHeader: true,
       emptyMessage: "No objects found in this savf.",
       customStyles: customStyles,
-      customScript: "",
     }) +
     `</div>`
   );
@@ -1624,8 +1643,6 @@ function renderMembers(entries: FileMember[]) {
       data: entries,
       stickyHeader: true,
       emptyMessage: "No objects found in this savf.",
-      customStyles: "",
-      customScript: "",
     }) +
     `</div>`
   );
@@ -1658,8 +1675,6 @@ function renderSpooledFiles(entries: SpooledFile[]) {
       data: entries,
       stickyHeader: true,
       emptyMessage: "No objects found in this savf.",
-      customStyles: "",
-      customScript: "",
     }) +
     `</div>`
   );

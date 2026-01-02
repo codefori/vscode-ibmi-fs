@@ -47,11 +47,11 @@ export const IBMI_OBJECT_NAME = /^([\w$#@][\w\d$#@_.]{0,9})$/i;
  * Generate a random string of 10 alphabetic characters
  * @returns A random 10-character string (only letters, no numbers)
  */
-export function generateRandomString(): string {
+export function generateRandomString(len: number): string {
   const letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let result = '';
   
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < len; i++) {
     const randomIndex = Math.floor(Math.random() * letters.length);
     result += letters[randomIndex];
   }
@@ -255,12 +255,12 @@ export function generateDetailTable(options: DetailTableOptions): string {
       let value = data[0][key as keyof typeof data];
       
       // Skip null/undefined/empty values if hideNullValues is enabled
-      if (hideNullValues && (value === null || value === undefined || value === '')) {
+      if (hideNullValues && (value === null || value === undefined || value.toString().trim() === '')) {
         return;
       }
       
       // Non sostituire 0 con "-", gestisci solo null/undefined/stringa vuota
-      if (value === null || value === undefined || value === '') value = "-";
+      if (value === null || value === undefined || value.toString().trim() === '') value = "-";
       
       const displayValue = codeColumns.includes(key)
         ? `<code style="background: var(--vscode-textCodeBlock-background); padding: 2px 6px; border-radius: 3px; font-family: var(--vscode-editor-font-family);">${escapeHtml(value)}</code>`

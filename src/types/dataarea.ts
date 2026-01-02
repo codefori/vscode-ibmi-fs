@@ -109,33 +109,58 @@ export namespace DataAreaActions {
         return false;
       }
 
+      let cmd='';
+
       // Handle different data area types
-      switch (dta[0].DATA_AREA_TYPE) {
-        case `*DEC`:
-          newvalue = await vscode.window.showInputBox({
-            title: `Change DTAARA value`,
-            value: String(dta[0].DATA_AREA_VALUE),
-            validateInput: newvalue => {
-              if (checkDecimal(newvalue, dta!)) {
-                return `The value length must be a number`;
+      if(dta[0].DATA_AREA_TYPE==='*CHAR'){
+        const startend = await vscode.window.showQuickPick(
+          ["YES", "NO"],
+          {
+            placeHolder: "Do you want sepcify start/end?",
+            title: "Do you want sepcify start/end?",
+            canPickMany: false,
+          },
+        );
+
+        if(startend&&startend==='YES'){
+          const start = await vscode.window.showInputBox({
+            title: `Enter start`,
+            placeHolder: '1 is the first char',
+            value: '1',
+            validateInput: start => {
+              if (isNaN(Number(start))||Number(start)<1||Number(start)>2000) {
+                return `The value must be a valid number`;
               }
             }
           });
-          break;
 
-        case `*LGL`:
-          newvalue = await vscode.window.showInputBox({
-            title: `Change DTAARA value`,
-            value: String(dta[0].DATA_AREA_VALUE),
-            validateInput: newvalue => {
-              if (isNaN(Number(newvalue)) || (Number(newvalue) !== 0 && Number(newvalue) !== 1)) {
-                return `For *LGL dtaara value must be 0 or 1`;
+          const lenght = await vscode.window.showInputBox({
+            title: `Enter substring length`,
+            value: String(Number(dta![0].LENGTH)-Number(start)+1),
+            placeHolder: 'Max value: '+String(Number(dta![0].LENGTH)-Number(start)+1),
+            validateInput: lenght => {
+              if (isNaN(Number(lenght))||Number(lenght)<1||Number(lenght)>2000||Number(lenght)+Number(start)-1>Number(dta![0].LENGTH)) {
+                return `The substringh lenght must be a valid number`;
               }
             }
           });
-          break;
 
-        case `*CHAR`:
+          newvalue = await vscode.window.showInputBox({
+            title: `Change DTAARA value`,
+            value: String(dta[0].DATA_AREA_VALUE).substring(Number(start)-1,Number(start)-1+Number(lenght)),
+            validateInput: newvalue => {
+              if (newvalue.length > Number(lenght)) {
+                return `The value length must be less or equals than ${lenght} characters`;
+              }
+            }
+          });
+
+          if(start&&lenght&&newvalue){
+            cmd=`CHGDTAARA DTAARA(${library}/${name} (${start} ${lenght})) VALUE('${newvalue}')`;
+          } else {
+            cmd='';
+          }
+        } else {
           newvalue = await vscode.window.showInputBox({
             title: `Change DTAARA value`,
             value: String(dta[0].DATA_AREA_VALUE),
@@ -145,12 +170,64 @@ export namespace DataAreaActions {
               }
             }
           });
-          break;
+
+          if(newvalue){
+            cmd=`CHGDTAARA DTAARA(${library}/${name}) VALUE('${newvalue}')`;
+          } else {
+            cmd='';
+          }
+        }
+        
+      } else {
+        switch (dta[0].DATA_AREA_TYPE) {
+          case '*DEC':
+            newvalue = await vscode.window.showInputBox({
+              title: `Change DTAARA value`,
+              value: String(dta[0].DATA_AREA_VALUE),
+              validateInput: newvalue => {
+                if (checkDecimal(newvalue, dta!)) {
+                  return `The value length must be a number`;
+                }
+              }
+            });
+            break;
+
+          case `*LGL`:
+            newvalue = await vscode.window.showInputBox({
+              title: `Change DTAARA value`,
+              value: String(dta[0].DATA_AREA_VALUE),
+              validateInput: newvalue => {
+                if (isNaN(Number(newvalue)) || (Number(newvalue) !== 0 && Number(newvalue) !== 1)) {
+                  return `For *LGL dtaara value must be 0 or 1`;
+                }
+              }
+            });
+            break;
+
+          case `*CHAR`:
+            
+            newvalue = await vscode.window.showInputBox({
+              title: `Change DTAARA value`,
+              value: String(dta[0].DATA_AREA_VALUE),
+              validateInput: newvalue => {
+                if (newvalue.length > Number(dta![0].LENGTH)) {
+                  return `The value length must be less or equals than ${dta![0].LENGTH} characters`;
+                }
+              }
+            });
+            break;
+        }
+
+        if(newvalue){
+          cmd=`CHGDTAARA DTAARA(${library}/${name}) VALUE('${newvalue}')`;
+        } else {
+          cmd='';
+        }
       }
 
-      if (newvalue) {
+      if (cmd&&cmd.trim() !== ``) {
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `CHGDTAARA DTAARA(${library}/${name}) VALUE('${newvalue}')`,
+          command: cmd,
           environment: `ile`
         });
 
@@ -220,8 +297,7 @@ export class Dtaara extends Base {
       subtitle: 'Data Area Information',
       columns: this.columns,
       data: this.dta,
-      codeColumns: ['DATA_AREA_VALUE'],
-      actions:[]
+      codeColumns: ['DATA_AREA_VALUE']
     });
   }
 

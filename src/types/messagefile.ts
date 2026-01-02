@@ -104,7 +104,6 @@ export default class MsgfFast extends Base {
       stickyHeader: true,
       emptyMessage: 'No messages found in this message file.',
       customStyles: customStyles,
-      customScript: ""
     }) + `</div>`;
   }
 

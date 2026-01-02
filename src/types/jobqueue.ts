@@ -427,8 +427,7 @@ export default class Jobq extends Base {
       title: `Job Queue: ${this.library}/${this.name}`,
       subtitle: 'Job Queue Information',
       columns: this.columns,
-      data: this.jobq,
-      actions: []
+      data: this.jobq
     });
   }
 
@@ -499,7 +498,6 @@ export default class Jobq extends Base {
       stickyHeader: true,
       emptyMessage: 'No jobs found in this jobq.',
       customStyles: customStyles,
-      customScript: ""
     }) + `</div>`;
   }
 

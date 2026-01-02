@@ -388,8 +388,7 @@ export class Dtaq extends Base {
       title: `Data Queue: ${this.library}/${this.name}`,
       subtitle: 'Data Queue Information',
       columns: this.columns,
-      data: this.dtaq,
-      actions:[]
+      data: this.dtaq
     });
   }
 }
@@ -452,7 +451,6 @@ function renderEntries(keyed: boolean, entries: Entry[], isUtf8: boolean) {
     stickyHeader: true,
     emptyMessage: 'No message in this dtaq.',
     customStyles: customStyles,
-    customScript: ""
   }) + `</div>`;
 
 }

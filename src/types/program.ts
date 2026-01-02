@@ -415,7 +415,6 @@ function renderBounds(modules: Module[], srvpgms: Srvpgm[]) {
     stickyHeader: true,
     emptyMessage: 'No modules in this pgm.',
     customStyles: customStyles,
-    customScript: ""
   }) + `</div>${Components.divider()}`;
 
   let columnssrvpgm: FastTableColumn<Srvpgm>[] = [
