@@ -22,6 +22,7 @@ import { getInstance } from "../ibmi";
 import { getColumns, generateDetailTable } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
+import ObjectProvider from '../objectProvider';
 
 // Action constant for user space operations
 const ACTION_CHG = "chg";  // Change user space content action
@@ -36,7 +37,26 @@ export namespace UserSpaceActions {
    */
   export const register = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
-      vscode.commands.registerCommand("vscode-ibmi-fs.chgUsrspc", chgUsrspc),
+      vscode.commands.registerCommand("vscode-ibmi-fs.chgUsrspc", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          // Called from editor toolbar - get library and name from URI
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const result = await chgUsrspc({ library, name } as IBMiObject);
+            // Refresh the editor after action
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          // Called from context menu or webview
+          return chgUsrspc(item);
+        }
+      }),
     );
   };
 
@@ -56,41 +76,47 @@ export namespace UserSpaceActions {
    * @param curvalue - Current value of the user space
    * @returns True if successful, false otherwise
    */
-  export const chgUsrspc = async (item: IBMiObject | Usrspc, dta: Tools.DB2Row[], curvalue: string): Promise<boolean> => {
+  export const chgUsrspc = async (item: IBMiObject | Usrspc): Promise<boolean> => {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
 
-    // Get the start position for the change
-    let start = await vscode.window.showInputBox({
-      title: `Start position`,
-      value: '1',
-      validateInput: start => {
-        if (!isStringNumber(start) || parseInt(start) <= 0) {
-          return `The start position must be a number bigger or equal than 1`;
-        }
-      }
-    });
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
 
-    // Get the new value
-    let newvalue = await vscode.window.showInputBox({
-      title: `Change USRSPC value`,
-      value: curvalue,
-      validateInput: newvalue => {
-        if (newvalue.length < 1) {
-          return `Insert a new value`;
-        }
-      }
-    });
+      let sql = `SELECT DATA FROM TABLE(QSYS2.USER_SPACE(
+                    USER_SPACE => '${item.name}', USER_SPACE_LIBRARY => '${item.library}'))`
+      let usrspc = await connection.runSQL(sql)
+      let curvalue = String(usrspc[0].DATA)
 
-    if (newvalue && start) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
+      // Get the start position for the change
+      let start = await vscode.window.showInputBox({
+        title: `Start position`,
+        value: '1',
+        validateInput: start => {
+          if (!isStringNumber(start) || parseInt(start) <= 0) {
+            return `The start position must be a number bigger or equal than 1`;
+          }
+        }
+      });
+
+      // Get the new value
+      let newvalue = await vscode.window.showInputBox({
+        title: `Change USRSPC value`,
+        value: curvalue,
+        validateInput: newvalue => {
+          if (newvalue.length < 1) {
+            return `Insert a new value`;
+          }
+        }
+      });
+
+      if (newvalue && start) {
         try {
           await connection.runSQL(`CALL QSYS2.CHANGE_USER_SPACE(USER_SPACE => '${name}',
-                             USER_SPACE_LIBRARY => '${library}',
-                             DATA => '${newvalue}',
-                             START_POSITION => ${start})`);
+                            USER_SPACE_LIBRARY => '${library}',
+                            DATA => '${newvalue}',
+                            START_POSITION => ${start})`);
           vscode.window.showInformationMessage(`User Space ${library}/${name} updated.`);
           return true;
         } catch (error) {
@@ -98,10 +124,10 @@ export namespace UserSpaceActions {
           return false;
         }
       } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
         return false;
       }
     } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
     }
   }
@@ -148,14 +174,7 @@ export class Usrspc extends Base {
       columns: this.columns,
       data: this.usrspc,
       codeColumns: ['DATA', 'DATA_BINARY'],
-      actions: [
-        {
-          label: 'Change value ✏️',
-          action: ACTION_CHG,
-          appearance: 'primary',
-          style: 'width: 100%; text-align: center;'
-        }
-      ]
+      actions:[]
     });
   }
 
@@ -169,7 +188,7 @@ export class Usrspc extends Base {
     let refetch = false;
     switch (uri.path) {
       case ACTION_CHG:
-        if (await UserSpaceActions.chgUsrspc(this, this.usrspc, this.usrspc[0].DATA)) {
+        if (await UserSpaceActions.chgUsrspc(this)) {
           refetch = true;
         }
         break;

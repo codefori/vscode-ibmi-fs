@@ -21,6 +21,7 @@ import { getInstance } from "../ibmi";
 import { generateDetailTable, getColumns, generateFastTable, FastTableColumn } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
+import ObjectProvider from '../objectProvider';
 
 // Action constants for job queue operations
 const ACTION_HLD = "hld";  // Hold job queue action
@@ -37,9 +38,57 @@ export namespace JobQueueActions {
    */
   export const register = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
-      vscode.commands.registerCommand("vscode-ibmi-fs.HldJobq", hldJobq),
-      vscode.commands.registerCommand("vscode-ibmi-fs.RlsJobq", rlsJobq),
-      vscode.commands.registerCommand("vscode-ibmi-fs.ClrJobq", clrJobq),
+      vscode.commands.registerCommand("vscode-ibmi-fs.HldJobq", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const result = await hldJobq({ library, name } as IBMiObject);
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          return hldJobq(item);
+        }
+      }),
+      vscode.commands.registerCommand("vscode-ibmi-fs.RlsJobq", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const result = await rlsJobq({ library, name } as IBMiObject);
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          return rlsJobq(item);
+        }
+      }),
+      vscode.commands.registerCommand("vscode-ibmi-fs.ClrJobq", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const result = await clrJobq({ library, name } as IBMiObject);
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          return clrJobq(item);
+        }
+      }),
       vscode.commands.registerCommand("vscode-ibmi-fs.HldJob", hldJob),
       vscode.commands.registerCommand("vscode-ibmi-fs.RlsJob", rlsJob),
       vscode.commands.registerCommand("vscode-ibmi-fs.EndJob", endJob),
@@ -54,10 +103,23 @@ export namespace JobQueueActions {
   export const hldJobq = async (item: IBMiObject | Jobq): Promise<boolean> => {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
-    if (await vscode.window.showWarningMessage(`Are you sure you want to hold Job Queue ${library}/${name}?`, { modal: true }, "Hold JOBQ")) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
+
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+
+      //check if the jobq is already held
+      let jobq = await connection.runSQL(
+        `SELECT JOB_QUEUE_STATUS
+          FROM QSYS2.JOB_QUEUE_INFO
+          WHERE JOB_QUEUE_NAME = '${name}' AND JOB_QUEUE_LIBRARY = '${library}'
+          Fetch first row only`)
+      if(jobq[0].JOB_QUEUE_STATUS === "HELD") {
+        vscode.window.showErrorMessage(`Jobq ${library}/${name} already held`);
+        return false;
+      }
+
+      if (await vscode.window.showWarningMessage(`Are you sure you want to hold Job Queue ${library}/${name}?`, { modal: true }, "Hold JOBQ")) {
         const cmdrun: CommandResult = await connection.runCommand({
           command: `HLDJOBQ ${library}/${name}`,
           environment: `ile`
@@ -70,14 +132,14 @@ export namespace JobQueueActions {
           vscode.window.showErrorMessage(`Unable to hold Job Queue ${library}/${name}`);
           return false;
         }
-      } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
+      }
+      else {
         return false;
       }
-    }
-    else {
-      return false;
-    }
+  } else {
+    vscode.window.showErrorMessage(`Not connected to IBM i`);
+    return false;
+  }
   };
 
   /**
@@ -88,28 +150,39 @@ export namespace JobQueueActions {
   export const rlsJobq = async (item: IBMiObject | Jobq): Promise<boolean> => {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
-    if (await vscode.window.showWarningMessage(`Are you sure you want to release Job Queue ${library}/${name}?`, { modal: true }, "Release JOBQ")) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: `RLSJOBQ ${library}/${name}`,
-          environment: `ile`
-        });
 
-        if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(`Job Queue ${library}/${name} released.`);
-          return true;
-        } else {
-          vscode.window.showErrorMessage(`Unable to release Job Queue ${library}/${name}`);
-          return false;
-        }
-      } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+
+      //check if the jobq is already released
+      let jobq = await connection.runSQL(
+        `SELECT JOB_QUEUE_STATUS
+          FROM QSYS2.JOB_QUEUE_INFO
+          WHERE JOB_QUEUE_NAME = '${name}' AND JOB_QUEUE_LIBRARY = '${library}'
+          Fetch first row only`)
+      if(jobq[0].JOB_QUEUE_STATUS !== "HELD") {
+        vscode.window.showErrorMessage(`Jobq ${library}/${name} not held`);
         return false;
       }
-    }
-    else {
+      if (await vscode.window.showWarningMessage(`Are you sure you want to release Job Queue ${library}/${name}?`, { modal: true }, "Release JOBQ")) {
+          const cmdrun: CommandResult = await connection.runCommand({
+            command: `RLSJOBQ ${library}/${name}`,
+            environment: `ile`
+          });
+
+          if (cmdrun.code === 0) {
+            vscode.window.showInformationMessage(`Job Queue ${library}/${name} released.`);
+            return true;
+          } else {
+            vscode.window.showErrorMessage(`Unable to release Job Queue ${library}/${name}`);
+            return false;
+          }
+      } else {
+        return false;
+      }
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
     }
   };
@@ -349,44 +422,13 @@ export default class Jobq extends Base {
    * @private
    */
   private renderJobQueuePanel(): string {
-    // Build actions array dynamically based on queue status
-    const actions = [];
-    const status = this.jobq?.[0]?.JOB_QUEUE_STATUS;
-
-    // Show "Hold" button only if queue is not already held
-    // This prevents redundant operations and provides better UX
-    if (status !== 'HELD') {
-      actions.push({
-        label: 'Hold ⏸️',
-        action: ACTION_HLD,
-        appearance: 'primary',
-        style: 'width: 100%; text-align: center;'
-      });
-    } else {
-      // Show "Release" button only if queue is held
-      actions.push({
-        label: 'Release ▶️',
-        action: ACTION_RLS,
-        appearance: 'primary',
-        style: 'width: 100%; text-align: center;'
-      });
-    }
-
-    // "Clear" action is always available regardless of status
-    actions.push({
-      label: 'Clear 🧹',
-      action: ACTION_CLR,
-      appearance: 'secondary',
-      style: 'width: 100%; text-align: center;'
-    });
-
     // Generate the detail table with queue information and action buttons
     return generateDetailTable({
       title: `Job Queue: ${this.library}/${this.name}`,
       subtitle: 'Job Queue Information',
       columns: this.columns,
       data: this.jobq,
-      actions: actions
+      actions: []
     });
   }
 

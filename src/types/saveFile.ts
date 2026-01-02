@@ -36,6 +36,7 @@ import Base from "./base";
 import { getInstance, getVSCodeTools } from "../ibmi";
 import { Tools } from "@halcyontech/vscode-ibmi-types/api/Tools";
 import path = require("path");
+import ObjectProvider from '../objectProvider';
 
 /**
  * Namespace containing all Save File related actions and commands
@@ -47,14 +48,90 @@ export namespace SaveFileActions {
    */
   export const register = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
-      vscode.commands.registerCommand(
-        "vscode-ibmi-fs.downloadSavf",
-        downloadSavf,
-      ),
-      vscode.commands.registerCommand("vscode-ibmi-fs.uploadSavf", uploadSavf),
-      vscode.commands.registerCommand("vscode-ibmi-fs.clearSavf", clearSavf),
-      vscode.commands.registerCommand("vscode-ibmi-fs.savf", save),
-      vscode.commands.registerCommand("vscode-ibmi-fs.restore", restore),
+      vscode.commands.registerCommand("vscode-ibmi-fs.downloadSavf", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          // Called from editor toolbar - get library and name from URI
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            await downloadSavf({ library, name } as IBMiObject);
+            // Refresh is not needed for download as it doesn't change the save file
+          }
+        } else if (item) {
+          return downloadSavf(item);
+        }
+      }),
+      vscode.commands.registerCommand("vscode-ibmi-fs.uploadSavf", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const result = await uploadSavf({ library, name } as IBMiObject);
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          return uploadSavf(item);
+        }
+      }),
+      vscode.commands.registerCommand("vscode-ibmi-fs.clearSavf", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const result = await clearSavf({ library, name } as IBMiObject);
+            // Refresh the editor after clearing
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          return clearSavf(item);
+        }
+      }),
+      vscode.commands.registerCommand("vscode-ibmi-fs.savf", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const result = await save({ library, name } as IBMiObject);
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          return save(item);
+        }
+      }),
+      vscode.commands.registerCommand("vscode-ibmi-fs.restore", async (item?: IBMiObject | vscode.Uri, saveCmd?: String) => {
+        if (item instanceof vscode.Uri) {
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const result = await restore({ library, name } as IBMiObject);
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          return restore(item);
+        }
+      }),
     );
   };
 
@@ -67,29 +144,41 @@ export namespace SaveFileActions {
     const name = target.name.toUpperCase();
     const qsysPath = getQSYSObjectPath(library, name, "file");
 
-    // Prompt user to select save location
-    const saveLocation = await vscode.window.showSaveDialog({
-      title: "Download Save File",
-      defaultUri: vscode.Uri.file(`${name}.savf`),
-      // eslint-disable-next-line @typescript-eslint/naming-convention
-      filters: { SaveFile: ["savf"] },
-    });
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      const savfInfo = await connection.runSQL(
+        `SELECT SAVE_COMMAND
+        FROM QSYS2.SAVE_FILE_INFO
+        WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
+        FETCH FIRST ROW ONLY`
+      );
 
-    if (saveLocation) {
-      const result = await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: `Downloading ${library}/${name}`,
-        },
-        async (progress) => {
-          const result = {
-            successful: true,
-            error: "",
-          };
+      if (!savfInfo || !savfInfo[0].SAVE_COMMAND) {
+        vscode.window.showErrorMessage(`Save file ${target.library}/${target.name} is empty`);
+        return false;
+      }
 
-          const ibmi = getInstance();
-          const connection = ibmi?.getConnection();
-          if (connection) {
+      // Prompt user to select save location
+      const saveLocation = await vscode.window.showSaveDialog({
+        title: "Download Save File",
+        defaultUri: vscode.Uri.file(`${name}.savf`),
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        filters: { SaveFile: ["savf"] },
+      });
+
+      if (saveLocation) {
+        const result = await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: `Downloading ${library}/${name}`,
+          },
+          async (progress) => {
+            const result = {
+              successful: true,
+              error: "",
+            };
+
             const config = connection.getConfig();
             const tempRemotePath = `${config.tempDir}/${library}_${name}.savf`;
 
@@ -124,25 +213,25 @@ export namespace SaveFileActions {
               result.successful = false;
               result.error = `CPYTOSTMF failed.\n${copyToStreamFile.stderr}`;
             }
-          } else {
-            result.successful = false;
-            result.error = `No connection`;
-          }
-          return result;
-        },
-      );
 
-      // Display result to user
-      if (result.successful) {
-        vscode.window.showInformationMessage(
-          `Save File ${library}/${name} successfully downloaded.`,
+            return result;
+          },
         );
-      } else {
-        vscode.window.showErrorMessage(
-          `Failed to download ${library}/${name}: ${result.error}`,
-        );
+
+        // Display result to user
+        if (result.successful) {
+          vscode.window.showInformationMessage(
+            `Save File ${library}/${name} successfully downloaded.`,
+          );
+        } else {
+          vscode.window.showErrorMessage(
+            `Failed to download ${library}/${name}: ${result.error}`,
+          );
+        }
       }
-    }
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);    
+    } 
   };
 
   /**
@@ -153,32 +242,45 @@ export namespace SaveFileActions {
   export const uploadSavf = async (
     target: IBMiObject | SaveFile,
   ): Promise<boolean> => {
-    // Prompt user to select file(s) to upload
-    const saveFiles = await vscode.window.showOpenDialog({
-      canSelectFiles: true,
-      canSelectFolders: false,
-      canSelectMany: false,
-      title: "Upload Save File(s)",
-      // eslint-disable-next-line @typescript-eslint/naming-convention
-      filters: { SaveFile: ["savf"], "All files": ["*"] },
-    });
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
 
-    if (saveFiles) {
-      const result = await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: `Uploading Save File: `,
-        },
-        async (progress) => {
-          const result = {
-            successful: true,
-            error: "",
-          };
+    if (connection) {
 
-          const ibmi = getInstance();
-          const connection = ibmi?.getConnection();
+      const savfInfo = await connection.runSQL(
+        `SELECT SAVE_COMMAND
+        FROM QSYS2.SAVE_FILE_INFO
+        WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
+        FETCH FIRST ROW ONLY`
+      );
 
-          if (connection) {
+      if (savfInfo && savfInfo[0].SAVE_COMMAND) {
+        vscode.window.showErrorMessage(`Save file ${target.library}/${target.name} is not empty`);
+        return false;
+      }
+
+      // Prompt user to select file(s) to upload
+      const saveFiles = await vscode.window.showOpenDialog({
+        canSelectFiles: true,
+        canSelectFolders: false,
+        canSelectMany: false,
+        title: "Upload Save File",
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        filters: { SaveFile: ["savf"], "All files": ["*"] },
+      });
+
+      if (saveFiles) {
+        const result = await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: `Uploading Save File`,
+          },
+          async (progress) => {
+            const result = {
+              successful: true,
+              error: "",
+            };
+
             let lclpath = saveFiles[0].path;
             let rmtpath = path.posix.join(
               connection.getConfig().tempDir,
@@ -216,27 +318,29 @@ export namespace SaveFileActions {
               command: `rm -f ${rmtpath}`,
               environment: `pase`,
             });
-          } else {
-            result.successful = false;
-            result.error = "Unable to connect to IBM i";
-          }
-          return result;
-        },
-      );
-
-      // Display result to user
-      if (result.successful) {
-        vscode.window.showInformationMessage(`Successfully uploaded Save File`);
-      } else {
-        vscode.window.showErrorMessage(
-          `Failed to upload Save File: ${result.error}`,
+            
+            return result;
+          },
         );
-      }
 
-      return result.successful;
+        // Display result to user
+        if (result.successful) {
+          vscode.window.showInformationMessage(`Successfully uploaded Save File`);
+        } else {
+          vscode.window.showErrorMessage(
+            `Failed to upload Save File: ${result.error}`,
+          );
+        }
+
+        return result.successful;
+      } else {
+        return false;
+      }
     } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
     }
+      
   };
 
   /**
@@ -251,16 +355,32 @@ export namespace SaveFileActions {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-      const clrsavf = await connection.runCommand({
-        command: `CLRSAVF FILE(${target.library}/${target.name})`,
-      });
+      if (await vscode.window.showWarningMessage(`Are you sure you want to clear Save File ${target.library}/${target.name}?`, { modal: true }, "Clear SAVF")) {
+        const savfInfo = await connection.runSQL(
+          `SELECT SAVE_COMMAND
+          FROM QSYS2.SAVE_FILE_INFO
+          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
+          FETCH FIRST ROW ONLY`
+        );
 
-      if (clrsavf.code !== 0) {
-        vscode.window.showErrorMessage(`Failed to clear Save File`);
-        return false;
+        if (!savfInfo || !savfInfo[0].SAVE_COMMAND) {
+          vscode.window.showErrorMessage(`Save file ${target.library}/${target.name} is empty`);
+          return false;
+        }
+
+        const clrsavf = await connection.runCommand({
+          command: `CLRSAVF FILE(${target.library}/${target.name})`,
+        });
+
+        if (clrsavf.code !== 0) {
+          vscode.window.showErrorMessage(`Failed to clear Save File`);
+          return false;
+        } else {
+          vscode.window.showInformationMessage(`Successfully cleared Save File`);
+          return true;
+        }
       } else {
-        vscode.window.showInformationMessage(`Successfully cleared Save File`);
-        return true;
+        return false;
       }
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);
@@ -271,21 +391,36 @@ export namespace SaveFileActions {
   /**
    * Restores objects from a save file
    * @param target - The IBM i object or SaveFile to restore from
-   * @param saveCmd - The save command that was used (SAV, SAVLIB, SAVOBJ)
    * @returns Promise<boolean> - True if restore was successful
    */
   export const restore = async (
     target: IBMiObject | SaveFile,
-    saveCmd: String,
   ): Promise<boolean> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
 
     if (connection) {
+
+      let saveCmd;
+
+      const savfInfo = await connection.runSQL(
+        `SELECT SAVE_COMMAND
+        FROM QSYS2.SAVE_FILE_INFO
+        WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
+        FETCH FIRST ROW ONLY`
+      );
+
+      if (savfInfo && savfInfo.length > 0 && savfInfo[0].SAVE_COMMAND) {
+        saveCmd = String(savfInfo[0].SAVE_COMMAND);
+      } else {
+        vscode.window.showErrorMessage(`Save file ${target.library}/${target.name} is empty`);
+        return false;
+      }
+
       const result = await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: `Restore operation:`,
+          title: `Restore operation`,
         },
         async (progress) => {
           const result = {
@@ -664,10 +799,23 @@ export namespace SaveFileActions {
     const connection = ibmi?.getConnection();
 
     if (connection) {
+
+      const savfInfo = await connection.runSQL(
+        `SELECT SAVE_COMMAND
+        FROM QSYS2.SAVE_FILE_INFO
+        WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
+        FETCH FIRST ROW ONLY`
+      );
+
+      if (savfInfo && savfInfo[0].SAVE_COMMAND) {
+        vscode.window.showErrorMessage(`Save file ${target.library}/${target.name} is not empty`);
+        return false;
+      }
+      
       const result = await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: `Save operation:`,
+          title: `Save operation`,
         },
         async (progress) => {
           const result = {
@@ -954,11 +1102,6 @@ export namespace SaveFileActions {
   };
 }
 
-// Size constants for file size calculations
-const KILOBYTE = 1024;
-const MEGABYTE = KILOBYTE * KILOBYTE;
-const GIGABYTE = MEGABYTE * KILOBYTE;
-
 // Action constants for UI interactions
 const ACTION_DOWNLOAD = "download";
 const ACTION_CLEAR = "clear";
@@ -967,7 +1110,7 @@ const ACTION_SAVE = "save";
 const ACTION_RESTORE = "restore";
 
 // Regular expression for parsing save file header information
-const HEADER_REGEX = /^\s+([^\.]+)[\. ]*: +(?!\s*\/)(.*)$/;
+const HEADER_REGEX = /^\s+([^\.]+)[\. ]+\. : +(?!\s*\/)(.*)$/;
 
 /**
  * Interface representing a header entry in the save file display
@@ -1046,7 +1189,6 @@ export class SaveFile extends Base {
     this.name,
     "FILE",
   );
-  private size: string = "";
 
   private readonly headers: Header[] = [];
   private readonly objects: Object[] = [];
@@ -1095,26 +1237,6 @@ export class SaveFile extends Base {
         command: `ls -l ${this.qsysPath} | awk '{print $5}'`,
         environment: `pase`,
       });
-
-      if (stat.code === 0 && stat.stdout) {
-        const size = Number(stat.stdout);
-        if (!isNaN(size)) {
-          this.headers.unshift({
-            label: "Size",
-            value: `${size.toLocaleString()} bytes`,
-          });
-          // Format size in appropriate units
-          if (size / GIGABYTE > 1) {
-            this.size = `${(size / GIGABYTE).toFixed(3)} Gb`;
-          } else if (size / MEGABYTE > 1) {
-            this.size = `${(size / MEGABYTE).toFixed(3)} Mb`;
-          } else if (size / KILOBYTE > 1) {
-            this.size = `${(size / KILOBYTE).toFixed(3)} Kb`;
-          } else {
-            this.size = `${size} b`;
-          }
-        }
-      }
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);
     }
@@ -1311,7 +1433,7 @@ export class SaveFile extends Base {
    * @param headers - Array of header entries to display
    * @returns HTML string for the panel
    */
-  private renderSavfPanel(size: string, headers: Header[]): string {
+  private renderSavfPanel(headers: Header[]): string {
     let columns: Map<string, string> = new Map();
     let tmpdata: Record<string, string> = {};
 
@@ -1324,54 +1446,12 @@ export class SaveFile extends Base {
     let data = [];
     data.push(tmpdata);
 
-    let actions = [];
-
-    // Add appropriate action buttons based on save file state
-    if (this.savf[0].SAVE_COMMAND) {
-      // Save file contains data - show download, restore, and clear options
-      actions.push(
-        {
-          label: "Download (" + this.size + ") ⬇️",
-          action: ACTION_DOWNLOAD,
-          appearance: "primary",
-          style: "width: 100%; text-align: center;",
-        },
-        {
-          label: "Perform restore ↪️",
-          action: ACTION_RESTORE,
-          appearance: "primary",
-          style: "width: 100%; text-align: center;",
-        },
-        {
-          label: "Clear 🧹",
-          action: ACTION_CLEAR,
-          appearance: "secondary",
-          style: "width: 100%; text-align: center;",
-        },
-      );
-    } else {
-      // Save file is empty - show upload and save options
-      actions.push({
-        label: "Upload ⬆️",
-        action: ACTION_UPLOAD,
-        appearance: "primary",
-        style: "width: 100%; text-align: center;",
-      });
-
-      actions.push({
-        label: "Perform Save 💾",
-        action: ACTION_SAVE,
-        appearance: "primary",
-        style: "width: 100%; text-align: center;",
-      });
-    }
-
     return generateDetailTable({
       title: `Save File: ${this.library}/${this.name}`,
       subtitle: "Save File Information",
       columns: columns,
       data: data,
-      actions: actions,
+      actions: [],
     });
   }
 
@@ -1383,7 +1463,7 @@ export class SaveFile extends Base {
     const panels: Components.Panel[] = [
       {
         title: "Detail",
-        content: this.renderSavfPanel(this.size, this.headers),
+        content: this.renderSavfPanel(this.headers),
       },
     ];
 
@@ -1445,7 +1525,7 @@ export class SaveFile extends Base {
         SaveFileActions.downloadSavf(this);
         break;
       case ACTION_RESTORE:
-        SaveFileActions.restore(this, this.savf[0].SAVE_COMMAND);
+        SaveFileActions.restore(this);
         break;
       case ACTION_UPLOAD:
         if (await SaveFileActions.uploadSavf(this)) {

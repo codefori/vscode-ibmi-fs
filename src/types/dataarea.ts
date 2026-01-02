@@ -20,6 +20,7 @@ import { getInstance } from "../ibmi";
 import { getColumns, generateDetailTable } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
+import ObjectProvider from '../objectProvider';
 
 // Action constant for data area operations
 const ACTION_CHG = "chg";  // Change data area value action
@@ -34,7 +35,26 @@ export namespace DataAreaActions {
    */
   export const register = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
-      vscode.commands.registerCommand("vscode-ibmi-fs.ChgDtaara", chgDtaara),
+      vscode.commands.registerCommand("vscode-ibmi-fs.ChgDtaara", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          // Called from editor toolbar - get library and name from URI
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const result = await chgDtaara({ library, name } as IBMiObject);
+            // Refresh the editor after action
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          // Called from context menu or webview
+          return chgDtaara(item);
+        }
+      }),
     );
   };
 
@@ -64,59 +84,71 @@ export namespace DataAreaActions {
   /**
    * Change the value of a Data Area
    * @param item - The Data Area object or IBMiObject
-   * @param dta - Data area information from database
-   * @param curvalue - Current value of the data area
    * @returns True if successful, false otherwise
    */
-  export const chgDtaara = async (item: IBMiObject | Dtaara, dta: Tools.DB2Row[], curvalue: string): Promise<boolean> => {
+  export const chgDtaara = async (item: IBMiObject | Dtaara): Promise<boolean> => {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
 
     let newvalue = null;
 
-    // Handle different data area types
-    switch (dta[0].DATA_AREA_TYPE) {
-      case `*DEC`:
-        newvalue = await vscode.window.showInputBox({
-          title: `Change DTAARA value`,
-          value: curvalue,
-          validateInput: newvalue => {
-            if (checkDecimal(newvalue, dta)) {
-              return `The value length must be a number`;
-            }
-          }
-        });
-        break;
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
 
-      case `*LGL`:
-        newvalue = await vscode.window.showInputBox({
-          title: `Change DTAARA value`,
-          value: curvalue,
-          validateInput: newvalue => {
-            if (isNaN(Number(newvalue)) || (Number(newvalue) !== 0 && Number(newvalue) !== 1)) {
-              return `For *LGL dtaara value must be 0 or 1`;
-            }
-          }
-        });
-        break;
+      // Fetch dta 
+      const dtaSql = `SELECT DATA_AREA_TYPE, LENGTH, DECIMAL_POSITIONS, DATA_AREA_VALUE
+          FROM QSYS2.DATA_AREA_INFO
+          WHERE DATA_AREA_NAME = '${name}' AND DATA_AREA_LIBRARY = '${library}'
+          FETCH FIRST ROW ONLY`;
+      let dta = await connection.runSQL(dtaSql);
 
-      case `*CHAR`:
-        newvalue = await vscode.window.showInputBox({
-          title: `Change DTAARA value`,
-          value: curvalue,
-          validateInput: newvalue => {
-            if (newvalue.length > Number(dta[0].LENGTH)) {
-              return `The value length must be less or equals than ${dta[0].LENGTH} characters`;
-            }
-          }
-        });
-        break;
-    }
+      // Ensure dta is available
+      if (!dta || dta.length === 0) {
+        vscode.window.showErrorMessage(`Unable to retrieve Data Area information for ${library}/${name}`);
+        return false;
+      }
 
-    if (newvalue) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
+      // Handle different data area types
+      switch (dta[0].DATA_AREA_TYPE) {
+        case `*DEC`:
+          newvalue = await vscode.window.showInputBox({
+            title: `Change DTAARA value`,
+            value: String(dta[0].DATA_AREA_VALUE),
+            validateInput: newvalue => {
+              if (checkDecimal(newvalue, dta!)) {
+                return `The value length must be a number`;
+              }
+            }
+          });
+          break;
+
+        case `*LGL`:
+          newvalue = await vscode.window.showInputBox({
+            title: `Change DTAARA value`,
+            value: String(dta[0].DATA_AREA_VALUE),
+            validateInput: newvalue => {
+              if (isNaN(Number(newvalue)) || (Number(newvalue) !== 0 && Number(newvalue) !== 1)) {
+                return `For *LGL dtaara value must be 0 or 1`;
+              }
+            }
+          });
+          break;
+
+        case `*CHAR`:
+          newvalue = await vscode.window.showInputBox({
+            title: `Change DTAARA value`,
+            value: String(dta[0].DATA_AREA_VALUE),
+            validateInput: newvalue => {
+              if (newvalue.length > Number(dta![0].LENGTH)) {
+                return `The value length must be less or equals than ${dta![0].LENGTH} characters`;
+              }
+            }
+          });
+          break;
+      }
+
+      if (newvalue) {
         const cmdrun: CommandResult = await connection.runCommand({
           command: `CHGDTAARA DTAARA(${library}/${name}) VALUE('${newvalue}')`,
           environment: `ile`
@@ -130,10 +162,10 @@ export namespace DataAreaActions {
           return false;
         }
       } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
         return false;
       }
     } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
     }
   }
@@ -189,14 +221,7 @@ export class Dtaara extends Base {
       columns: this.columns,
       data: this.dta,
       codeColumns: ['DATA_AREA_VALUE'],
-      actions: [
-        {
-          label: 'Change value ✏️',
-          action: ACTION_CHG,
-          appearance: 'primary',
-          style: 'width: 100%; text-align: center;'
-        }
-      ]
+      actions:[]
     });
   }
 
@@ -210,7 +235,7 @@ export class Dtaara extends Base {
     let refetch = false;
     switch (uri.path) {
       case ACTION_CHG:
-        if (await DataAreaActions.chgDtaara(this, this.dta, this.dta[0].DATA_AREA_VALUE)) {
+        if (await DataAreaActions.chgDtaara(this)) {
           refetch = true;
         }
         break;

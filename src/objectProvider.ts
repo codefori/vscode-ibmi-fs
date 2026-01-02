@@ -14,7 +14,7 @@ import { Usrspc } from './types/userspace';
 import Msgf from './types/messagefile';
 import Cmd from './types/command';
 import { Pgm } from './types/program';
-import { Binddir } from './types/bindingDirectory';
+import { Binddir } from './types/bindingdirectory';
 
 /**
  * Custom editor provider for IBM i objects
@@ -24,6 +24,30 @@ import { Binddir } from './types/bindingDirectory';
 export default class ObjectProvider implements vscode.CustomEditorProvider<Base> {
   private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<vscode.CustomDocumentEditEvent<Base>>();
   public readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument.event;
+  
+  // Map to track open documents and their webview panels
+  private static readonly _documentPanels = new Map<string, { document: Base, panel: vscode.WebviewPanel }>();
+  
+  /**
+   * Get the document and panel for a given URI
+   * @param uri - The URI of the document
+   * @returns The document and panel, or undefined if not found
+   */
+  public static getDocumentPanel(uri: vscode.Uri): { document: Base, panel: vscode.WebviewPanel } | undefined {
+    return ObjectProvider._documentPanels.get(uri.toString());
+  }
+  
+  /**
+   * Refresh a document's webview
+   * @param uri - The URI of the document to refresh
+   */
+  public static async refreshDocument(uri: vscode.Uri): Promise<void> {
+    const entry = ObjectProvider._documentPanels.get(uri.toString());
+    if (entry) {
+      await entry.document.fetch();
+      entry.panel.webview.html = generatePage(entry.document.generateHTML());
+    }
+  }
 
   /**
    * Save the custom document
@@ -94,6 +118,14 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
       enableScripts: true,
       enableCommandUris: true,
     };
+    
+    // Register the document and panel
+    ObjectProvider._documentPanels.set(document.uri.toString(), { document, panel: webviewPanel });
+    
+    // Clean up when panel is disposed
+    webviewPanel.onDidDispose(() => {
+      ObjectProvider._documentPanels.delete(document.uri.toString());
+    });
 
     if (document.failedFetch) {
       webviewPanel.webview.html = generateError(`Failed to fetch data. Please close this window.`);

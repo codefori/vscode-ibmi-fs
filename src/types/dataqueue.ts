@@ -22,6 +22,7 @@ import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getColumns, generateDetailTable, FastTableColumn, generateFastTable } from "../tools";
+import ObjectProvider from '../objectProvider';
 
 // Action constants for data queue operations
 const ACTION_CLEAR = "clear";  // Clear all messages action
@@ -37,8 +38,50 @@ export namespace DataQueueActions {
    */
   export const register = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
-      vscode.commands.registerCommand("vscode-ibmi-fs.sendToDataQueue", sendToDataQueue),
-      vscode.commands.registerCommand("vscode-ibmi-fs.clearDataQueue", clearDataQueue),
+      vscode.commands.registerCommand("vscode-ibmi-fs.sendToDataQueue", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          // Called from editor toolbar - get library and name from URI
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const dtaq: Dtaq = new Dtaq(item, library, name);
+            await dtaq.fetchInfo();
+            const result = await sendToDataQueue(dtaq);
+            // Refresh the editor after action
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          // Called from context menu
+          return sendToDataQueue(item);
+        }
+      }),
+      vscode.commands.registerCommand("vscode-ibmi-fs.clearDataQueue", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          // Called from editor toolbar - get library and name from URI
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const dtaq: Dtaq = new Dtaq(item, library, name);
+            await dtaq.fetchInfo();
+            const result = await clearDataQueue(dtaq);
+            // Refresh the editor after action
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          // Called from context menu
+          return clearDataQueue(item);
+        }
+      }),
     );
   };
 
@@ -107,15 +150,14 @@ export namespace DataQueueActions {
     
     if (!dataQueue.keyed || key) {
       // Ask if message is in UTF8 format
-      const fmt = await vscode.window.showInputBox({
-        placeHolder: "YES/NO",
-        title: `Is message in UTF8 format?`,
-        validateInput: fmt => {
-          if (fmt.toUpperCase() !== 'YES' && fmt.toUpperCase() !== 'NO') {
-            return `You need to put YES or NO`;
-          }
-        }
-      });
+      const fmt = await vscode.window.showQuickPick(
+        ["YES", "NO"],
+        {
+          placeHolder: "Is message in UTF8 format?",
+          title: "Is message in UTF8 format?",
+          canPickMany: false,
+        },
+      );
       
       // Get the message data
       const data = await vscode.window.showInputBox({
@@ -347,20 +389,7 @@ export class Dtaq extends Base {
       subtitle: 'Data Queue Information',
       columns: this.columns,
       data: this.dtaq,
-      actions: [
-        {
-          label: 'Send message 💬',
-          action: ACTION_SEND,
-          appearance: 'primary',
-          style: 'width: 100%; text-align: center;'
-        },
-        {
-          label: 'Clear 🧹',
-          action: ACTION_CLEAR,
-          appearance: 'secondary',
-          style: 'width: 100%; text-align: center;'
-        }
-      ]
+      actions:[]
     });
   }
 }

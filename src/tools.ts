@@ -44,6 +44,22 @@ export interface FastTableOptions<T> {
 export const IBMI_OBJECT_NAME = /^([\w$#@][\w\d$#@_.]{0,9})$/i;
 
 /**
+ * Generate a random string of 10 alphabetic characters
+ * @returns A random 10-character string (only letters, no numbers)
+ */
+export function generateRandomString(): string {
+  const letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let result = '';
+  
+  for (let i = 0; i < 10; i++) {
+    const randomIndex = Math.floor(Math.random() * letters.length);
+    result += letters[randomIndex];
+  }
+  
+  return result;
+}
+
+/**
  * Generate a QSYS file system path for an IBM i object
  * @param library - Library name
  * @param name - Object name

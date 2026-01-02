@@ -23,6 +23,7 @@ import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getColumns, generateDetailTable, FastTableColumn, generateFastTable } from "../tools";
+import ObjectProvider from '../objectProvider';
 
 /**
  * Namespace containing Binding Directory action commands
@@ -32,12 +33,34 @@ export namespace BindingDirectoryActions {
    * Register Binding Directory commands with VS Code
    * @param context - Extension context
    */
-  export const register = (context: vscode.ExtensionContext) => {
+    export const register = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
-      vscode.commands.registerCommand("vscode-ibmi-fs.Addbnddire", addbnddire),
+      vscode.commands.registerCommand("vscode-ibmi-fs.Addbnddire", async (item: IBMiObject | Binddir | vscode.Uri) => {
+        let binddir: IBMiObject | Binddir;
+        
+        // Handle toolbar call (Uri)
+        if (item instanceof vscode.Uri) {
+          const parts = item.path.split('/');
+          const name = parts[parts.length - 1].replace('.BNDDIR', '');
+          const library = parts[parts.length - 2];
+          binddir = { library, name, type: '*BNDDIR' } as IBMiObject;
+        } else {
+          binddir = item;
+        }
+        
+        const result = await addbnddire(binddir);
+        
+        // Refresh document if called from toolbar
+        if (result && item instanceof vscode.Uri) {
+          await ObjectProvider.refreshDocument(item);
+        }
+        
+        return result;
+      }),
       vscode.commands.registerCommand("vscode-ibmi-fs.Rmvbnddire", rmvbnddire),
     );
   };
+
 
   /**
    * Remove an entry from a binding directory
@@ -387,7 +410,7 @@ function renderEntries(entries: Entry[], name: string) {
     emptyMessage: 'No entries in this binding directory.',
     customStyles: customStyles,
     customScript: ""
-  }) + `</div>${Components.divider()}<br>${Components.button("Add entry ➕", { action: ACTION_ADD, style: "width:100%; text-align: center" })}`;
+  });
 }
 
 /**

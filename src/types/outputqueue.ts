@@ -23,6 +23,7 @@ import { getInstance } from "../ibmi";
 import { getColumns, generateDetailTable, generateFastTable, FastTableColumn } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
+import ObjectProvider from '../objectProvider';
 
 // Action constants for output queue operations
 const ACTION_CLR = "clr";     // Clear output queue action
@@ -42,14 +43,94 @@ export namespace OutputQueueActions {
    */
   export const register = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
-      vscode.commands.registerCommand("vscode-ibmi-fs.ClrOutq", clrOutq),
-      vscode.commands.registerCommand("vscode-ibmi-fs.HldOutq", hldOutq),
-      vscode.commands.registerCommand("vscode-ibmi-fs.RlsOutq", rlsOutq),
-      vscode.commands.registerCommand("vscode-ibmi-fs.StrWtr", strWtr),
+      vscode.commands.registerCommand("vscode-ibmi-fs.ClrOutq", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const result = await clrOutq({ library, name } as IBMiObject);
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          return clrOutq(item);
+        }
+      }),
+      vscode.commands.registerCommand("vscode-ibmi-fs.HldOutq", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const result = await hldOutq({ library, name } as IBMiObject);
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          return hldOutq(item);
+        }
+      }),
+      vscode.commands.registerCommand("vscode-ibmi-fs.RlsOutq", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const result = await rlsOutq({ library, name } as IBMiObject);
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          return rlsOutq(item);
+        }
+      }),
+      vscode.commands.registerCommand("vscode-ibmi-fs.MngWtr", async (item?: IBMiObject | vscode.Uri, nettype?: String) => {
+        if (item instanceof vscode.Uri) {
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const result = await mngWtr({ library, name } as IBMiObject);
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          return strWtr(item, nettype);
+        }
+      }),
       vscode.commands.registerCommand("vscode-ibmi-fs.EndWtr", endWtr),
       vscode.commands.registerCommand("vscode-ibmi-fs.GenPdf", genPdf),
       vscode.commands.registerCommand("vscode-ibmi-fs.DelSpool", delSpool),
-      vscode.commands.registerCommand("vscode-ibmi-fs.DelOldSpool", delOldSpl),
+      vscode.commands.registerCommand("vscode-ibmi-fs.DelOldSpool", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const result = await delOldSpl({ library, name } as IBMiObject);
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          return delOldSpl(item);
+        }
+      }),
     );
   };
 
@@ -163,6 +244,48 @@ export namespace OutputQueueActions {
     }
   };
 
+
+  /**
+   * Manage printer writer (start or stop based on current state)
+   * Automatically determines whether to start or stop the writer based on the current number of active writers
+   * @param item - The Output Queue object or IBMiObject
+   * @returns True if successful, false otherwise
+   */
+  export const mngWtr = async (item: IBMiObject | Outq): Promise<boolean> => {
+    const library = item.library.toUpperCase();
+    const name = item.name.toUpperCase();
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      // Query output queue to get writer information
+      let outq = await connection.runSQL(
+        `SELECT NETWORK_CONNECTION_TYPE, NUMBER_OF_WRITERS
+          FROM QSYS2.OUTPUT_QUEUE_INFO
+          WHERE OUTPUT_QUEUE_NAME = '${name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${library}'
+          FETCH FIRST ROW ONLY`);
+      // Get network connection type (null for local printers)
+      let nettype = outq[0].NETWORK_CONNECTION_TYPE ? String(outq[0].NETWORK_CONNECTION_TYPE) : null;
+      // Get current number of active writers
+      let nbr = outq[0].NUMBER_OF_WRITERS || Number(outq[0].NUMBER_OF_WRITERS) === 0 ? Number(outq[0].NUMBER_OF_WRITERS) : 1;
+
+      // Check if there's a writer configured for this output queue
+      if(!nettype){
+        vscode.window.showErrorMessage(`No writer to manage`);
+        return false;
+      } else if(nbr === 0){
+        // No writers running, start one
+        return strWtr(item, nettype);
+      } else {
+        // Writer(s) running, stop them
+        return endWtr(item);
+      }
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return false;
+    }
+    
+  };
+
   /**
    * End (stop) a printer writer
    * Immediately stops the writer associated with the output queue
@@ -205,10 +328,10 @@ export namespace OutputQueueActions {
    * Start a printer writer
    * Starts either a remote or local printer writer based on network connection type
    * @param item - The Output Queue object or IBMiObject
-   * @param nettype - Network connection type (determines if remote or local writer)
+   * @param nettype - Network connection type (optional, will be fetched if not provided)
    * @returns True if successful, false otherwise
    */
-  export const strWtr = async (item: IBMiObject | Outq, nettype: String): Promise<boolean> => {
+  export const strWtr = async (item: IBMiObject | Outq, nettype?: String): Promise<boolean> => {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
     // Show confirmation dialog
@@ -216,6 +339,7 @@ export namespace OutputQueueActions {
       const ibmi = getInstance();
       const connection = ibmi?.getConnection();
       if (connection) {
+
         // Choose command based on network type:
         // - STRRMTWTR for remote/network printers
         // - STRPRTWTR for local printer devices
@@ -337,7 +461,7 @@ export namespace OutputQueueActions {
     if (saveLocation) {
       const result = await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
-        title: `PDF genaration:`
+        title: `PDF genaration`
       }, async progress => {
         const result = {
           successful: true,
@@ -528,74 +652,14 @@ export default class Outq extends Base {
    * @private
    */
   private renderJobQueuePanel(): string {
-    // Build actions array dynamically based on queue and writer status
-    const actions = [];
-    const status = this.outq?.[0]?.OUTPUT_QUEUE_STATUS;
-    const wta = this.outq?.[0]?.WRITERS_TO_AUTOSTART;  // Writers to autostart
-    const now = this.outq?.[0]?.NUMBER_OF_WRITERS;     // Current number of writers
-
-    // Show "Hold" or "Release" button based on queue status
-    if(status!=='HELD'){
-      // Queue is not held, show Hold button
-       actions.push({
-        label: 'Hold ⏸️',
-        action: ACTION_HLD,
-        appearance: 'primary',
-        style: 'width: 100%; text-align: center;'
-      });
-    } else {
-      // Queue is held, show Release button
-      actions.push({
-        label: 'Release ▶️',
-        action: ACTION_RLS,
-        appearance: 'primary',
-        style: 'width: 100%; text-align: center;'
-      });
-    }
-
-    // Show writer control buttons only if writers are configured (wta > 0)
-    if(wta>0){
-      if(wta!==now){
-        // Not all writers are running, show Start button
-        actions.push({
-          label: 'Start writer 🖨️',
-          action: ACTION_STR,
-          appearance: 'primary',
-          style: 'width: 100%; text-align: center;'
-        });
-      } else {
-        // All writers are running, show Stop button
-        actions.push({
-          label: 'Stop writer 🛑',
-          action: ACTION_END,
-          appearance: 'primary',
-          style: 'width: 100%; text-align: center;'
-        });
-      }
-    }
-
-    // These actions are always available regardless of status
-    actions.push(
-      {
-        label: 'Delete old spools 📆',
-        action: ACTION_DLT,
-        appearance: 'secondary',
-        style: 'width: 100%; text-align: center;'
-      },{
-        label: 'Clear 🧹',
-        action: ACTION_CLR,
-        appearance: 'secondary',
-        style: 'width: 100%; text-align: center;'
-      }
-    );
-
     // Generate the detail table with queue information and action buttons
     return generateDetailTable({
       title: `Output Queue: ${this.library}/${this.name}`,
       subtitle: 'Output Queue Information',
       columns: this.columns,
       data: this.outq,
-      actions: actions,
+      actions: [],
+      //actions: actions,
       hideNullValues: true
     });
   }

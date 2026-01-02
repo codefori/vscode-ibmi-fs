@@ -75,63 +75,63 @@
     "commands": [
       {
         "command": "vscode-ibmi-fs.downloadSavf",
-        "title": "Download Save file",
+        "title": "Download Save File",
         "category": "IBM i FS",
-        "icon": "cloud-download"
+        "icon": "$(cloud-download)"
       },
       {
         "command": "vscode-ibmi-fs.uploadSavf",
-        "title": "Upload Save file(s)",
+        "title": "Upload Save File",
         "category": "IBM i FS",
-        "icon": "cloud-upload"
+        "icon": "$(cloud-upload)"
       },
       {
         "command": "vscode-ibmi-fs.clearSavf",
-        "title": "Clear Save file",
+        "title": "Clear Save File",
         "category": "IBM i FS",
-        "icon": "clear-all"
+        "icon": "$(trash)"
       },
       {
         "command": "vscode-ibmi-fs.savf",
-        "title": "Save to Save file",
+        "title": "Save to Save File",
         "category": "IBM i FS",
-        "icon": "save"
+        "icon": "$(save)"
       },
       {
         "command": "vscode-ibmi-fs.restore",
-        "title": "Restore from Save file",
+        "title": "Restore from Save File",
         "category": "IBM i FS",
-        "icon": "folder-opened"
+        "icon": "$(issue-reopened)"
       },
       {
         "command": "vscode-ibmi-fs.clearDataQueue",
-        "title": "Clear",
+        "title": "Clear Data Queue",
         "category": "IBM i FS",
-        "icon": "clear-all"
+        "icon": "$(trash)"
       },
       {
         "command": "vscode-ibmi-fs.sendToDataQueue",
-        "title": "Send data",
+        "title": "Send data to Data Queue",
         "category": "IBM i FS",
-        "icon": "arrow-right"
+        "icon": "$(arrow-right)"
       },
       {
         "command": "vscode-ibmi-fs.HldJobq",
-        "title": "Hold Jobq",
+        "title": "Hold Job Queue",
         "category": "IBM i FS",
-        "icon": "arrow-right"
+        "icon": "$(primitive-square)"
       },
       {
         "command": "vscode-ibmi-fs.RlsJobq",
-        "title": "Release Jobq",
+        "title": "Release Job Queue",
         "category": "IBM i FS",
-        "icon": "arrow-right"
+        "icon": "$(play)"
       },
       {
         "command": "vscode-ibmi-fs.ClrJobq",
-        "title": "Clear Jobq",
+        "title": "Clear Job Queue",
         "category": "IBM i FS",
-        "icon": "arrow-right"
+        "icon": "$(trash)"
       },
       {
         "command": "vscode-ibmi-fs.HldJob",
@@ -139,13 +139,13 @@
         "category": "IBM i FS",
         "icon": "arrow-right"
       },
-            {
+      {
         "command": "vscode-ibmi-fs.RlsJob",
         "title": "Release Job",
         "category": "IBM i FS",
         "icon": "arrow-right"
       },
-            {
+      {
         "command": "vscode-ibmi-fs.EndJob",
         "title": "End Job",
         "category": "IBM i FS",
@@ -153,27 +153,27 @@
       },
       {
         "command": "vscode-ibmi-fs.HldOutq",
-        "title": "Hold Outq",
+        "title": "Hold Output Queue",
         "category": "IBM i FS",
-        "icon": "debug-pause"
+        "icon": "$(primitive-square)"
       },
       {
         "command": "vscode-ibmi-fs.RlsOutq",
-        "title": "Release Outq",
+        "title": "Release Output Queue",
         "category": "IBM i FS",
-        "icon": "debug-continue"
+        "icon": "$(play)"
       },
       {
         "command": "vscode-ibmi-fs.ClrOutq",
-        "title": "Clear Outq",
+        "title": "Clear Output Queue",
         "category": "IBM i FS",
-        "icon": "clear-all"
+        "icon": "$(trash)"
       },
       {
-        "command": "vscode-ibmi-fs.StrWtr",
-        "title": "Start Writer",
+        "command": "vscode-ibmi-fs.MngWtr",
+        "title": "Manage Writer",
         "category": "IBM i FS",
-        "icon": "play"
+        "icon": "$(debug-disconnect)"
       },
       {
         "command": "vscode-ibmi-fs.EndWtr",
@@ -197,25 +197,25 @@
         "command": "vscode-ibmi-fs.DelOldSpool",
         "title": "Delete old spools",
         "category": "IBM i FS",
-        "icon": "calendar"
+        "icon": "$(calendar)"
       },
       {
         "command": "vscode-ibmi-fs.ChgDtaara",
         "title": "Change DTAARA",
         "category": "IBM i FS",
-        "icon": "arrow-right"
+        "icon": "$(edit)"
       },
       {
         "command": "vscode-ibmi-fs.chgUsrspc",
         "title": "Change USRSPC",
         "category": "IBM i FS",
-        "icon": "arrow-right"
+        "icon": "$(edit)"
       },
       {
         "command": "vscode-ibmi-fs.Addbnddire",
         "title": "Add Binding Directory Entry",
         "category": "IBM i FS",
-        "icon": "add"
+        "icon": "$(plus)"
       },
       {
         "command": "vscode-ibmi-fs.Rmvbnddire",
@@ -225,6 +225,98 @@
       }
     ],
     "menus": {
+      "editor/title": [
+        {
+          "command": "vscode-ibmi-fs.sendToDataQueue",
+          "when": "resourceExtname == .DTAQ && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.clearDataQueue",
+          "when": "resourceExtname == .DTAQ && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.downloadSavf",
+          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.uploadSavf",
+          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.savf",
+          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@3"
+        },
+        {
+          "command": "vscode-ibmi-fs.restore",
+          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@4"
+        },
+        {
+          "command": "vscode-ibmi-fs.clearSavf",
+          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@5"
+        },
+        {
+          "command": "vscode-ibmi-fs.HldJobq",
+          "when": "resourceExtname == .JOBQ && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.RlsJobq",
+          "when": "resourceExtname == .JOBQ && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.ClrJobq",
+          "when": "resourceExtname == .JOBQ && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@3"
+        },
+        {
+          "command": "vscode-ibmi-fs.HldOutq",
+          "when": "resourceExtname == .OUTQ && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.RlsOutq",
+          "when": "resourceExtname == .OUTQ && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.ClrOutq",
+          "when": "resourceExtname == .OUTQ && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@3"
+        },
+        {
+          "command": "vscode-ibmi-fs.ChgDtaara",
+          "when": "resourceExtname == .DTAARA && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.DelOldSpool",
+          "when": "resourceExtname == .OUTQ && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@4"
+        },
+        {
+          "command": "vscode-ibmi-fs.MngWtr",
+          "when": "resourceExtname == .OUTQ && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@5"
+        },
+        {
+          "command": "vscode-ibmi-fs.chgUsrspc",
+          "when": "resourceExtname == .USRSPC && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.Addbnddire",
+          "when": "resourceExtname == .BNDDIR && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@1"
+        }
+      ],
       "view/item/context": [
         {
           "command": "vscode-ibmi-fs.downloadSavf",
@@ -302,7 +394,7 @@
           "group": "5_OutqAction@2"
         },
         {
-          "command": "vscode-ibmi-fs.StrWtr",
+          "command": "vscode-ibmi-fs.MngWtr",
           "when": "view == objectBrowser && viewItem == object.outq",
           "group": "5_OutqAction@3"
         },
@@ -414,7 +506,7 @@
           "when": "never"
         },
         {
-          "command": "vscode-ibmi-fs.StrWtr",
+          "command": "vscode-ibmi-fs.MngWtr",
           "when": "never"
         },
         {
