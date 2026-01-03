@@ -21,7 +21,7 @@ import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getColumns, generateDetailTable, FastTableColumn, generateFastTable } from "../tools";
+import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected } from "../tools";
 import ObjectProvider from '../objectProvider';
 
 // Action constants for data queue operations
@@ -93,10 +93,16 @@ export namespace DataQueueActions {
   export const clearDataQueue = async (item: IBMiObject | Dtaq): Promise<boolean> => {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
-    if (await vscode.window.showWarningMessage(`Are you sure you want to clear Data Queue ${library}/${name}?`, { modal: true }, "Clear")) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
+    
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      if(getProtected(connection,item.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
+
+      if (await vscode.window.showWarningMessage(`Are you sure you want to clear Data Queue ${library}/${name}?`, { modal: true }, "Clear")) {
         try {
           await connection.runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
           vscode.window.showInformationMessage(`Data Queue ${library}/${name} cleared.`);
@@ -104,13 +110,12 @@ export namespace DataQueueActions {
         } catch (error) {
           vscode.window.showErrorMessage(`An error occurred while clearing DTAQ ${library}/${name}`);
           return false;
-        }
+       }
       } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
         return false;
       }
-    }
-    else {
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
     }
   };
@@ -121,13 +126,26 @@ export namespace DataQueueActions {
    * @returns True if successful, false otherwise
    */
   export const sendToDataQueue = async (item: IBMiObject | Dtaq): Promise<boolean> => {
-    if ("keyed" in item) {
-      return _sendToDataQueue(item);
-    }
-    else {
-      const dataQueue: Dtaq = new Dtaq(vscode.Uri.file(''), item.library.toUpperCase(), item.name.toUpperCase());
-      await dataQueue.fetchInfo();
-      return _sendToDataQueue(dataQueue);
+
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      if(getProtected(connection,item.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
+
+      if ("keyed" in item) {
+        return _sendToDataQueue(item);
+      }
+      else {
+        const dataQueue: Dtaq = new Dtaq(vscode.Uri.file(''), item.library.toUpperCase(), item.name.toUpperCase());
+        await dataQueue.fetchInfo();
+        return _sendToDataQueue(dataQueue);
+      }
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return false;
     }
   };
 

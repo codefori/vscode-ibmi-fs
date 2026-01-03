@@ -20,7 +20,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable, generateFastTable, FastTableColumn } from "../tools";
+import { getColumns, generateDetailTable, generateFastTable, FastTableColumn, getProtected } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -111,7 +111,6 @@ export namespace OutputQueueActions {
           return strWtr(item, nettype);
         }
       }),
-      vscode.commands.registerCommand("vscode-ibmi-fs.EndWtr", endWtr),
       vscode.commands.registerCommand("vscode-ibmi-fs.GenPdf", genPdf),
       vscode.commands.registerCommand("vscode-ibmi-fs.DelSpool", delSpool),
       vscode.commands.registerCommand("vscode-ibmi-fs.DelOldSpool", async (item?: IBMiObject | vscode.Uri) => {
@@ -142,10 +141,16 @@ export namespace OutputQueueActions {
   export const clrOutq = async (item: IBMiObject | Outq): Promise<boolean> => {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
-    if (await vscode.window.showWarningMessage(`Are you sure you want to clear Output Queue ${library}/${name}?`, { modal: true }, "Clear OUTQ")) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
+
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      if(getProtected(connection,item.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
+
+      if (await vscode.window.showWarningMessage(`Are you sure you want to clear Output Queue ${library}/${name}?`, { modal: true }, "Clear OUTQ")) {
         const cmdrun: CommandResult = await connection.runCommand({
           command: `CLROUTQ ${library}/${name}`,
           environment: `ile`
@@ -159,11 +164,10 @@ export namespace OutputQueueActions {
           return false;
         }
       } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
         return false;
       }
-    }
-    else {
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
     }
   };
@@ -177,11 +181,18 @@ export namespace OutputQueueActions {
   export const hldOutq = async (item: IBMiObject | Outq): Promise<boolean> => {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
-    // Show confirmation dialog to prevent accidental holds
-    if (await vscode.window.showWarningMessage(`Are you sure you want to hold Output Queue ${library}/${name}?`, { modal: true }, "Hold OUTQ")) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
+
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      if(getProtected(connection,item.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
+      
+      // Show confirmation dialog to prevent accidental holds
+      if (await vscode.window.showWarningMessage(`Are you sure you want to hold Output Queue ${library}/${name}?`, { modal: true }, "Hold OUTQ")) {
+
         // Execute HLDOUTQ command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
           command: `HLDOUTQ OUTQ(${library}/${name})`,
@@ -197,11 +208,10 @@ export namespace OutputQueueActions {
           return false;
         }
       } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
         return false;
       }
-    }
-    else {
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
     }
   };
@@ -215,11 +225,16 @@ export namespace OutputQueueActions {
   export const rlsOutq = async (item: IBMiObject | Outq): Promise<boolean> => {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
-    // Show confirmation dialog
-    if (await vscode.window.showWarningMessage(`Are you sure you want to release Output Queue ${library}/${name}?`, { modal: true }, "Release OUTQ")) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
+
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      if(getProtected(connection,item.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
+
+      if (await vscode.window.showWarningMessage(`Are you sure you want to release Output Queue ${library}/${name}?`, { modal: true }, "Release OUTQ")) {
         // Execute RLSOUTQ command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
           command: `RLSOUTQ OUTQ(${library}/${name})`,
@@ -235,11 +250,10 @@ export namespace OutputQueueActions {
           return false;
         }
       } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
         return false;
       }
-    }
-    else {
+    } else {
+      vscode.window.showErrorMessage(`Unable to hold Output Queue ${library}/${name}`);
       return false;
     }
   };
@@ -257,6 +271,11 @@ export namespace OutputQueueActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      if(getProtected(connection,item.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
+
       // Query output queue to get writer information
       let outq = await connection.runSQL(
         `SELECT NETWORK_CONNECTION_TYPE, NUMBER_OF_WRITERS
@@ -376,20 +395,25 @@ export namespace OutputQueueActions {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
 
-    const days = await vscode.window.showInputBox({
-      placeHolder: "xxx days",
-      title: `Days after which to delete spools`,
-      validateInput: days => {
-        if (isNaN(Number(days)) || Number(days) < 1) {
-          return `The number of days should be bigger than 0`;
-        }
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      if(getProtected(connection,item.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
       }
-    });
 
-    if (await vscode.window.showWarningMessage(`Are you sure you want to delete spools that are older than ${days} days from Output Queue ${library}/${name}?`, { modal: true }, "Delete old spools")) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
+      const days = await vscode.window.showInputBox({
+        placeHolder: "xxx days",
+        title: `Days after which to delete spools`,
+        validateInput: days => {
+          if (isNaN(Number(days)) || Number(days) < 1) {
+            return `The number of days should be bigger than 0`;
+          }
+        }
+      });
+
+      if (await vscode.window.showWarningMessage(`Are you sure you want to delete spools that are older than ${days} days from Output Queue ${library}/${name}?`, { modal: true }, "Delete old spools")) {
         try {
           await connection.runSQL(`CALL SYSTOOLS.DELETE_OLD_SPOOLED_FILES(DELETE_OLDER_THAN => CURRENT DATE - ${days} DAYS,
                                         P_OUTPUT_QUEUE_NAME => '${name}',
@@ -402,11 +426,10 @@ export namespace OutputQueueActions {
           return false;
         }
       } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
         return false;
       }
-    }
-    else {
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
     }
   };

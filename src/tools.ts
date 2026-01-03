@@ -1,6 +1,7 @@
 import IBMi from '@halcyontech/vscode-ibmi-types/api/IBMi';
 import { getInstance } from "./ibmi";
 import { Components } from "./webviewToolkit";
+import { ObjectFilters } from '@halcyontech/vscode-ibmi-types';
 
 /**
  * Column definition for FastTable
@@ -70,6 +71,36 @@ export function generateRandomString(len: number): string {
  */
 export function getQSYSObjectPath(library: string, name: string, type: string, member?: string, iasp?: string) {
   return `${iasp ? `/${iasp.toUpperCase()}` : ''}/QSYS.LIB/${library.toUpperCase()}.LIB/${name.toUpperCase()}.${type.toUpperCase()}${member ? `/${member.toUpperCase()}.MBR` : ''}`;
+}
+
+/**
+ * Check if a library is protected based on configured object filters
+ * When multiple filters match the library, selects the most specific rule
+ * (filters with more restrictive types or name patterns take precedence over '*ALL')
+ * @param connection - IBM i connection instance
+ * @param lib - Library name to check
+ * @returns true if the library is protected, false otherwise
+ */
+export function getProtected(connection: IBMi, lib: string) : boolean {
+
+  let isProtected=false;
+  let rule : ObjectFilters;
+
+  connection.getConfig().objectFilters.forEach(element => {
+    if(element.library==lib){
+      if(rule){
+        if((element.types[0]!=='*ALL'&&rule.types[0]==='*ALL')||(element.object!=='*'&&rule.object==='*')){
+          rule=element;
+          isProtected=element.protected;
+        }
+      } else {
+        rule=element;
+        isProtected=element.protected;
+      }
+    }
+  });
+
+  return isProtected;
 }
 
 /**

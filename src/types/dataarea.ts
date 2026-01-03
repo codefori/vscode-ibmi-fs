@@ -17,7 +17,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable } from "../tools";
+import { getColumns, generateDetailTable, getProtected } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -95,6 +95,11 @@ export namespace DataAreaActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+
+      if(getProtected(connection,item.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
 
       // Fetch dta 
       const dtaSql = `SELECT DATA_AREA_TYPE, LENGTH, DECIMAL_POSITIONS, DATA_AREA_VALUE

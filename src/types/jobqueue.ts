@@ -18,7 +18,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { generateDetailTable, getColumns, generateFastTable, FastTableColumn } from "../tools";
+import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, getProtected } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -108,6 +108,11 @@ export namespace JobQueueActions {
     const connection = ibmi?.getConnection();
     if (connection) {
 
+      if(getProtected(connection,item.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
+
       //check if the jobq is already held
       let jobq = await connection.runSQL(
         `SELECT JOB_QUEUE_STATUS
@@ -155,6 +160,11 @@ export namespace JobQueueActions {
     const connection = ibmi?.getConnection();
     if (connection) {
 
+      if(getProtected(connection,item.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
+
       //check if the jobq is already released
       let jobq = await connection.runSQL(
         `SELECT JOB_QUEUE_STATUS
@@ -195,10 +205,16 @@ export namespace JobQueueActions {
   export const clrJobq = async (item: IBMiObject | Jobq): Promise<boolean> => {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
-    if (await vscode.window.showWarningMessage(`Are you sure you want to clear Job Queue ${library}/${name}?`, { modal: true }, "Clear JOBQ")) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
+
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      if(getProtected(connection,library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
+
+      if (await vscode.window.showWarningMessage(`Are you sure you want to clear Job Queue ${library}/${name}?`, { modal: true }, "Clear JOBQ")) {
         const cmdrun: CommandResult = await connection.runCommand({
           command: `CLRJOBQ ${library}/${name}`,
           environment: `ile`
@@ -212,11 +228,10 @@ export namespace JobQueueActions {
           return false;
         }
       } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
         return false;
       }
-    }
-    else {
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
     }
   };
@@ -229,10 +244,10 @@ export namespace JobQueueActions {
    */
   export const hldJob = async (item: Entry): Promise<boolean> => {
     // Show confirmation dialog to prevent accidental holds
-    if (await vscode.window.showWarningMessage(`Are you sure you want to hold job ${item.job} ?`, { modal: true }, "Hold job")) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      if (await vscode.window.showWarningMessage(`Are you sure you want to hold job ${item.job} ?`, { modal: true }, "Hold job")) {
         // Execute HLDJOB command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
           command: `HLDJOB JOB(${item.job})`,
@@ -248,11 +263,10 @@ export namespace JobQueueActions {
           return false;
         }
       } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
         return false;
-      }
-    }
-    else {
+      } 
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
     }
   };
@@ -265,32 +279,32 @@ export namespace JobQueueActions {
    */
   export const rlsJob = async (item: Entry): Promise<boolean> => {
     // Show confirmation dialog
-    if (await vscode.window.showWarningMessage(`Are you sure you want to release job ${item.job} ?`, { modal: true }, "Release job")) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
-        // Execute RLSJOB command on IBM i
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: `RLSJOB JOB(${item.job})`,
-          environment: `ile`
-        });
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      if (await vscode.window.showWarningMessage(`Are you sure you want to release job ${item.job} ?`, { modal: true }, "Release job")) {
 
-        // Check command execution result
-        if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(`Job released.`);
-          return true;
+          // Execute RLSJOB command on IBM i
+          const cmdrun: CommandResult = await connection.runCommand({
+            command: `RLSJOB JOB(${item.job})`,
+            environment: `ile`
+          });
+
+          // Check command execution result
+          if (cmdrun.code === 0) {
+            vscode.window.showInformationMessage(`Job released.`);
+            return true;
+          } else {
+            vscode.window.showErrorMessage(`Unable to release selected job.`);
+            return false;
+          }
         } else {
-          vscode.window.showErrorMessage(`Unable to release selected job.`);
           return false;
         }
-      } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
-        return false;
-      }
-    }
-    else {
-      return false;
-    }
+    } else {
+          vscode.window.showErrorMessage(`Not connected to IBM i`);
+          return false;
+        }
   };
 
   /**
@@ -301,10 +315,11 @@ export namespace JobQueueActions {
    */
   export const endJob = async (item: Entry): Promise<boolean> => {
     // Show confirmation dialog to prevent accidental termination
-    if (await vscode.window.showWarningMessage(`Are you sure you want to end job ${item.job} ?`, { modal: true }, "End job")) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      if (await vscode.window.showWarningMessage(`Are you sure you want to end job ${item.job} ?`, { modal: true }, "End job")) {
+
         // Execute ENDJOB command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
           command: `ENDJOB JOB(${item.job})`,
@@ -320,12 +335,11 @@ export namespace JobQueueActions {
           return false;
         }
       } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
         return false;
       }
-    }
-    else {
-      return false;
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return false;    
     }
   };
 }

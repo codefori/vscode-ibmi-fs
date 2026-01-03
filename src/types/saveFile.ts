@@ -29,6 +29,7 @@ import {
   IBMI_OBJECT_NAME,
   generateDetailTable,
   generateFastTable,
+  getProtected,
   getQSYSObjectPath,
 } from "../tools";
 import { Components } from "../webviewToolkit";
@@ -257,6 +258,11 @@ export namespace SaveFileActions {
 
     if (connection) {
 
+      if(getProtected(connection,target.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
+
       const savfInfo = await connection.runSQL(
         `SELECT SAVE_COMMAND
         FROM QSYS2.SAVE_FILE_INFO
@@ -376,6 +382,11 @@ export namespace SaveFileActions {
     const connection = ibmi?.getConnection();
 
     if (connection) {
+      if(getProtected(connection,target.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
+
       if (await vscode.window.showWarningMessage(`Are you sure you want to clear Save File ${target.library}/${target.name}?`, { modal: true }, "Clear SAVF")) {
         const savfInfo = await connection.runSQL(
           `SELECT SAVE_COMMAND
@@ -421,6 +432,10 @@ export namespace SaveFileActions {
     const connection = ibmi?.getConnection();
 
     if (connection) {
+      if(getProtected(connection,target.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
 
       let saveCmd;
 
@@ -820,6 +835,11 @@ export namespace SaveFileActions {
     const connection = ibmi?.getConnection();
 
     if (connection) {
+
+      if(getProtected(connection,target.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
 
       const savfInfo = await connection.runSQL(
         `SELECT SAVE_COMMAND

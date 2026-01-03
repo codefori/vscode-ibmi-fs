@@ -22,7 +22,7 @@ import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getColumns, generateDetailTable, FastTableColumn, generateFastTable } from "../tools";
+import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected } from "../tools";
 import ObjectProvider from '../objectProvider';
 
 /**
@@ -69,11 +69,16 @@ export namespace BindingDirectoryActions {
    * @returns True if removal was successful, false otherwise
    */
   export const rmvbnddire = async (item: Entry, bnddir: string): Promise<boolean> => {
-    // Show confirmation dialog to prevent accidental removal
-    if (await vscode.window.showWarningMessage(`Are you sure you want to remove ${item.object}?`, { modal: true }, "Remove object")) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      if(getProtected(connection,bnddir.split('/')[0])){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
+      
+      // Show confirmation dialog to prevent accidental removal
+      if (await vscode.window.showWarningMessage(`Are you sure you want to remove ${item.object}?`, { modal: true }, "Remove object")) {
         // Execute RMVBNDDIRE command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
           command: `RMVBNDDIRE BNDDIR(${bnddir}) OBJ(${item.object})`,
@@ -89,11 +94,10 @@ export namespace BindingDirectoryActions {
           return false;
         }
       } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
         return false;
       }
-    }
-    else {
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
     }
   };
@@ -104,44 +108,51 @@ export namespace BindingDirectoryActions {
    * @returns True if addition was successful, false otherwise
    */
   export const addbnddire = async (item: IBMiObject | Binddir): Promise<boolean> => {
-    // Prompt user for object details
+    
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
 
-    let obj, objtype, activation;
+      if(getProtected(connection,item.library)){
+        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        return false;
+      }
+    
+      // Prompt user for object details
+      let obj, objtype, activation;
 
-    const ibmiPattern = /^[A-Za-z#@$][A-Za-z0-9#@$_]{0,9}\/[A-Za-z#@$][A-Za-z0-9#@$_]{0,9}$/;
+      const ibmiPattern = /^[A-Za-z#@$][A-Za-z0-9#@$_]{0,9}\/[A-Za-z#@$][A-Za-z0-9#@$_]{0,9}$/;
 
-    obj = await vscode.window.showInputBox({
-      placeHolder: "LIBXXX/OBJXXX",
-      title: `Object to bind`,
-      validateInput: (obj) => {
-        if (obj.length < 3 || !ibmiPattern.test(obj)) {
-          return `You need to specify a valid path`;
-        }
-      },
-    });
+      obj = await vscode.window.showInputBox({
+        placeHolder: "LIBXXX/OBJXXX",
+        title: `Object to bind`,
+        validateInput: (obj) => {
+          if (obj.length < 3 || !ibmiPattern.test(obj)) {
+            return `You need to specify a valid path`;
+          }
+        },
+      });
 
-    objtype = await vscode.window.showQuickPick(
-      ["*SRVPGM", "*MODULE"],
-      {
-        placeHolder: "Object type",
-        title: "Object type",
-        canPickMany: false,
-      },
-    );
+      objtype = await vscode.window.showQuickPick(
+        ["*SRVPGM", "*MODULE"],
+        {
+          placeHolder: "Object type",
+          title: "Object type",
+          canPickMany: false,
+        },
+      );
 
-    activation = await vscode.window.showQuickPick(
-      ["*IMMED", "*DEFER"],
-      {
-        placeHolder: "Object activation",
-        title: "Object activation",
-        canPickMany: false,
-      },
-    );
+      activation = await vscode.window.showQuickPick(
+        ["*IMMED", "*DEFER"],
+        {
+          placeHolder: "Object activation",
+          title: "Object activation",
+          canPickMany: false,
+        },
+      );
 
-    if (obj && objtype && activation) {
-      const ibmi = getInstance();
-      const connection = ibmi?.getConnection();
-      if (connection) {
+      if (obj && objtype && activation) {
+
         // Execute ADDBNDDIRE command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
           command: `ADDBNDDIRE BNDDIR(${item.library}/${item.name}) OBJ((${obj} ${objtype} ${activation}))`,
@@ -156,14 +167,14 @@ export namespace BindingDirectoryActions {
           vscode.window.showErrorMessage(`Unable to add selected item.`);
           return false;
         }
-      } else {
+      }
+      else {
+        return false;
+      }
+    } else {
         vscode.window.showErrorMessage(`Not connected to IBM i`);
         return false;
       }
-    }
-    else {
-      return false;
-    }
   };
 }
 
