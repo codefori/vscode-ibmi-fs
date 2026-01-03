@@ -157,6 +157,21 @@ Job descriptions define the runtime environment for batch jobs.
 
 ---
 
+### 📓 Journal Receivers (JRNRCV)
+Journal receivers store journal entries for auditing, recovery, and replication purposes.
+
+**Features:**
+- 📊 Display journal receiver information and attributes
+- 📋 View receiver status and statistics
+- 🔢 View sequence number ranges (first/last)
+- 📅 View attachment and detachment timestamps
+- 🔗 View linked receivers (previous/next in chain)
+- 🌐 View remote journal configuration
+- 🔍 View filter settings (objects, images, programs)
+- 💾 View size and threshold information
+
+---
+
 ## Installation
 
 This extension requires the [Code for IBM i](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi) extension to be installed and connected to an IBM i system.

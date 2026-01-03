@@ -610,8 +610,6 @@ export default class Outq extends Base {
             WRITER_JOB_NAME,
             WRITER_JOB_STATUS,
             WRITER_TYPE,
-            SPOOLED_FILE_ASP_ATTRIBUTE,
-            SPOOLED_FILE_ASP_NUMBER,
             SPOOLED_FILE_ASPGRP,
             TEXT_DESCRIPTION,
             MESSAGE_QUEUE_LIBRARY,
