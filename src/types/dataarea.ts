@@ -22,9 +22,6 @@ import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
 
-// Action constant for data area operations
-const ACTION_CHG = "chg";  // Change data area value action
-
 /**
  * Namespace containing actions for Data Area objects
  */
@@ -312,19 +309,7 @@ export class Dtaara extends Base {
    * @returns Action result indicating if re-render is needed
    */
   async handleAction(data: any): Promise<HandleActionResult> {
-    const uri = vscode.Uri.parse(data.href);
-    let refetch = false;
-    switch (uri.path) {
-      case ACTION_CHG:
-        if (await DataAreaActions.chgDtaara(this)) {
-          refetch = true;
-        }
-        break;
-    }
-    if (refetch) {
-      await this.fetch();
-    }
-    return { rerender: refetch };
+    return {};
   }
 
   /**

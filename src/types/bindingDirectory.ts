@@ -178,8 +178,6 @@ export namespace BindingDirectoryActions {
   };
 }
 
-const ACTION_ADD = "add";  // Add entry to binding directory action
-
 /**
  * Interface representing an entry in a binding directory
  */
@@ -314,13 +312,6 @@ export class Binddir extends Base {
           }
         }
         break;
-
-      case ACTION_ADD:
-        // Add a new entry to the binding directory
-        if (await BindingDirectoryActions.addbnddire(this)) {
-          refetch = true;
-        }
-        break;
     }
     // If any action was successful, refetch data to update the UI
     if (refetch) {
@@ -336,21 +327,6 @@ export class Binddir extends Base {
    */
   async save() {
     // Binding directories don't have a save operation
-  }
-
-  /**
-   * Render the binding directory information panel (unused)
-   * @returns HTML string for the detail panel
-   */
-  private renderPgmPanel(): string {
-    return generateDetailTable({
-      title: `${this.isSrvpgm ? 'Service Program' : 'Program'}: ${this.library}/${this.name}`,
-      subtitle: `${this.isSrvpgm ? 'Service Program' : 'Program'} Information`,
-      columns: this.columns,
-      data: this.pgm,
-      codeColumns: ['COPYRIGHT_STRINGS', 'EXPORT_SIGNATURES'],
-      hideNullValues: true
-    });
   }
 }
 

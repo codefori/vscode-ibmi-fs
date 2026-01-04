@@ -17,6 +17,7 @@ import { Pgm } from './types/program';
 import { Binddir } from './types/bindingdirectory';
 import { Module } from './types/module';
 import Jrnrcv from './types/journalreceiver';
+import Jrn from './types/journal';
 
 /**
  * Custom editor provider for IBM i objects
@@ -202,6 +203,9 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
 
       case `JRNRCV`:
         return new Jrnrcv(uri, library, objectName);
+      
+      case `JRN`:
+        return new Jrn(uri, library, objectName);
 
       case `FILE`:
         if (uri.fragment.toUpperCase() === 'SAVF') {

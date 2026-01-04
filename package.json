@@ -73,6 +73,9 @@
           },
           {
             "filenamePattern": "object*/**/*.JRNRCV"
+          },
+          {
+            "filenamePattern": "object*/**/*.JRN"
           }
         ],
         "priority": "default"
@@ -228,6 +231,18 @@
         "title": "Remove Binding Directory Entry",
         "category": "IBM i FS",
         "icon": "trash"
+      },
+      {
+        "command": "vscode-ibmi-fs.GenJrnRcv",
+        "title": "Generate new Journal Receiver",
+        "category": "IBM i FS",
+        "icon": "$(git-pull-request-new-changes)"
+      },
+      {
+        "command": "vscode-ibmi-fs.DspJrn",
+        "title": "Display Journal",
+        "category": "IBM i FS",
+        "icon": "$(file-code)"
       }
     ],
     "menus": {
@@ -321,6 +336,16 @@
           "command": "vscode-ibmi-fs.Addbnddire",
           "when": "resourceExtname == .BNDDIR && activeCustomEditorId == vscode-ibmi-fs.editor",
           "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.GenJrnRcv",
+          "when": "resourceExtname == .JRN && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.DspJrn",
+          "when": "resourceExtname == .JRN && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [
@@ -424,6 +449,14 @@
         },
         {
           "command": "vscode-ibmi-fs.Rmvbnddire",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.GenJrnRcv",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.DspJrn",
           "when": "never"
         }
       ]

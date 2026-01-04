@@ -25,14 +25,6 @@ import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
 
-// Action constants for output queue operations
-const ACTION_CLR = "clr";     // Clear output queue action
-const ACTION_DLT = "dltold";  // Delete old spools action
-const ACTION_HLD = "hld";     // Hold output queue action
-const ACTION_RLS = "rls";     // Release output queue action
-const ACTION_STR = "str";     // Start writer action
-const ACTION_END = "end";     // End writer action
-
 /**
  * Namespace containing actions for Output Queue objects
  */
@@ -767,49 +759,6 @@ export default class Outq extends Base {
     
     // Route to appropriate action handler based on action type
     switch (uri.path) {
-      // Output Queue level actions
-      case ACTION_CLR:
-        // Clear all spools from the queue
-        if (await OutputQueueActions.clrOutq(this)) {
-          refetch = true;
-        }
-        break;
-
-      case ACTION_DLT:
-        // Delete old spools based on age
-        if (await OutputQueueActions.delOldSpl(this)) {
-          refetch = true;
-        }
-        break;
-
-      case ACTION_HLD:
-        // Hold the output queue
-        if (await OutputQueueActions.hldOutq(this)) {
-          refetch = true;
-        }
-        break;
-
-      case ACTION_RLS:
-        // Release the output queue
-        if (await OutputQueueActions.rlsOutq(this)) {
-          refetch = true;
-        }
-        break;
-      
-      case ACTION_STR:
-        // Start the printer writer
-        if (await OutputQueueActions.strWtr(this, this.outq[0].NETWORK_CONNECTION_TYPE)) {
-          refetch = true;
-        }
-        break;
-
-      case ACTION_END:
-        // End (stop) the printer writer
-        if (await OutputQueueActions.endWtr(this)) {
-          refetch = true;
-        }
-        break;
-
       // Individual spool file actions
       case "genPdf":
         // Generate and download PDF from spool file

@@ -2,6 +2,7 @@ import IBMi from '@halcyontech/vscode-ibmi-types/api/IBMi';
 import { getInstance } from "./ibmi";
 import { Components } from "./webviewToolkit";
 import { ObjectFilters } from '@halcyontech/vscode-ibmi-types';
+import * as vscode from 'vscode';
 
 /**
  * Column definition for FastTable
@@ -565,4 +566,31 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
 </body>
 </html>
 `;
+}
+
+/**
+ * Open a new untitled SQL document with pre-written SQL statement
+ * This is a utility function that can be called from any component
+ * @param sqlStatement - The SQL statement to pre-populate in the new document
+ * @returns Promise<boolean> - True if successful, false otherwise
+ */
+export async function openSqlTemplate(sqlStatement: string): Promise<boolean> {
+  try {
+    // Create a new untitled document with SQL language
+    const document = await vscode.workspace.openTextDocument({
+      language: 'sql',
+      content: sqlStatement
+    });
+    
+    // Show the document in a new editor
+    await vscode.window.showTextDocument(document, {
+      preview: false,
+      viewColumn: vscode.ViewColumn.Active
+    });
+
+    return true;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Failed to open SQL template: ${error}`);
+    return false;
+  }
 }

@@ -24,10 +24,6 @@ import { getInstance } from '../ibmi';
 import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected } from "../tools";
 import ObjectProvider from '../objectProvider';
 
-// Action constants for data queue operations
-const ACTION_CLEAR = "clear";  // Clear all messages action
-const ACTION_SEND = "send";    // Send message action
-
 /**
  * Namespace containing actions for Data Queue objects
  */
@@ -370,24 +366,7 @@ export class Dtaq extends Base {
    * @returns Action result indicating if re-render is needed
    */
   async handleAction(data: any): Promise<HandleActionResult> {
-    const uri = vscode.Uri.parse(data.href);
-    let refetch = false;
-    switch (uri.path) {
-      case ACTION_CLEAR:
-        if (await DataQueueActions.clearDataQueue(this)) {
-          refetch = true;
-        }
-        break;
-
-      case ACTION_SEND:
-        if (await DataQueueActions.sendToDataQueue(this)) {
-          refetch = true;
-        }
-    }
-    if (refetch) {
-      await this.fetch();
-    }
-    return { rerender: refetch };
+    return {};
   }
 
   /**

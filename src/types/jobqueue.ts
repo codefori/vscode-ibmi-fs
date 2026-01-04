@@ -23,11 +23,6 @@ import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
 
-// Action constants for job queue operations
-const ACTION_HLD = "hld";  // Hold job queue action
-const ACTION_RLS = "rls";  // Release job queue action
-const ACTION_CLR = "clr";  // Clear job queue action
-
 /**
  * Namespace containing actions for Job Queue objects
  */
@@ -530,28 +525,6 @@ export default class Jobq extends Base {
     
     // Route to appropriate action handler based on action type
     switch (uri.path) {
-      // Job Queue level actions
-      case ACTION_HLD:
-        // Hold the entire job queue
-        if (await JobQueueActions.hldJobq(this)) {
-          refetch = true;
-        }
-        break;
-
-      case ACTION_RLS:
-        // Release the entire job queue
-        if (await JobQueueActions.rlsJobq(this)) {
-          refetch = true;
-        }
-        break;
-
-      case ACTION_CLR:
-        // Clear all jobs from the queue
-        if (await JobQueueActions.clrJobq(this)) {
-          refetch = true;
-        }
-        break;
-
       // Individual job actions
       case "hldJob":
         // Hold a specific job in the queue

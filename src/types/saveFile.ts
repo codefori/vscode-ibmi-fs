@@ -1143,13 +1143,6 @@ export namespace SaveFileActions {
   };
 }
 
-// Action constants for UI interactions
-const ACTION_DOWNLOAD = "download";
-const ACTION_CLEAR = "clear";
-const ACTION_UPLOAD = "upload";
-const ACTION_SAVE = "save";
-const ACTION_RESTORE = "restore";
-
 // Regular expression for parsing save file header information
 const HEADER_REGEX = /^\s+([^\.]+)[\. ]+\. : +(?!\s*\/)(.*)$/;
 
@@ -1556,39 +1549,7 @@ export class SaveFile extends Base {
    * @returns Promise with rerender flag
    */
   async handleAction(data: any): Promise<HandleActionResult> {
-    const uri = vscode.Uri.parse(data.href);
-    let refetch = false;
-
-    // Execute appropriate action based on user selection
-    switch (uri.path) {
-      case ACTION_DOWNLOAD:
-        SaveFileActions.downloadSavf(this);
-        break;
-      case ACTION_RESTORE:
-        SaveFileActions.restore(this);
-        break;
-      case ACTION_UPLOAD:
-        if (await SaveFileActions.uploadSavf(this)) {
-          refetch = true;
-        }
-        break;
-      case ACTION_CLEAR:
-        if (await SaveFileActions.clearSavf(this)) {
-          refetch = true;
-        }
-        break;
-      case ACTION_SAVE:
-        if (await SaveFileActions.save(this)) {
-          refetch = true;
-        }
-        break;
-    }
-
-    // Refetch data if needed
-    if (refetch) {
-      await this.fetch();
-    }
-    return { rerender: refetch };
+    return {};
   }
 
   /**

@@ -11,6 +11,7 @@ import { JobQueueActions } from './types/jobqueue';
 import { OutputQueueActions } from './types/outputqueue';
 import { UserSpaceActions } from './types/userspace';
 import { BindingDirectoryActions } from './types/bindingdirectory';
+import { JournalActions } from './types/journal';
 
 /**
  * Extension activation function
@@ -30,7 +31,6 @@ export async function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // Register action handlers for Save Files and Data Queues
   SaveFileActions.register(context);
   DataQueueActions.register(context);
   DataAreaActions.register(context);
@@ -38,6 +38,7 @@ export async function activate(context: vscode.ExtensionContext) {
   OutputQueueActions.register(context);
   UserSpaceActions.register(context);
   BindingDirectoryActions.register(context);
+  JournalActions.register(context);
 
   console.log('Congratulations, your extension "vscode-ibmi-fs" is now active!');
 }

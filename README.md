@@ -172,6 +172,23 @@ Journal receivers store journal entries for auditing, recovery, and replication 
 
 ---
 
+### 📓 Journals (JRN)
+Journals record changes to database files, data areas, and other objects for auditing, recovery, and replication.
+
+**Features:**
+- 📊 Display journal information and configuration
+- 📋 View journal receiver chain with details
+- 🔗 View attached receiver and receiver statistics
+- 🔢 View sequence number ranges for each receiver
+- 📅 View attachment, detachment, and save timestamps
+- 🌐 View remote journal configuration
+- 🔍 Display journal entries using SQL queries
+- ➕ Generate new journal receivers
+- 💾 View size and threshold information
+- ⚙️ View journal settings (cache, filtering, fixed-length data options)
+
+---
+
 ## Installation
 
 This extension requires the [Code for IBM i](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi) extension to be installed and connected to an IBM i system.
