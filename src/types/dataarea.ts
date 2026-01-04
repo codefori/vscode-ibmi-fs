@@ -237,7 +237,7 @@ export namespace DataAreaActions {
           vscode.window.showInformationMessage(`Data Area ${library}/${name} changed.`);
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable change Data Area ${library}/${name}`);
+          vscode.window.showErrorMessage(`Unable change Data Area ${library}/${name}:\n${cmdrun.stderr}`);
           return false;
         }
       } else {

@@ -136,7 +136,7 @@ export namespace JournalActions {
         vscode.window.showInformationMessage(`Generated new journal receiver.`);
         return true;
       } else {
-        vscode.window.showErrorMessage(`Unable to generate new journal reciever.`);
+        vscode.window.showErrorMessage(`Unable to generate new journal reciever:\n${cmdrun.stderr}`);
         return false;
       }
   } else {

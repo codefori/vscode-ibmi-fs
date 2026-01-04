@@ -83,10 +83,7 @@ export namespace JobQueueActions {
         } else if (item) {
           return clrJobq(item);
         }
-      }),
-      vscode.commands.registerCommand("vscode-ibmi-fs.HldJob", hldJob),
-      vscode.commands.registerCommand("vscode-ibmi-fs.RlsJob", rlsJob),
-      vscode.commands.registerCommand("vscode-ibmi-fs.EndJob", endJob),
+      })
     );
   };
 
@@ -129,7 +126,7 @@ export namespace JobQueueActions {
           vscode.window.showInformationMessage(`Job Queue ${library}/${name} held.`);
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to hold Job Queue ${library}/${name}`);
+          vscode.window.showErrorMessage(`Unable to hold Job Queue ${library}/${name}:\n${cmdrun.stderr}`);
           return false;
         }
       }
@@ -180,7 +177,7 @@ export namespace JobQueueActions {
             vscode.window.showInformationMessage(`Job Queue ${library}/${name} released.`);
             return true;
           } else {
-            vscode.window.showErrorMessage(`Unable to release Job Queue ${library}/${name}`);
+            vscode.window.showErrorMessage(`Unable to release Job Queue ${library}/${name}:\n${cmdrun.stderr}`);
             return false;
           }
       } else {
@@ -219,7 +216,7 @@ export namespace JobQueueActions {
           vscode.window.showInformationMessage(`Job Queue ${library}/${name} cleared.`);
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to clear Job Queue ${library}/${name}`);
+          vscode.window.showErrorMessage(`Unable to clear Job Queue ${library}/${name}:\n${cmdrun.stderr}`);
           return false;
         }
       } else {
@@ -254,7 +251,7 @@ export namespace JobQueueActions {
           vscode.window.showInformationMessage(`Job held.`);
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to hold selected job.`);
+          vscode.window.showErrorMessage(`Unable to hold selected job:\n${cmdrun.stderr}`);
           return false;
         }
       } else {
@@ -290,7 +287,7 @@ export namespace JobQueueActions {
             vscode.window.showInformationMessage(`Job released.`);
             return true;
           } else {
-            vscode.window.showErrorMessage(`Unable to release selected job.`);
+            vscode.window.showErrorMessage(`Unable to release selected job:\n${cmdrun.stderr}`);
             return false;
           }
         } else {
@@ -326,7 +323,7 @@ export namespace JobQueueActions {
           vscode.window.showInformationMessage(`Job ended.`);
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to end selected job.`);
+          vscode.window.showErrorMessage(`Unable to end selected job:\n${cmdrun.stderr}`);
           return false;
         }
       } else {

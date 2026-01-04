@@ -333,7 +333,7 @@ export namespace SaveFileActions {
             if (copyFromStreamFile.code !== 0) {
               result.successful = false;
               result.error =
-                "Unable to copy Save File: " + copyFromStreamFile.stderr;
+                "Unable to copy Save File: \n" + copyFromStreamFile.stderr;
             } else {
               result.successful = true;
               result.error = "";
@@ -405,7 +405,7 @@ export namespace SaveFileActions {
         });
 
         if (clrsavf.code !== 0) {
-          vscode.window.showErrorMessage(`Failed to clear Save File`);
+          vscode.window.showErrorMessage(`Failed to clear Save File:\n${clrsavf.stderr}`);
           return false;
         } else {
           vscode.window.showInformationMessage(`Successfully cleared Save File`);
@@ -795,7 +795,7 @@ export namespace SaveFileActions {
 
             if (savecmd.code !== 0) {
               result.successful = false;
-              result.error = "Unable to restore: " + savecmd.stderr;
+              result.error = "Unable to restore: \n" + savecmd.stderr;
             } else {
               result.successful = true;
               result.error = "";
@@ -1114,7 +1114,7 @@ export namespace SaveFileActions {
 
             if (savecmd.code !== 0) {
               result.successful = false;
-              result.error = "Unable to save: " + savecmd.stderr;
+              result.error = "Unable to save: \n" + savecmd.stderr;
             } else {
               result.successful = true;
               result.error = "";
@@ -1264,6 +1264,8 @@ export class SaveFile extends Base {
         // Remove first two entries (library and name) as they're redundant
         this.headers.shift();
         this.headers.shift();
+      } else {
+        vscode.window.showErrorMessage(`Unable to display save file:\n${savf.stderr}`);
       }
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);

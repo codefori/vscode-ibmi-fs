@@ -103,8 +103,6 @@ export namespace OutputQueueActions {
           return strWtr(item, nettype);
         }
       }),
-      vscode.commands.registerCommand("vscode-ibmi-fs.GenPdf", genPdf),
-      vscode.commands.registerCommand("vscode-ibmi-fs.DelSpool", delSpool),
       vscode.commands.registerCommand("vscode-ibmi-fs.DelOldSpool", async (item?: IBMiObject | vscode.Uri) => {
         if (item instanceof vscode.Uri) {
           const parts = item.path.split('/');
@@ -152,7 +150,7 @@ export namespace OutputQueueActions {
           vscode.window.showInformationMessage(`Output Queue ${library}/${name} cleared.`);
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to clear Output Queue ${library}/${name}`);
+          vscode.window.showErrorMessage(`Unable to clear Output Queue ${library}/${name}:\n${cmdrun.stderr}`);
           return false;
         }
       } else {
@@ -196,7 +194,7 @@ export namespace OutputQueueActions {
           vscode.window.showInformationMessage(`Output Queue ${library}/${name} held.`);
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to hold Output Queue ${library}/${name}`);
+          vscode.window.showErrorMessage(`Unable to hold Output Queue ${library}/${name}:\n${cmdrun.stderr}`);
           return false;
         }
       } else {
@@ -238,7 +236,7 @@ export namespace OutputQueueActions {
           vscode.window.showInformationMessage(`Output Queue ${library}/${name} released.`);
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to release Output Queue ${library}/${name}`);
+          vscode.window.showErrorMessage(`Unable to release Output Queue ${library}/${name}:\n${cmdrun.stderr}`);
           return false;
         }
       } else {
@@ -322,7 +320,7 @@ export namespace OutputQueueActions {
           vscode.window.showInformationMessage(`Writer ${name} ended.`);
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to end writer ${name}`);
+          vscode.window.showErrorMessage(`Unable to end writer ${name}:\n${cmdrun.stderr}`);
           return false;
         }
       } else {
@@ -365,7 +363,7 @@ export namespace OutputQueueActions {
           vscode.window.showInformationMessage(`Writer ${name} started.`);
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to start writer ${name}`);
+          vscode.window.showErrorMessage(`Unable to start writer ${name}:\n${cmdrun.stderr}`);
           return false;
         }
       } else {
@@ -445,7 +443,7 @@ export namespace OutputQueueActions {
           vscode.window.showInformationMessage(`Spool deleted.`);
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to delete selected spool.`);
+          vscode.window.showErrorMessage(`Unable to delete selected spool:\n${cmdrun.stderr}`);
           return false;
         }
       } else {
@@ -476,7 +474,7 @@ export namespace OutputQueueActions {
     if (saveLocation) {
       const result = await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
-        title: `PDF genaration`
+        title: `PDF generation`
       }, async progress => {
         const result = {
           successful: true,

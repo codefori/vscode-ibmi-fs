@@ -56,8 +56,7 @@ export namespace BindingDirectoryActions {
         }
         
         return result;
-      }),
-      vscode.commands.registerCommand("vscode-ibmi-fs.Rmvbnddire", rmvbnddire),
+      })
     );
   };
 
@@ -90,7 +89,7 @@ export namespace BindingDirectoryActions {
           vscode.window.showInformationMessage(`Item removed.`);
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to remove selected item.`);
+          vscode.window.showErrorMessage(`Unable to remove selected item:\n${cmdrun.stderr}`);
           return false;
         }
       } else {
@@ -164,7 +163,7 @@ export namespace BindingDirectoryActions {
           vscode.window.showInformationMessage(`Item added.`);
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to add selected item.`);
+          vscode.window.showErrorMessage(`Unable to add selected item:\n${cmdrun.stderr}`);
           return false;
         }
       }

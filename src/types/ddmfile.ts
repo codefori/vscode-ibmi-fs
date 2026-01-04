@@ -69,6 +69,8 @@ export class DdmFile extends Base {
         // Remove first two entries (library and name) as they're redundant
         this.headers.shift();
         this.headers.shift();
+      } else {
+        vscode.window.showErrorMessage(`Unable to display DDM file:\n${ddmf.stderr}`);
       }
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);

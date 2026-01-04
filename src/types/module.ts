@@ -127,7 +127,7 @@ export class Module extends Base {
       });
 
       if (cmdrun.code !== 0) {
-        vscode.window.showErrorMessage(`Unable to fetch data`);
+        vscode.window.showErrorMessage(`Unable to fetch data:\n${cmdrun.stderr}`);
         return;
       }
 
@@ -229,7 +229,7 @@ export class Module extends Base {
       });
 
       if (cmdrun.code !== 0) {
-        vscode.window.showErrorMessage(`Unable to fetch data`);
+        vscode.window.showErrorMessage(`Unable to fetch data:\n${cmdrun.stderr}`);
         return;
       }
 
@@ -307,7 +307,7 @@ export class Module extends Base {
       });
 
       if (cmdrun1.code !== 0 && cmdrun2.code !== 0) {
-        vscode.window.showErrorMessage(`Unable to fetch data`);
+        vscode.window.showErrorMessage(`Unable to fetch data:\n${cmdrun1.stderr}\n${cmdrun2.stderr}`);
         return;
       }
 
@@ -368,7 +368,7 @@ export class Module extends Base {
       });
 
       if (cmdrun.code !== 0 ) {
-        vscode.window.showErrorMessage(`Unable to fetch data`);
+        vscode.window.showErrorMessage(`Unable to fetch data:\n${cmdrun.stderr}`);
         return;
       }
 
@@ -411,7 +411,7 @@ export class Module extends Base {
       });
 
       if (cmdrun.code !== 0 ) {
-        vscode.window.showErrorMessage(`Unable to fetch data`);
+        vscode.window.showErrorMessage(`Unable to fetch data:\n${cmdrun.stderr}`);
         return;
       }
 
@@ -450,7 +450,7 @@ export class Module extends Base {
       });
 
       if (cmdrun.code !== 0 ) {
-        vscode.window.showErrorMessage(`Unable to fetch data`);
+        vscode.window.showErrorMessage(`Unable to fetch data:\n${cmdrun.stderr}`);
         return;
       }
 

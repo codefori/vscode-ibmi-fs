@@ -202,6 +202,25 @@ DDM (Distributed Data Management) files provide access to files on remote system
 
 ---
 
+### 🖥️ Subsystem Descriptions (SBSD)
+Subsystem descriptions define independent operating environments within IBM i that control how work enters the system and how resources are allocated.
+
+**Features:**
+- 📊 Display subsystem information and status (active/inactive)
+- 📋 View storage pools configuration
+- 🚀 View autostart job entries (AJEs)
+- 💻 View workstation entries (WSEs)
+- 📋 View job queue entries (JOBQEs)
+- 🔀 View routing entries (RTGEs)
+- ⚡ View prestart job entries (PJEs)
+- 👥 View active jobs in the subsystem (when active)
+- ▶️ Start subsystem
+- ⏹️ End subsystem with multiple options (*IMMED, *CNTRLD)
+- 🛑 End individual jobs within the subsystem
+- 🎨 Dynamic UI based on subsystem status
+
+---
+
 ## Installation
 
 This extension requires the [Code for IBM i](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi) extension to be installed and connected to an IBM i system.

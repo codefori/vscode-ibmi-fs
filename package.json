@@ -76,6 +76,9 @@
           },
           {
             "filenamePattern": "object*/**/*.JRN"
+          },
+          {
+            "filenamePattern": "object*/**/*.SBSD"
           }
         ],
         "priority": "default"
@@ -143,24 +146,6 @@
         "icon": "$(trash)"
       },
       {
-        "command": "vscode-ibmi-fs.HldJob",
-        "title": "Hold job",
-        "category": "IBM i FS",
-        "icon": "arrow-right"
-      },
-      {
-        "command": "vscode-ibmi-fs.RlsJob",
-        "title": "Release Job",
-        "category": "IBM i FS",
-        "icon": "arrow-right"
-      },
-      {
-        "command": "vscode-ibmi-fs.EndJob",
-        "title": "End Job",
-        "category": "IBM i FS",
-        "icon": "arrow-right"
-      },
-      {
         "command": "vscode-ibmi-fs.HldOutq",
         "title": "Hold Output Queue",
         "category": "IBM i FS",
@@ -183,24 +168,6 @@
         "title": "Manage Writer",
         "category": "IBM i FS",
         "icon": "$(debug-disconnect)"
-      },
-      {
-        "command": "vscode-ibmi-fs.EndWtr",
-        "title": "End Writer",
-        "category": "IBM i FS",
-        "icon": "debug-stop"
-      },
-      {
-        "command": "vscode-ibmi-fs.GenPdf",
-        "title": "Generate PDF",
-        "category": "IBM i FS",
-        "icon": "file-pdf"
-      },
-      {
-        "command": "vscode-ibmi-fs.DelSpool",
-        "title": "Delete spool",
-        "category": "IBM i FS",
-        "icon": "trash"
       },
       {
         "command": "vscode-ibmi-fs.DelOldSpool",
@@ -227,12 +194,6 @@
         "icon": "$(plus)"
       },
       {
-        "command": "vscode-ibmi-fs.Rmvbnddire",
-        "title": "Remove Binding Directory Entry",
-        "category": "IBM i FS",
-        "icon": "trash"
-      },
-      {
         "command": "vscode-ibmi-fs.GenJrnRcv",
         "title": "Generate new Journal Receiver",
         "category": "IBM i FS",
@@ -243,6 +204,18 @@
         "title": "Display Journal",
         "category": "IBM i FS",
         "icon": "$(file-code)"
+      },
+      {
+        "command": "vscode-ibmi-fs.StrSbs",
+        "title": "Start Subsystem",
+        "category": "IBM i FS",
+        "icon": "$(play)"
+      },
+      {
+        "command": "vscode-ibmi-fs.EndSbs",
+        "title": "End Subsystem",
+        "category": "IBM i FS",
+        "icon": "$(primitive-square)"
       }
     ],
     "menus": {
@@ -346,6 +319,16 @@
           "command": "vscode-ibmi-fs.DspJrn",
           "when": "resourceExtname == .JRN && activeCustomEditorId == vscode-ibmi-fs.editor",
           "group": "navigation@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.StrSbs",
+          "when": "resourceExtname == .SBSD && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.EndSbs",
+          "when": "resourceExtname == .SBSD && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [
@@ -392,18 +375,6 @@
           "when": "never"
         },
         {
-          "command": "vscode-ibmi-fs.HldJob",
-          "when": "never"
-        },
-        {
-          "command": "vscode-ibmi-fs.RlsJob",
-          "when": "never"
-        },
-        {
-          "command": "vscode-ibmi-fs.EndJob",
-          "when": "never"
-        },
-        {
           "command": "vscode-ibmi-fs.HldOutq",
           "when": "never"
         },
@@ -424,14 +395,6 @@
           "when": "never"
         },
         {
-          "command": "vscode-ibmi-fs.GenPdf",
-          "when": "never"
-        },
-        {
-          "command": "vscode-ibmi-fs.DelSpool",
-          "when": "never"
-        },
-        {
           "command": "vscode-ibmi-fs.DelOldSpool",
           "when": "never"
         },
@@ -448,15 +411,19 @@
           "when": "never"
         },
         {
-          "command": "vscode-ibmi-fs.Rmvbnddire",
-          "when": "never"
-        },
-        {
           "command": "vscode-ibmi-fs.GenJrnRcv",
           "when": "never"
         },
         {
           "command": "vscode-ibmi-fs.DspJrn",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.StrSbs",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.EndSbs",
           "when": "never"
         }
       ]
