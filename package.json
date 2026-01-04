@@ -259,27 +259,27 @@
         },
         {
           "command": "vscode-ibmi-fs.downloadSavf",
-          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor && ibmiFileType == 'SAVF'",
           "group": "navigation@1"
         },
         {
           "command": "vscode-ibmi-fs.uploadSavf",
-          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor && ibmiFileType == 'SAVF'",
           "group": "navigation@2"
         },
         {
           "command": "vscode-ibmi-fs.savf",
-          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor && ibmiFileType == 'SAVF'",
           "group": "navigation@3"
         },
         {
           "command": "vscode-ibmi-fs.restore",
-          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor && ibmiFileType == 'SAVF'",
           "group": "navigation@4"
         },
         {
           "command": "vscode-ibmi-fs.clearSavf",
-          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor && ibmiFileType == 'SAVF'",
           "group": "navigation@5"
         },
         {
@@ -395,7 +395,7 @@
           "command": "vscode-ibmi-fs.HldJob",
           "when": "never"
         },
-                {
+        {
           "command": "vscode-ibmi-fs.RlsJob",
           "when": "never"
         },

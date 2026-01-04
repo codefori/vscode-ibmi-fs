@@ -18,6 +18,7 @@ import { Binddir } from './types/bindingdirectory';
 import { Module } from './types/module';
 import Jrnrcv from './types/journalreceiver';
 import Jrn from './types/journal';
+import { DdmFile } from './types/ddmfile';
 
 /**
  * Custom editor provider for IBM i objects
@@ -98,6 +99,14 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
   async openCustomDocument(uri: vscode.Uri, openContext: vscode.CustomDocumentOpenContext, token: vscode.CancellationToken): Promise<Base> {
     const object = getTypeFile(uri);
     if (object) {
+      // Set context based on file type fragment
+      const fragment = uri.fragment.toUpperCase();
+      console.log(`Opening document with fragment: ${fragment}, URI: ${uri.toString()}`);
+      if (fragment) {
+        await vscode.commands.executeCommand('setContext', 'ibmiFileType', fragment);
+        console.log(`Set context ibmiFileType to: ${fragment}`);
+      }
+      
       try {
         await object.fetch();
       } catch (e) {
@@ -128,6 +137,8 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
     // Clean up when panel is disposed
     webviewPanel.onDidDispose(() => {
       ObjectProvider._documentPanels.delete(document.uri.toString());
+      // Clear the context when panel is closed
+      vscode.commands.executeCommand('setContext', 'ibmiFileType', undefined);
     });
 
     if (document.failedFetch) {
@@ -210,6 +221,10 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
       case `FILE`:
         if (uri.fragment.toUpperCase() === 'SAVF') {
           return new SaveFile(uri, library, objectName);
+        }
+
+        if (uri.fragment.toUpperCase() === 'DDMF') {
+          return new DdmFile(uri, library, objectName);
         }
     }
   } else {

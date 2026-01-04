@@ -189,6 +189,19 @@ Journals record changes to database files, data areas, and other objects for aud
 
 ---
 
+### 🌐 DDM Files (DDMF)
+DDM (Distributed Data Management) files provide access to files on remote systems.
+
+**Features:**
+- 📊 Display DDM file configuration and attributes
+- 🌐 View remote location information (system name/address, port)
+- 🔗 View remote file name and library
+- ⚙️ View access method and file attributes
+- 🔒 View security and connection settings
+- 📋 Support for multi-line field values
+
+---
+
 ## Installation
 
 This extension requires the [Code for IBM i](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi) extension to be installed and connected to an IBM i system.

@@ -1265,12 +1265,6 @@ export class SaveFile extends Base {
         this.headers.shift();
         this.headers.shift();
       }
-
-      // Get save file size
-      const stat: CommandResult = await connection.runCommand({
-        command: `ls -l ${this.qsysPath} | awk '{print $5}'`,
-        environment: `pase`,
-      });
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);
     }
