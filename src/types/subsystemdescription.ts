@@ -7,7 +7,7 @@
  *
  * Key Features:
  * - Display subsystem description information and status
- * - View storage pools configuration
+ * - View memory pools configuration
  * - View autostart job entries (AJEs)
  * - View workstation entries (WSEs)
  * - View job queue entries (JOBQEs)
@@ -356,7 +356,7 @@ interface Job {
  * Handles display and management of IBM i Subsystem Description information
  */
 export class Sbsd extends Base {
-  /** List of storage pools */
+  /** List of memory pools */
   private readonly pools: GenEntry[] = [];
   /** List of autostart job entries */
   private readonly ajes: GenEntry[] = [];
@@ -429,7 +429,7 @@ export class Sbsd extends Base {
   }
 
   /**
-   * Fetch all storage pools for the subsystem
+   * Fetch all memory pools for the subsystem
    * Retrieves pool information from QSYS2.SUBSYSTEM_POOL_INFO catalog
    */
   private async fetchPools() {
@@ -809,7 +809,7 @@ function toJob(row: Tools.DB2Row): Job {
 }
 
 /**
- * Render the pools panel showing storage pools
+ * Render the pools panel showing memory pools
  * @param data - Array of pool entries
  * @returns HTML string for the pools panel
  */

@@ -79,6 +79,9 @@
           },
           {
             "filenamePattern": "object*/**/*.SBSD"
+          },
+          {
+            "filenamePattern": "object*/**/*.CLS"
           }
         ],
         "priority": "default"
@@ -384,10 +387,6 @@
         },
         {
           "command": "vscode-ibmi-fs.MngWtr",
-          "when": "never"
-        },
-        {
-          "command": "vscode-ibmi-fs.EndWtr",
           "when": "never"
         },
         {

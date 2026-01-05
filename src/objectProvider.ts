@@ -20,6 +20,7 @@ import Jrnrcv from './types/journalreceiver';
 import Jrn from './types/journal';
 import { DdmFile } from './types/ddmfile';
 import { Sbsd } from './types/subsystemdescription';
+import Cls from './types/class';
 
 /**
  * Custom editor provider for IBM i objects
@@ -221,6 +222,9 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
       
       case `SBSD`:
         return new Sbsd(uri, library, objectName);  
+
+      case `CLS`:
+        return new Cls(uri, library, objectName);  
 
       case `FILE`:
         if (uri.fragment.toUpperCase() === 'SAVF') {

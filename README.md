@@ -207,7 +207,7 @@ Subsystem descriptions define independent operating environments within IBM i th
 
 **Features:**
 - 📊 Display subsystem information and status (active/inactive)
-- 📋 View storage pools configuration
+- 📋 View memory pools configuration
 - 🚀 View autostart job entries (AJEs)
 - 💻 View workstation entries (WSEs)
 - 📋 View job queue entries (JOBQEs)
@@ -218,6 +218,24 @@ Subsystem descriptions define independent operating environments within IBM i th
 - ⏹️ End subsystem with multiple options (*IMMED, *CNTRLD)
 - 🛑 End individual jobs within the subsystem
 - 🎨 Dynamic UI based on subsystem status
+
+---
+
+### 🎯 Classes (CLS)
+Classes define the runtime attributes for batch jobs, controlling how jobs execute and consume system resources.
+
+**Features:**
+- 📊 Display class information and attributes
+- 🎚️ View run priority (1-99, lower number = higher priority)
+- ⏱️ View time slice in milliseconds
+- 💾 View maximum temporary storage allowed
+- ⚡ View maximum CPU time limit
+- 👥 View maximum active threads
+- ⏳ View default wait time for locks
+- 🗑️ View purge eligibility status
+- 📅 View usage statistics (last used date, days used count)
+- 🔧 Automatic creation of required SQL objects using QWCRCLSI API
+- 📖 Read-only view (use CHGCLS command to modify)
 
 ---
 
