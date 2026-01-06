@@ -5,24 +5,24 @@ import { generateError, generatePage } from './webviewToolkit';
 import { openSqlTemplate, openTextTemplate } from './tools';
 import path = require('path');
 
-import { Dtaara } from './types/dataarea';
-import { Dtaq } from './types/dataqueue';
-import Jobq from './types/jobqueue';
-import Jobd from './types/jobdescription';
-import Outq from './types/outputqueue';
-import { Usrspc } from './types/userspace';
-import Msgf from './types/messagefile';
+import { Dtaara } from './types/dataArea';
+import { Dtaq } from './types/dataQueue';
+import Jobq from './types/jobQueue';
+import Jobd from './types/jobDescription';
+import Outq from './types/outputQueue';
+import { Usrspc } from './types/userSpace';
+import Msgf from './types/messageFile';
 import Cmd from './types/command';
 import { Pgm } from './types/program';
 import { Module } from './types/module';
-import Jrnrcv from './types/journalreceiver';
+import Jrnrcv from './types/journalReceiver';
 import Jrn from './types/journal';
-import { DdmFile } from './types/ddmfile';
-import { Sbsd } from './types/subsystemdescription';
+import { DdmFile } from './types/ddmFile';
+import { Sbsd } from './types/subsystemDescription';
 import Cls from './types/class';
-import { Binddir } from './types/bindingdirectory';
-import { SaveFile } from './types/savefile';
-import DummyObj, { fetchQrydfn } from './types/dummyobject';
+import { Binddir } from './types/bindingDirectory';
+import { SaveFile } from './types/saveDile';
+import DummyObj, { fetchQrydfn } from './types/dummyObject';
 
 
 /**
