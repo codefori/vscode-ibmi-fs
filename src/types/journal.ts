@@ -77,6 +77,7 @@ export namespace JournalActions {
 
     // Generate SQL statement to display journal entries
     const sqlStatement = `-- Extract journal entries, ref: https://www.ibm.com/docs/en/i/7.6.0?topic=services-display-journal-table-function
+    
       SELECT JT.ENTRY_TIMESTAMP,
         JT.SEQUENCE_NUMBER,
         JT.JOURNAL_CODE,

@@ -231,6 +231,12 @@
         "title": "Clear Message Queue",
         "category": "IBM i FS",
         "icon": "$(trash)"
+      },
+      {
+        "command": "vscode-ibmi-fs.QueryFile",
+        "title": "Query file",
+        "category": "IBM i FS",
+        "icon": "$(file-code)"
       }
     ],
     "menus": {
@@ -349,6 +355,11 @@
           "command": "vscode-ibmi-fs.clearMessageQueue",
           "when": "resourceExtname == .MSGQ && activeCustomEditorId == vscode-ibmi-fs.editor",
           "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.QueryFile",
+          "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor && (ibmiFileType == 'PF' || ibmiFileType == 'LF')",
+          "group": "navigation@6"
         }
       ],
       "view/item/context": [
@@ -444,6 +455,10 @@
         },
         {
           "command": "vscode-ibmi-fs.clearMessageQueue",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.QueryFile",
           "when": "never"
         }
       ]

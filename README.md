@@ -251,6 +251,22 @@ Classes define the runtime attributes for batch jobs, controlling how jobs execu
 
 ---
 
+### 📁 Files (FILE)
+File objects include physical files (PF), logical files (LF), views, and indexes that store and organize data.
+
+**Features:**
+- 📊 Display comprehensive file/table/view/index information
+- 📋 View file attributes (creation date, owner, journaling status, CCSID)
+- 📈 View detailed statistics (row counts, operations, I/O metrics)
+- 👥 Display file members with their statistics
+- 🔗 Show dependent objects (indexes, views, constraints)
+- 🔍 Query file contents using SQL SELECT
+- 📄 View view definitions and capabilities
+- 🎯 Support for both DDS and SQL-based files
+- 🎨 Multi-tab interface for organized information display
+
+---
+
 ### 🔍 Query Definitions (*QRYDFN)
 Query definitions are objects created by Query/400 or Query Manager that define database queries.
 

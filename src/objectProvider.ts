@@ -17,6 +17,7 @@ import { Pgm } from './types/program';
 import { Module } from './types/module';
 import Jrnrcv from './types/journalReceiver';
 import Jrn from './types/journal';
+import File from './types/file';
 import { DdmFile } from './types/ddmFile';
 import { Sbsd } from './types/subsystemDescription';
 import Cls from './types/class';
@@ -156,6 +157,20 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
     // Register the document and panel
     ObjectProvider._documentPanels.set(document.uri.toString(), { document, panel: webviewPanel });
     
+    // Update context when panel becomes active
+    webviewPanel.onDidChangeViewState(e => {
+      if (e.webviewPanel.active) {
+        const fragment = document.uri.fragment.toUpperCase();
+        if (fragment) {
+          vscode.commands.executeCommand('setContext', 'ibmiFileType', fragment);
+          console.log(`Panel became active, set context ibmiFileType to: ${fragment}`);
+        } else {
+          vscode.commands.executeCommand('setContext', 'ibmiFileType', undefined);
+          console.log(`Panel became active, cleared context ibmiFileType`);
+        }
+      }
+    });
+    
     // Clean up when panel is disposed
     webviewPanel.onDidDispose(() => {
       ObjectProvider._documentPanels.delete(document.uri.toString());
@@ -252,10 +267,10 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
       case `FILE`:
         if (uri.fragment.toUpperCase() === 'SAVF') {
           return new SaveFile(uri, library, objectName);
-        }
-
-        if (uri.fragment.toUpperCase() === 'DDMF') {
+        } else if (uri.fragment.toUpperCase() === 'DDMF') {
           return new DdmFile(uri, library, objectName);
+        } else {
+          return new File(uri, library, objectName);
         }
     }
   } else {
