@@ -239,6 +239,16 @@ Classes define the runtime attributes for batch jobs, controlling how jobs execu
 
 ---
 
+### 🔍 Query Definitions (*QRYDFN)
+Query definitions are objects created by Query/400 or Query Manager that define database queries.
+
+**Features:**
+- 📊 Translate *QRYDFN objects to SQL statements in text editor
+- 🔗 Automatic file reference conversion (LIB/FILE → LIB.FILE)
+- 📖 Read-only view (use Query/400 or Query Manager to modify)
+
+---
+
 ## Installation
 
 This extension requires the [Code for IBM i](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi) extension to be installed and connected to an IBM i system.

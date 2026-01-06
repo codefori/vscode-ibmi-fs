@@ -69,6 +69,9 @@ export default class MsgfFast extends Base {
             WHERE message_file = '${this.name}' AND message_file_library = '${this.library}'`)
       this._entries = [];
       this._entries.push(...entryRows.map(this.toEntry));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

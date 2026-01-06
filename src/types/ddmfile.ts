@@ -74,6 +74,7 @@ export class DdmFile extends Base {
       }
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

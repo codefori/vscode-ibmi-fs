@@ -214,6 +214,9 @@ export class Pgm extends Base {
         Fetch first row only`);
 
       this.isSrvpgm = this.pgm[0].OBJECT_TYPE === '*SRVPGM';
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -265,6 +268,9 @@ export class Pgm extends Base {
         WHERE PROGRAM_LIBRARY = '${this.library}' AND PROGRAM_NAME='${this.name}'`);
 
       this.srvpgms.push(...entryRows.map(toSrvpgm));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -283,6 +289,9 @@ export class Pgm extends Base {
         WHERE PROGRAM_LIBRARY = '${this.library}' AND PROGRAM_NAME='${this.name}'`);
 
       this.exports.push(...entryRows.map(toExport));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

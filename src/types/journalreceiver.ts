@@ -21,6 +21,7 @@
 import Base from "./base";
 import { getInstance } from "../ibmi";
 import { getColumns, generateDetailTable } from "../tools";
+import * as vscode from 'vscode';
 
 /**
  * Journal Receiver (JRNRCV) object class
@@ -90,6 +91,9 @@ export default class Jrnrcv extends Base {
         FROM QSYS2.JOURNAL_RECEIVER_INFO
         where JOURNAL_RECEIVER_LIBRARY= '${this.library}' and JOURNAL_RECEIVER_NAME = '${this.name}'
           Fetch first row only`)
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

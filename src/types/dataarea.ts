@@ -286,6 +286,9 @@ export class Dtaara extends Base {
           Fetch first row only`;
 
       this.dta = await connection.runSQL(sql)
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

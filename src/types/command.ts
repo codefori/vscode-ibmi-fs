@@ -21,6 +21,7 @@
 import Base from "./base";
 import { getInstance } from "../ibmi";
 import { getColumns, generateDetailTable } from "../tools";
+import * as vscode from 'vscode';
 
 /**
  * Command (*CMD) object class
@@ -94,6 +95,9 @@ export default class Cmd extends Base {
         WHERE COMMAND_LIBRARY = '${this.library}'
         AND COMMAND_NAME = '${this.name}'
         Fetch first row only`)
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

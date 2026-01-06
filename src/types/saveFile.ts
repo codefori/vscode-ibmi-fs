@@ -257,7 +257,6 @@ export namespace SaveFileActions {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-
       if(getProtected(connection,target.library)){
         vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
         return false;
@@ -835,7 +834,6 @@ export namespace SaveFileActions {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-
       if(getProtected(connection,target.library)){
         vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
         return false;

@@ -162,6 +162,9 @@ export class Usrspc extends Base {
                     USER_SPACE => '${this.name}', USER_SPACE_LIBRARY => '${this.library}')) y
                   WHERE x.USER_SPACE = '${this.name}' AND x.user_space_library='${this.library}'`
       this.usrspc = await connection.runSQL(sql)
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

@@ -8,6 +8,9 @@ import {} from "@halcyontech/vscode-ibmi-types/api/IBMi";
 export default abstract class Base implements CustomDocument {
   /** Flag indicating if the initial data fetch failed */
   public failedFetch: boolean = false;
+  
+  /** Flag indicating if the webview should auto-close (used for text editor redirects) */
+  public shouldAutoClose: boolean = false;
 
   /**
    * Constructor for Base class

@@ -82,6 +82,9 @@
           },
           {
             "filenamePattern": "object*/**/*.CLS"
+          },
+          {
+            "filenamePattern": "object*/**/*.QRYDFN"
           }
         ],
         "priority": "default"

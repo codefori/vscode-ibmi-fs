@@ -514,10 +514,9 @@ export namespace OutputQueueActions {
             result.successful = false;
             result.error = `PDF generation failed`;
           }
-        }
-        else {
+        } else {
           result.successful = false;
-          result.error = `No connection`;
+          result.error = `Not connected to IBM i`;
         }
         return result;
       });
@@ -613,6 +612,9 @@ export default class Outq extends Base {
             from QSYS2.OUTPUT_QUEUE_INFO
             WHERE OUTPUT_QUEUE_NAME = '${this.name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${this.library}'
             Fetch first row only`)
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

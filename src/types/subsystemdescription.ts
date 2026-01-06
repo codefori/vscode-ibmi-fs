@@ -86,7 +86,6 @@ export namespace SubsystemActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-
       if(getProtected(connection,item.library)){
         vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
         return false;
@@ -139,7 +138,6 @@ export namespace SubsystemActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-
       if(getProtected(connection,item.library)){
         vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
         return false;
@@ -425,6 +423,9 @@ export class Sbsd extends Base {
           WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
                 AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'
           Fetch first row only`);
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -445,6 +446,9 @@ export class Sbsd extends Base {
           AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`);
 
       this.pools.push(...entryRows.map(toGenEntryPool));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -465,6 +469,9 @@ export class Sbsd extends Base {
           AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`);
 
       this.ajes.push(...entryRows.map(toGenEntryAje));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -487,6 +494,9 @@ export class Sbsd extends Base {
         WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
           AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`);
       this.wses.push(...entryRows.map(toWse));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -511,6 +521,9 @@ export class Sbsd extends Base {
         WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
           AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`);
       this.rtges.push(...entryRows.map(toRtge));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -545,6 +558,9 @@ export class Sbsd extends Base {
         WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
           AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`);
       this.pjes.push(...entryRows.map(toPje));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -570,6 +586,9 @@ export class Sbsd extends Base {
         WHERE SUBSYSTEM_NAME = '${this.name}'
           AND SUBSYSTEM_LIBRARY_NAME = '${this.library}'`);
       this.jobqes.push(...entryRows.map(toJobqe));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -596,6 +615,9 @@ export class Sbsd extends Base {
             )
         WHERE JOB_TYPE <> 'SBS'`);
       this.jobs.push(...entryRows.map(toJob));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

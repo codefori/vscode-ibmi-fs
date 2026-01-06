@@ -249,6 +249,9 @@ export class Binddir extends Base {
               AND BINDING_DIRECTORY = '${this.name}'`);
 
       this.entries.push(...entryRows.map(toEntry));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -273,6 +276,9 @@ export class Binddir extends Base {
           AND BINDING_DIRECTORY = '${this.name}'`);
 
       this.exports.push(...entryRows.map(toExport));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

@@ -307,6 +307,9 @@ export default class Cls extends Base {
           MAXIMUM_ACTIVE_THREADS
         FROM ${connection.getConfig().tempLibrary}.class_info
         where CLASS_LIBRARY= '${this.library}' and CLASS_NAME = '${this.name}'`)
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

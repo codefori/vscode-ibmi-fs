@@ -594,3 +594,31 @@ export async function openSqlTemplate(sqlStatement: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Open a new untitled document with pre-written content
+ * Similar to openSqlTemplate but for any language/content
+ * @param content - The content to pre-populate in the new document
+ * @param language - The language ID for syntax highlighting (default: 'plaintext')
+ * @returns Promise<boolean> - True if successful, false otherwise
+ */
+export async function openTextTemplate(content: string, language: string = 'plaintext'): Promise<boolean> {
+  try {
+    // Create a new untitled document with specified language
+    const document = await vscode.workspace.openTextDocument({
+      language: language,
+      content: content
+    });
+    
+    // Show the document in a new editor
+    await vscode.window.showTextDocument(document, {
+      preview: false,
+      viewColumn: vscode.ViewColumn.Active
+    });
+
+    return true;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Failed to open text template: ${error}`);
+    return false;
+  }
+}

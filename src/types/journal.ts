@@ -266,6 +266,9 @@ export default class Jrn extends Base {
         FROM QSYS2.JOURNAL_INFO
         where JOURNAL_NAME='${this.name}' and JOURNAL_LIBRARY= '${this.library}'
           Fetch first row only`)
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -294,6 +297,9 @@ export default class Jrn extends Base {
               AND JOURNAL_LIBRARY = '${this.library}'
         ORDER BY ATTACH_TIMESTAMP ASC`)
       this._entries.push(...entryRows.map(this.toEntry));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

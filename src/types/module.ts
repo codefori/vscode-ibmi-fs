@@ -201,6 +201,9 @@ export class Module extends Base {
         command: `DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -277,6 +280,9 @@ export class Module extends Base {
         command: `DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -345,6 +351,9 @@ export class Module extends Base {
         command: `DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile2})`,
         environment: `ile`
       });
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -388,6 +397,9 @@ export class Module extends Base {
         command: `DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -402,7 +414,6 @@ export class Module extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-
       const tmpfile=generateRandomString(10);
 
       let cmdrun: CommandResult = await connection.runCommand({
@@ -428,6 +439,9 @@ export class Module extends Base {
         command: `DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -441,7 +455,6 @@ export class Module extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-
       const tmpfile=generateRandomString(10);
 
       let cmdrun: CommandResult = await connection.runCommand({
@@ -465,6 +478,9 @@ export class Module extends Base {
         command: `DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

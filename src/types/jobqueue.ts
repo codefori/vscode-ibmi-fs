@@ -294,9 +294,9 @@ export namespace JobQueueActions {
           return false;
         }
     } else {
-          vscode.window.showErrorMessage(`Not connected to IBM i`);
-          return false;
-        }
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return false;
+    }
   };
 
   /**
@@ -388,6 +388,9 @@ export default class Jobq extends Base {
           FROM QSYS2.JOB_QUEUE_INFO
           WHERE JOB_QUEUE_NAME = '${this.name}' AND JOB_QUEUE_LIBRARY = '${this.library}'
           Fetch first row only`)
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -407,6 +410,9 @@ export default class Jobq extends Base {
             WHERE JOB_QUEUE_NAME = '${this.name}' AND JOB_QUEUE_LIBRARY = '${this.library}'`)
       this._entries = [];
       this._entries.push(...entryRows.map(this.toEntry));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

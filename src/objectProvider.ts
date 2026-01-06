@@ -2,11 +2,11 @@
 import * as vscode from 'vscode';
 import Base from './types/base';
 import { generateError, generatePage } from './webviewToolkit';
+import { openSqlTemplate, openTextTemplate } from './tools';
 import path = require('path');
 
 import { Dtaara } from './types/dataarea';
 import { Dtaq } from './types/dataqueue';
-import { SaveFile } from './types/savefile';
 import Jobq from './types/jobqueue';
 import Jobd from './types/jobdescription';
 import Outq from './types/outputqueue';
@@ -14,13 +14,16 @@ import { Usrspc } from './types/userspace';
 import Msgf from './types/messagefile';
 import Cmd from './types/command';
 import { Pgm } from './types/program';
-import { Binddir } from './types/bindingdirectory';
 import { Module } from './types/module';
 import Jrnrcv from './types/journalreceiver';
 import Jrn from './types/journal';
 import { DdmFile } from './types/ddmfile';
 import { Sbsd } from './types/subsystemdescription';
 import Cls from './types/class';
+import { Binddir } from './types/bindingdirectory';
+import { SaveFile } from './types/savefile';
+import DummyObj, { fetchQrydfn } from './types/dummyobject';
+
 
 /**
  * Custom editor provider for IBM i objects
@@ -99,6 +102,16 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
    * @returns Promise that resolves to the Base document object
    */
   async openCustomDocument(uri: vscode.Uri, openContext: vscode.CustomDocumentOpenContext, token: vscode.CancellationToken): Promise<Base> {
+    // Check if this should open as text editor instead of webview
+    const shouldOpenAsText = await shouldOpenInTextEditor(uri);
+    if (shouldOpenAsText) {
+      // Return a placeholder object that will auto-close the webview
+      // We use Dtaara as a concrete class but mark it for auto-close
+      const placeholder = new DummyObj(uri, '', '');
+      placeholder.shouldAutoClose = true;
+      return placeholder;
+    }
+    
     const object = getTypeFile(uri);
     if (object) {
       // Set context based on file type fragment
@@ -128,6 +141,12 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
    * @param token - Cancellation token
    */
   async resolveCustomEditor(document: Base, webviewPanel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {
+    // If document should auto-close (e.g., QRYDFN opened in text editor), dispose immediately
+    if (document.shouldAutoClose) {
+      webviewPanel.dispose();
+      return;
+    }
+    
     webviewPanel.webview.options = {
       enableScripts: true,
       enableCommandUris: true,
@@ -240,3 +259,31 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
   }
   return;
 }
+
+/**
+ * Check if a URI should open in text editor instead of webview
+ * @param uri - The URI to check
+ * @returns True if should open in text editor
+ */
+async function shouldOpenInTextEditor(uri: vscode.Uri): Promise<boolean> {
+  const pieces = uri.path.split('/');
+  if (pieces.length === 3) {
+    const library = pieces[1].toUpperCase();
+    const nameInfo = path.parse(pieces[2]);
+    const objectName = nameInfo.name.toUpperCase();
+    const type = nameInfo.ext.startsWith(`.`) ? nameInfo.ext.substring(1) : nameInfo.ext;
+
+    switch(type.toUpperCase()){
+      case 'QRYDFN':
+        let qrysql=await fetchQrydfn(library,objectName);
+        if(qrysql.trim()===''){
+          vscode.window.showErrorMessage(`Unable to fetch query definition.`);
+        } else {
+          await openSqlTemplate(qrysql);
+        }
+        return true;
+    }
+  }
+  
+  return false;
+} 

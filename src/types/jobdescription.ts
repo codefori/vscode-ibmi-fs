@@ -19,6 +19,7 @@
 import Base from "./base";
 import { getInstance } from "../ibmi";
 import { getColumns, generateDetailTable } from "../tools";
+import * as vscode from 'vscode';
 
 /**
  * Job Description (JOBD) object class
@@ -51,6 +52,9 @@ export default class Jobd extends Base {
           FROM QSYS2.JOB_DESCRIPTION_INFO
           WHERE JOB_DESCRIPTION = '${this.name}' AND JOB_DESCRIPTION_LIBRARY = '${this.library}'
           Fetch first row only`)
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 

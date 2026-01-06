@@ -321,6 +321,9 @@ export class Dtaq extends Base {
                 Fetch first row only`
 
       this.dtaq = await connection.runSQL(sql)
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
@@ -345,6 +348,9 @@ export class Dtaq extends Base {
                 Order By ORDINAL_POSITION`);
 
       this._entries.push(...entryRows.map(toEntry));
+    } else {
+      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      return;
     }
   }
 
