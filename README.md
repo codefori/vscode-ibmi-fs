@@ -290,7 +290,6 @@ This extension requires the [Code for IBM i](https://marketplace.visualstudio.co
 
 ## Requirements
 
-- Visual Studio Code 1.90.0 or higher
 - Code for IBM i extension
 - Active connection to an IBM i system
 
