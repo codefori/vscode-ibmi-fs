@@ -13,6 +13,7 @@ import { UserSpaceActions } from './types/userSpace';
 import { BindingDirectoryActions } from './types/bindingDirectory';
 import { JournalActions } from './types/journal';
 import { SubsystemActions } from './types/subsystemDescription';
+import { MessageQueueActions } from './types/messageQueue';
 
 /**
  * Extension activation function
@@ -41,6 +42,7 @@ export async function activate(context: vscode.ExtensionContext) {
   BindingDirectoryActions.register(context);
   JournalActions.register(context);
   SubsystemActions.register(context);
+  MessageQueueActions.register(context);
 
   console.log('Congratulations, your extension "vscode-ibmi-fs" is now active!');
 }

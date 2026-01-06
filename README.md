@@ -91,6 +91,18 @@ Message files contain predefined messages used by IBM i applications.
 
 ---
 
+### 💬 Message Queues (MSGQ)
+Message queues store messages sent by programs, system functions, or users, providing communication between jobs.
+
+**Features:**
+- 📊 Display message queue contents with detailed information
+- 📋 View message text (first and second level)
+- 📅 Show message metadata (severity, timestamp, sender job/user)
+- 🗑️ Clear all messages from the queue
+- 🚀 Fast table component for performance with many messages
+
+---
+
 ### 🔗 Binding Directories (BNDDIR)
 Binding directories contain lists of service programs and modules used during program binding.
 

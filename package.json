@@ -85,6 +85,9 @@
           },
           {
             "filenamePattern": "object*/**/*.QRYDFN"
+          },
+          {
+            "filenamePattern": "object*/**/*.MSGQ"
           }
         ],
         "priority": "default"
@@ -222,6 +225,12 @@
         "title": "End Subsystem",
         "category": "IBM i FS",
         "icon": "$(primitive-square)"
+      },
+      {
+        "command": "vscode-ibmi-fs.clearMessageQueue",
+        "title": "Clear Message Queue",
+        "category": "IBM i FS",
+        "icon": "$(trash)"
       }
     ],
     "menus": {
@@ -335,6 +344,11 @@
           "command": "vscode-ibmi-fs.EndSbs",
           "when": "resourceExtname == .SBSD && activeCustomEditorId == vscode-ibmi-fs.editor",
           "group": "navigation@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.clearMessageQueue",
+          "when": "resourceExtname == .MSGQ && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [
@@ -426,6 +440,10 @@
         },
         {
           "command": "vscode-ibmi-fs.EndSbs",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.clearMessageQueue",
           "when": "never"
         }
       ]

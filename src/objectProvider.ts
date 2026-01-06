@@ -21,8 +21,9 @@ import { DdmFile } from './types/ddmFile';
 import { Sbsd } from './types/subsystemDescription';
 import Cls from './types/class';
 import { Binddir } from './types/bindingDirectory';
-import { SaveFile } from './types/saveDile';
+import { SaveFile } from './types/saveFile';
 import DummyObj, { fetchQrydfn } from './types/dummyObject';
+import Msgq from './types/messageQueue';
 
 
 /**
@@ -244,6 +245,9 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
 
       case `CLS`:
         return new Cls(uri, library, objectName);  
+
+      case `MSGQ`:
+        return new Msgq(uri, library, objectName);  
 
       case `FILE`:
         if (uri.fragment.toUpperCase() === 'SAVF') {

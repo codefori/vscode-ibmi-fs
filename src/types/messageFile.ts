@@ -1,3 +1,20 @@
+/**
+ * Message File Management Module
+ *
+ * This module provides functionality for managing IBM i Message Files (MSGF).
+ * Message files contain predefined messages used by IBM i applications for
+ * error handling, user communication, and system notifications.
+ *
+ * Key Features:
+ * - Display all messages in the message file
+ * - View message details (ID, text, severity, reply type)
+ * - First and second level message text
+ * - Reply type and valid reply values
+ * - Fast table component for performance with many messages
+ *
+ * @module messagefile
+ */
+
 import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
@@ -9,13 +26,13 @@ import * as vscode from 'vscode';
  * Interface representing a message file entry
  */
 interface Entry {
-  /** Message ID */
+  /** Message ID (e.g., CPF0001) */
   msgid: string
-  /** First level message text */
+  /** First level message text (brief description) */
   msgtxt1: string
   /** Second level message text (detailed help) */
   msgtxt2: string
-  /** Message severity (0-99) */
+  /** Message severity (0-99, higher = more severe) */
   severity: number
   /** Reply type (*NONE, *RPY, etc.) */
   replytype: string
@@ -29,10 +46,12 @@ interface Entry {
  * Message File (MSGF) object class
  * Handles display of IBM i Message File contents
  */
-export default class MsgfFast extends Base {
+export default class Msgf extends Base {
+  /** Internal message file reference */
   private msgf?: any;
   /** Column definitions for display */
   columns: Map<string, string> = new Map();
+  /** SQL SELECT clause for custom queries */
   selectClause: string | undefined;
   /** Array of message entries */
   private _entries: Entry[] = [];
@@ -46,7 +65,7 @@ export default class MsgfFast extends Base {
 
   /**
    * Fetch all messages from the message file
-   * Limited to 500 messages for performance
+   * Uses QSYS2.MESSAGE_FILE_DATA service to retrieve message definitions
    */
   async fetchMessages(): Promise<void> {
     const ibmi = getInstance();
@@ -112,7 +131,7 @@ export default class MsgfFast extends Base {
 
   /**
    * Convert a database row to an Entry object
-   * @param row - Database row from qsys2.message_file_data
+   * @param row - Database row from QSYS2.MESSAGE_FILE_DATA
    * @returns Entry object
    */
   private toEntry(row: Tools.DB2Row): Entry {

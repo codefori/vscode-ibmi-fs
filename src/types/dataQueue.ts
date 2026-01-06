@@ -98,7 +98,7 @@ export namespace DataQueueActions {
         return false;
       }
 
-      if (await vscode.window.showWarningMessage(`Are you sure you want to clear Data Queue ${library}/${name}?`, { modal: true }, "Clear")) {
+      if (await vscode.window.showWarningMessage(`Are you sure you want to clear Data Queue ${library}/${name}?`, { modal: true }, "Clear DTAQ")) {
         try {
           await connection.runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
           vscode.window.showInformationMessage(`Data Queue ${library}/${name} cleared.`);
