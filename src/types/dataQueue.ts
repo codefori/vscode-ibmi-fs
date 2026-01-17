@@ -311,7 +311,7 @@ export class Dtaq extends Base {
                     CURRENT_MESSAGE_ALLOCATION,
                     FORCE,
                     AUTOMATIC_RECLAIM,
-                    LAST_RECLAIM_TIMESTAMP,
+                    to_char(LAST_RECLAIM_TIMESTAMP, 'yyyy-mm-dd HH24:mi') as LAST_RECLAIM_TIMESTAMP,
                     ENFORCE_DATA_QUEUE_LOCKS,
                     TEXT_DESCRIPTION`
       }
@@ -452,7 +452,7 @@ function renderEntries(keyed: boolean, entries: Entry[], isUtf8: boolean) {
     columns: columns,
     data: entries,
     stickyHeader: true,
-    emptyMessage: 'No message in this dtaq.',
+    emptyMessage: 'No messages in this dtaq.',
     customStyles: customStyles,
   }) + `</div>`;
 

@@ -118,8 +118,8 @@ export namespace DataAreaActions {
         const startend = await vscode.window.showQuickPick(
           ["YES", "NO"],
           {
-            placeHolder: "Do you want sepcify start/end?",
-            title: "Do you want sepcify start/end?",
+            placeHolder: "Do you want specify start/end?",
+            title: "Do you want specify start/end?",
             canPickMany: false,
           },
         );
@@ -142,7 +142,7 @@ export namespace DataAreaActions {
             placeHolder: 'Max value: '+String(Number(dta![0].LENGTH)-Number(start)+1),
             validateInput: lenght => {
               if (isNaN(Number(lenght))||Number(lenght)<1||Number(lenght)>2000||Number(lenght)+Number(start)-1>Number(dta![0].LENGTH)) {
-                return `The substringh lenght must be a valid number`;
+                return `The substring length must be a valid number`;
               }
             }
           });
@@ -187,8 +187,8 @@ export namespace DataAreaActions {
               title: `Change DTAARA value`,
               value: String(dta[0].DATA_AREA_VALUE),
               validateInput: newvalue => {
-                if (checkDecimal(newvalue, dta!)) {
-                  return `The value length must be a number`;
+                if (!checkDecimal(newvalue, dta!)) {
+                  return `The value must be a valid decimal number`;
                 }
               }
             });
