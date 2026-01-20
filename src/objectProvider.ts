@@ -1,6 +1,4 @@
 
-import { utils } from 'mocha';
-import path = require('path');
 import * as vscode from 'vscode';
 import Base from './types/base';
 import BindingDirectory from './types/bindingDirectory';
@@ -10,7 +8,8 @@ import { DataQueue } from './types/dataqueue';
 import { JobDescription } from './types/jobDescription';
 import Program from './types/program';
 import { SaveFile } from './types/saveFile';
-import { generatePage, generateError } from './webviewToolkit';
+import { generateError, generatePage } from './webviewToolkit';
+import path = require('path');
 
 export default class ObjectProvider implements vscode.CustomEditorProvider<Base> {
   // https://github.com/microsoft/vscode-extension-samples/blob/main/custom-editor-sample/src/pawDrawEditor.ts#L316

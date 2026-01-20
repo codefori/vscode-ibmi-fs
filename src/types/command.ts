@@ -55,7 +55,7 @@ function parseOutput(output: string): CommandDetail[] {
         const result = DETAIL_REGEX.exec(line);
 
         if (result) {
-            const continuation = result[1]?.length > 1;
+            const continuation = result[1]?.length > 2;
             const label = result[2]?.trim();
             const id = result[3]?.trim();
             const value = result[4]?.trim();
@@ -97,14 +97,16 @@ function processDetailValue(detail: CommandDetail) {
     const parts = detail.value.split(' ');
     switch (detail.keyword) {
         case "PGM":
-            detail.value = `${parts[1]}/${parts[0]}; State: ${parts[2]}`;
+        case "VLDCKR":
+        case "PMTOVRPGM":
+            detail.value = parts[0] !== `*NONE` ? `${parts[1]}/${parts[0]}; State: ${parts[2]}` : parts[0];
             break;
 
         case "SRCFILE":
         case "MSGF":
         case "HLPPNLGRP":
-        case "HLPPNLGRP":
-            detail.value = `${parts[1]}/${parts[0]}`;
+        case "TGTCMD":
+            detail.value = parts[0] !== `*NONE` ? `${parts[1]}/${parts[0]}` : parts[0];
             break;
 
         case "MODE":

@@ -1,10 +1,9 @@
-/** @ts-ignore */
-import * as WebToolkit from "@vscode/webview-ui-toolkit/dist/toolkit.min.js";
+const webToolKit = require("@vscode/webview-ui-toolkit/dist/toolkit.min.js");
 
 const head = /*html*/`
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script defer type="module">${WebToolkit}</script>
+  <script defer type="module">${webToolKit}</script>
   <style>
     vscode-panel-view {
       flex-direction: column;
@@ -36,6 +35,7 @@ const head = /*html*/`
     .cellValue {      
       display: table-cell;
       padding-left: 10px;
+      background-color: transparent;
     }
   </style>`;
 

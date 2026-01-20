@@ -2,28 +2,25 @@
   "name": "vscode-ibmi-fs",
   "displayName": "IBM i FileSystem",
   "description": "File system provider for IBM i QSYS",
-  "version": "0.0.1",
+  "version": "0.0.3-dev0",
   "preview": true,
   "license": "MIT",
   "engines": {
-    "vscode": "^1.71.0"
+    "vscode": "^1.90.0"
   },
   "author": {
-    "name": "Halcyon Tech Ltd",
-    "url": "https://github.com/halcyon-tech"
+    "name": "Code4i",
+    "url": "https://github.com/codefori"
   },
   "publisher": "halcyontechltd",
   "repository": {
-    "url": "https://github.com/halcyon-tech/vscode-ibmi-fs"
+    "url": "https://github.com/codefori/vscode-ibmi-fs"
   },
   "categories": [
     "Other"
   ],
   "activationEvents": [
-    "onFileSystem:object",
-    "onCustomEditor:vscode-ibmi-fs.editor",
-    "onCommand:code-for-ibmi.connect",
-    "onView:connectionBrowser"
+    "onStartupFinished"
   ],
   "extensionDependencies": [
     "HalcyonTechLtd.code-for-ibmi"
@@ -133,34 +130,25 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
-    "compile": "webpack",
-    "watch": "webpack --watch",
-    "package": "webpack --mode production --devtool hidden-source-map",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run compile && npm run lint",
-    "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "clean": "rimraf dist",
+    "package":"npx @vscode/vsce package --pre-release",
+    "vscode:prepublish": "npm run build",
+    "compile": "npm run clean && webpack",
+    "watch": "npm run clean && webpack --watch",
+    "build": "npm run clean && webpack --mode production --devtool hidden-source-map"
   },
   "devDependencies": {
-    "@types/glob": "^7.2.0",
-    "@types/mocha": "^9.1.1",
-    "@types/node": "16.x",
-    "@types/vscode": "^1.71.0",
-    "@typescript-eslint/eslint-plugin": "^5.31.0",
-    "@typescript-eslint/parser": "^5.31.0",
-    "@vscode/test-electron": "^2.1.5",
-    "eslint": "^8.20.0",
-    "glob": "^8.0.3",
-    "mocha": "^10.0.0",
-    "ts-loader": "^9.3.1",
-    "typescript": "^4.7.4",
-    "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0"
+    "@halcyontech/vscode-ibmi-types": "^2.13",
+    "@types/node": "^20",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.19.12",
+		"esbuild-loader": "^4.2.2",
+    "rimraf": "^5.0.5",
+    "typescript": "^4.9.5",
+    "webpack": "^5.94.0",
+		"webpack-cli": "^5.1.4"
   },
   "dependencies": {
-    "@halcyontech/vscode-ibmi-types": "^1.6.8",
-    "@vscode/webview-ui-toolkit": "^1.1.0"
+    "@vscode/webview-ui-toolkit": "^1.4.0"
   }
 }

@@ -2,8 +2,9 @@ import { CodeForIBMi, CommandResult, RemoteCommand } from '@halcyontech/vscode-i
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 
+let codeForIBMi : CodeForIBMi;
+
 export namespace Code4i {
-    let codeForIBMi : CodeForIBMi;
     export async function initialize() {
         const baseExtension = vscode.extensions.getExtension<CodeForIBMi>(`halcyontechltd.code-for-ibmi`);
         if (baseExtension) {
@@ -35,8 +36,8 @@ export namespace Code4i {
     }
 
     export async function runCommand(command: RemoteCommand) : Promise<CommandResult>  {
-        return await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, command);
-    }
+        return await getConnection().runCommand(command);
+    }    
 }
 
 export const IBMI_OBJECT_NAME = /^([\w$#@][\w\d$#@_.]{0,9})$/i;
@@ -45,13 +46,6 @@ export function getQSYSObjectPath(library: string, name: string, type: string, m
     return `${iasp ? `/${iasp.toUpperCase()}` : ''}/QSYS.LIB/${library.toUpperCase()}.LIB/${name.toUpperCase()}.${type.toUpperCase()}${member ? `/${member.toUpperCase()}.MBR` : ''}`;
 }
 
-export function makeid() {
-    let text = `O_`;
-    let possible = `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`;
-
-    for (let i = 0; i < 8; i++) {
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-    }
-
-    return text;
+export function makeid(length? : number){
+    return codeForIBMi.tools.makeid(length);
 }
