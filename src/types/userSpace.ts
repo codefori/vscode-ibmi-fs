@@ -89,7 +89,7 @@ export namespace UserSpaceActions {
       let sql = `SELECT DATA FROM TABLE(QSYS2.USER_SPACE(
                     USER_SPACE => '${item.name}', USER_SPACE_LIBRARY => '${item.library}'))`
       let usrspc = await connection.runSQL(sql)
-      let curvalue = String(usrspc[0].DATA)
+      let curvalue = usrspc[0]?.DATA ? String(usrspc[0].DATA) : ''
 
       // Get the start position for the change
       let start = await vscode.window.showInputBox({
