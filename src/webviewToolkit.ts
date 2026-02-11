@@ -1,5 +1,11 @@
+/**
+ * Webview Toolkit utilities for generating HTML pages with VS Code webview components
+ * Uses the @vscode/webview-ui-toolkit for consistent UI components
+ */
+
 const webToolKit = require("@vscode/webview-ui-toolkit/dist/toolkit.min.js");
 
+/** HTML head section with styles and webview toolkit script */
 const head = /*html*/`
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,23 +30,28 @@ const head = /*html*/`
       display: table-row;
     }
 
-    .cellKey {  
-      font-weight: bold;    
+    .cellKey {
+      font-weight: bold;
       display: table-cell;
       padding-bottom: 5px;
       width: 1%;
       white-space: nowrap;
     }
 
-    .cellValue {      
+    .cellValue {
       display: table-cell;
       padding-left: 10px;
       background-color: transparent;
     }
   </style>`;
 
+/** HTML footer section with JavaScript for handling user interactions */
 const footer = /*html*/`
   <script defer>
+    /**
+     * Get all input bindings from elements with readonly="false"
+     * @returns Object with input IDs and their current values
+     */
     function getBindings() {
       let bindings = {};
 
@@ -56,6 +67,7 @@ const footer = /*html*/`
 
     const vscode = acquireVsCodeApi();
 
+    // Handle click events on action links
     for (const link of document.querySelectorAll('[href^="action:"]')) {
       link.addEventListener('click', () => {
         let data = {};
@@ -69,6 +81,7 @@ const footer = /*html*/`
       });
     }
 
+    // Handle change events on input elements
     for (const link of document.querySelectorAll('[change^="action:"]')) {
       const data = {
         id: link.id,
@@ -84,7 +97,7 @@ const footer = /*html*/`
           vscode.postMessage(data);
         });
       }
-      else{        
+      else{
         link.addEventListener('input', (event) => {
           data.value = event.target.currentValue;
           vscode.postMessage(data);
@@ -93,10 +106,16 @@ const footer = /*html*/`
     }
 
     window.addEventListener("message", (event) => {
+      // Handle messages from extension
     });
   </script>
 `;
 
+/**
+ * Generate a complete HTML page with the webview toolkit
+ * @param body - HTML body content
+ * @returns Complete HTML page string
+ */
 export function generatePage(body: string) {
   return /*html*/ `
   <!DOCTYPE html>
@@ -112,6 +131,11 @@ export function generatePage(body: string) {
 `;
 }
 
+/**
+ * Generate an error page
+ * @param text - Error message to display
+ * @returns Complete HTML error page string
+ */
 export function generateError(text: string) {
   return /*html*/ `
   <!DOCTYPE html>
@@ -128,13 +152,18 @@ export function generateError(text: string) {
 `;
 }
 
-//https://github.com/microsoft/vscode-webview-ui-toolkit/blob/main/docs/components.md
+/**
+ * Components namespace for generating VS Code webview UI toolkit components
+ * Reference: https://github.com/microsoft/vscode-webview-ui-toolkit/blob/main/docs/components.md
+ */
 export namespace Components {
+  /** Base component interface with common properties */
   interface Component {
     class?: string
     style?: string
   }
 
+  /** Text field component interface */
   interface TextField extends Component {
     autofocus: boolean
     disabled: boolean
@@ -146,6 +175,7 @@ export namespace Components {
     value: string
   }
 
+  /** Text area component interface */
   interface TextArea extends Component {
     autofocus: boolean
     cols: number
@@ -159,6 +189,7 @@ export namespace Components {
     value: string
   }
 
+  /** Checkbox component interface */
   interface Checkbox extends Component {
     autofocus: boolean
     checked: boolean
@@ -168,6 +199,7 @@ export namespace Components {
     value: string
   }
 
+  /** Button component interface */
   interface Button extends Component {
     appearance: "primary" | "secondary" | "icon"
     ariaLabel: string
@@ -185,15 +217,18 @@ export namespace Components {
     action: string
   }
 
+  /** Button icon interface */
   interface ButtonIcon extends Component {
     name: string
     left?: boolean
   }
 
+  /** Divider component interface */
   interface Divider extends Component {
     role: 'presentation' | 'separator'
   }
 
+  /** Data grid component interface */
   interface DataGrid<T> extends Component {
     stickyHeader?: boolean
     generateHeader?: "default" | "sticky" | "none"
@@ -202,6 +237,7 @@ export namespace Components {
     rowClass?: (row: T) => string
   }
 
+  /** Column definition for data grids */
   export interface Column<T> {
     cellValue: (row: T) => string
     title?: string
@@ -209,6 +245,7 @@ export namespace Components {
     cellClass?: (row: T) => string
   }
 
+  /** Dropdown component interface */
   interface DropDown extends Component {
     disabled: boolean
     open: boolean
@@ -217,12 +254,20 @@ export namespace Components {
     indicator: string
   }
 
+  /** Panel interface for tabbed views */
   export interface Panel extends Component {
     title: string
     badge?: number
     content: string
   }
 
+  /**
+   * Generate a tabbed panel view
+   * @param panels - Array of panel definitions
+   * @param attributes - Optional component attributes
+   * @param activeid - Optional active tab ID
+   * @returns HTML string for the panels
+   */
   export function panels(panels: Panel[], attributes?: Component, activeid?: number): string {
     return /*html*/ `<vscode-panels ${renderAttributes(attributes)} ${activeid ? `activeid="tab-${activeid}"` : ""}>
       ${panels.map((panel, index) => /*html*/ `<vscode-panel-tab id="tab-${index + 1}">${panel.title.toUpperCase()}${panel.badge ? badge(panel.badge, true) : ''}</vscode-panel-tab>`).join("")}
@@ -230,13 +275,24 @@ export namespace Components {
     </vscode-panels>`;
   }
 
+  /**
+   * Generate a data grid component
+   * @param grid - Grid configuration
+   * @param content - Array of data to display
+   * @returns HTML string for the data grid
+   */
   export function dataGrid<T>(grid: DataGrid<T>, content: T[]): string {
     return /*html*/ `<vscode-data-grid ${renderAttributes(grid, "columns", "stickyHeader", "rowClass", "headerClass")} ${gridTemplateColumns(grid)}>
         ${renderHeader(grid)}
-        ${content.map(row => renderRow(grid, row)).join("")}    
+        ${content.map(row => renderRow(grid, row)).join("")}
       </vscode-data-grid>`;
   }
 
+  /**
+   * Generate grid-template-columns CSS attribute
+   * @param grid - Grid configuration
+   * @returns CSS attribute string or empty string
+   */
   function gridTemplateColumns<T>(grid: DataGrid<T>) {
     const attemptToSize = grid.columns.some(col => col.size);
     if (attemptToSize) {
@@ -246,6 +302,11 @@ export namespace Components {
     }
   }
 
+  /**
+   * Render the header row for a data grid
+   * @param grid - Grid configuration
+   * @returns HTML string for the header row
+   */
   function renderHeader<T>(grid: DataGrid<T>) {
     if (grid.columns.filter(col => col.title).length) {
       return /*html*/ `<vscode-data-grid-row row-type="${grid.stickyHeader ? "sticky-header" : "header"}" class="${grid.headerClass}"}>
@@ -257,16 +318,34 @@ export namespace Components {
     }
   }
 
+  /**
+   * Render a data row for a data grid
+   * @param grid - Grid configuration
+   * @param row - Data row to render
+   * @returns HTML string for the data row
+   */
   function renderRow<T>(grid: DataGrid<T>, row: T) {
     return /*html*/ `<vscode-data-grid-row class="${grid.rowClass?.(row)}"}>
-        ${grid.columns.map((col, index) => /*html*/ `<vscode-data-grid-cell grid-column="${index + 1}" class="${col.cellClass?.(row) || ''}">${col.cellValue(row)}</vscode-data-grid-cell>`).join("")}        
+        ${grid.columns.map((col, index) => /*html*/ `<vscode-data-grid-cell grid-column="${index + 1}" class="${col.cellClass?.(row) || ''}">${col.cellValue(row)}</vscode-data-grid-cell>`).join("")}
       </vscode-data-grid-row>`;
   }
 
+  /**
+   * Generate a divider component
+   * @param options - Optional divider options
+   * @returns HTML string for the divider
+   */
   export function divider(options?: Partial<Divider>) {
     return /* html */`<vscode-divider ${renderAttributes(options)}></vscode-divider>`;
   }
 
+  /**
+   * Generate a dropdown component
+   * @param id - Element ID
+   * @param dropDown - Dropdown configuration
+   * @param noChangeListener - Whether to skip change listener
+   * @returns HTML string for the dropdown
+   */
   export function dropDown(id: string, dropDown: Partial<DropDown>, noChangeListener?: boolean) {
     return /*html*/ `<vscode-dropdown id="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(dropDown, "indicator")}>
       ${dropDown.indicator ? /*html*/ _icon(dropDown.indicator, "indicator") : ''}
@@ -274,18 +353,48 @@ export namespace Components {
     </vscode-dropdown>`;
   }
 
+  /**
+   * Generate a text field component
+   * @param id - Element ID
+   * @param label - Optional label text
+   * @param options - Optional text field options
+   * @param noChangeListener - Whether to skip change listener
+   * @returns HTML string for the text field
+   */
   export function textField(id: string, label?: string, options?: Partial<TextField>, noChangeListener?: boolean) {
     return /* html */`<vscode-text-field id="${id}" name="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(options)}>${label || ''}</vscode-text-field>`;
   }
 
+  /**
+   * Generate a text area component
+   * @param id - Element ID
+   * @param label - Optional label text
+   * @param options - Optional text area options
+   * @param noChangeListener - Whether to skip change listener
+   * @returns HTML string for the text area
+   */
   export function textArea(id: string, label?: string, options?: Partial<TextArea>, noChangeListener?: boolean) {
     return /* html */`<vscode-text-area id="${id}" name="${id}" ${renderChangeListener("input", noChangeListener)} ${renderAttributes(options)}>${label || ''}</vscode-text-area>`;
   }
 
+  /**
+   * Generate a checkbox component
+   * @param id - Element ID
+   * @param label - Optional label text
+   * @param options - Optional checkbox options
+   * @param noChangeListener - Whether to skip change listener
+   * @returns HTML string for the checkbox
+   */
   export function checkbox(id: string, label?: string, options?: Partial<Checkbox>, noChangeListener?: boolean) {
     return /* html */`<vscode-checkbox id="${id}" value="${id}" ${renderChangeListener("checkbox", noChangeListener)} ${renderAttributes(options)}>${label || ''}</vscode-checkbox>`;
   }
 
+  /**
+   * Generate a button component
+   * @param label - Optional button label
+   * @param options - Optional button options
+   * @returns HTML string for the button
+   */
   export function button(label?: string, options?: Partial<Button>) {
     return /* html */`<vscode-button ${renderAttributes(options, "icon", "action")} ${options?.action ? `href="action:${options.action}"` : ""}>
       ${label || ''}
@@ -293,10 +402,23 @@ export namespace Components {
       </vscode-button>`;
   }
 
+  /**
+   * Generate a badge component
+   * @param count - Badge count
+   * @param secondary - Whether to use secondary appearance
+   * @returns HTML string for the badge
+   */
   export function badge(count: number, secondary?: boolean) {
     return /* html */`<vscode-badge ${secondary ? 'appearance="secondary"' : ''}>${count}</vscode-badge>`;
   }
 
+  /**
+   * Generate a key-value table
+   * @param getKey - Function to extract key from entry
+   * @param getValue - Function to extract value from entry
+   * @param entries - Array of entries
+   * @returns HTML string for the key-value table
+   */
   export function keyValueTable<T>(getKey: (e: T) => string, getValue: (e: T) => string, entries: T[]) {
     return /* html */ `<div class="keyValueGrid">
       ${entries.map(entry => {
@@ -305,11 +427,22 @@ export namespace Components {
     </div>`;
   }
 
-
+  /**
+   * Generate an icon element
+   * @param icon - Icon name (codicon)
+   * @param slot - Optional slot attribute
+   * @returns HTML string for the icon
+   */
   function _icon(icon: string, slot?: string) {
     return /* html */`<span class="codicon codicon-${icon}" ${slot ? `slot="${slot}"` : ''}></span>`;
   }
 
+  /**
+   * Render HTML attributes from an options object
+   * @param options - Options object
+   * @param skipped - Array of property names to skip
+   * @returns HTML attributes string
+   */
   function renderAttributes(options?: Object, ...skipped: string[]) {
     if (options) {
       return `${Object.entries(options).filter(e => skipped.indexOf(e[0]) === -1)
@@ -321,6 +454,12 @@ export namespace Components {
     }
   }
 
+  /**
+   * Render change listener attributes
+   * @param type - Listener type (input or checkbox)
+   * @param noRender - Whether to skip rendering
+   * @returns HTML attributes string
+   */
   function renderChangeListener(type: 'input' | 'checkbox', noRender?: boolean) {
     if (!noRender) {
       return `change='action:change' data-action='${type}'`;
@@ -330,6 +469,12 @@ export namespace Components {
     }
   }
 
+  /**
+   * Render a single HTML attribute
+   * @param name - Attribute name
+   * @param value - Attribute value
+   * @returns HTML attribute string
+   */
   function renderAttribute(name: string, value: any) {
     const attribute = kebabize(name);
     switch (typeof value) {
@@ -338,6 +483,11 @@ export namespace Components {
     }
   }
 
+  /**
+   * Convert camelCase to kebab-case
+   * @param name - String in camelCase
+   * @returns String in kebab-case
+   */
   function kebabize(name: string) {
     return name.split('').map((letter) => letter.toUpperCase() === letter ? `-${letter.toLowerCase()}` : letter).join('');
   }
