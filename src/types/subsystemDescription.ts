@@ -864,7 +864,7 @@ function renderAjes(data: GenEntry[]) {
   ];
 
   const customStyles = `
-    .aje-entries-table vscode-data-grid-cell[grid-column="1"] {
+    .aje-entries-table vscode-table-cell:first-child {
       color: var(--vscode-textLink-foreground);
     }
   `;
@@ -924,7 +924,7 @@ function renderJobqes(data: Jobqe[]) {
   ];
 
   const customStyles = `
-    .jobqe-entries-table vscode-data-grid-cell[grid-column="1"] {
+    .jobqe-entries-table vscode-table-cell:first-child {
       color: var(--vscode-textLink-foreground);
     }
   `;
@@ -958,7 +958,7 @@ function renderRtges(data: Rtge[]) {
   ];
 
   const customStyles = `
-    .rtge-entries-table vscode-data-grid-cell[grid-column="1"] {
+    .rtge-entries-table vscode-table-cell:first-child {
       color: var(--vscode-textLink-foreground);
     }
   `;
@@ -996,7 +996,7 @@ function renderPjes(data: Pje[]) {
   ];
 
   const customStyles = `
-    .pje-entries-table vscode-data-grid-cell[grid-column="1"] {
+    .pje-entries-table vscode-table-cell:first-child {
       color: var(--vscode-textLink-foreground);
     }
   `;
@@ -1040,7 +1040,7 @@ function renderJobs(data: Job[]) {
   ];
 
   const customStyles = `
-    .job-entries-table vscode-data-grid-cell[grid-column="1"] {
+    .job-entries-table vscode-table-cell:first-child {
       color: var(--vscode-textLink-foreground);
     }
   `;

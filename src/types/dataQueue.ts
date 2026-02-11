@@ -440,7 +440,7 @@ function renderEntries(keyed: boolean, entries: Entry[], isUtf8: boolean) {
   if(keyed){
     customStyles = `
       /* Custom styles for cells - specific to dataqueue entries table */
-      .dataqueue-entries-table vscode-data-grid-cell[grid-column="4"] {
+      .dataqueue-entries-table vscode-table-cell:nth-child(4) {
         color: var(--vscode-textLink-foreground);
       }
     `;

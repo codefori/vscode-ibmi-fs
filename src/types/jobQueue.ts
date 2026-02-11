@@ -496,7 +496,7 @@ export default class Jobq extends Base {
     // Custom CSS styles for the job queue entries table
     const customStyles = `
       /* Highlight job names with link color for better visibility */
-      .jobqueue-entries-table vscode-data-grid-cell[grid-column="1"] {
+      .jobqueue-entries-table vscode-table-cell:first-child {
         color: var(--vscode-textLink-foreground);
       }
     `;

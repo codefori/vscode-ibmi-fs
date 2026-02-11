@@ -485,6 +485,6 @@
   },
   "dependencies": {
     "@microsoft/fast-element": "^2.9.1",
-    "@vscode/webview-ui-toolkit": "^1.4.0"
+    "@vscode-elements/elements": "^1.6.1"
   }
 }

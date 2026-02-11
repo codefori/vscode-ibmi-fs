@@ -727,7 +727,7 @@ export default class Outq extends Base {
     // Custom CSS styles for the output queue entries table
     const customStyles = `
         /* Highlight spool names with link color for better visibility */
-        .outq-entries-table vscode-data-grid-cell[grid-column="1"] {
+        .outq-entries-table vscode-table-cell:first-child {
             color: var(--vscode-textLink-foreground);
         }
         `;

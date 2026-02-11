@@ -1,9 +1,9 @@
 /**
  * Webview Toolkit utilities for generating HTML pages with VS Code webview components
- * Uses the @vscode/webview-ui-toolkit for consistent UI components
+ * Uses the @vscode-elements/elements for consistent UI components
  */
 
-const webToolKit = require("@vscode/webview-ui-toolkit/dist/toolkit.min.js");
+const webToolKit = require("@vscode-elements/elements/dist/bundled.js");
 
 /** HTML head section with styles and webview toolkit script */
 const head = /*html*/`
@@ -11,7 +11,7 @@ const head = /*html*/`
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script defer type="module">${webToolKit}</script>
   <style>
-    vscode-panel-view {
+    vscode-tab-panel {
       flex-direction: column;
     }
     .center-screen {
@@ -154,7 +154,7 @@ export function generateError(text: string) {
 
 /**
  * Components namespace for generating VS Code webview UI toolkit components
- * Reference: https://github.com/microsoft/vscode-webview-ui-toolkit/blob/main/docs/components.md
+ * Reference: https://github.com/vscode-elements/elements
  */
 export namespace Components {
   /** Base component interface with common properties */
@@ -269,49 +269,38 @@ export namespace Components {
    * @returns HTML string for the panels
    */
   export function panels(panels: Panel[], attributes?: Component, activeid?: number): string {
-    return /*html*/ `<vscode-panels ${renderAttributes(attributes)} ${activeid ? `activeid="tab-${activeid}"` : ""}>
-      ${panels.map((panel, index) => /*html*/ `<vscode-panel-tab id="tab-${index + 1}">${panel.title.toUpperCase()}${panel.badge ? badge(panel.badge, true) : ''}</vscode-panel-tab>`).join("")}
-      ${panels.map((panel, index) => /*html*/ `<vscode-panel-view id="view-${index + 1}" ${panel.class ? `class="${panel.class}"` : ''}>${panel.content}</vscode-panel-view>`).join("")}
-    </vscode-panels>`;
+    return /*html*/ `<vscode-tabs ${renderAttributes(attributes)} ${activeid ? `selected-index="${activeid - 1}"` : ""}>
+      ${panels.map((panel, index) => /*html*/ `<vscode-tab-header slot="header">${panel.title.toUpperCase()}${panel.badge ? ' ' + badge(panel.badge, true) : ''}</vscode-tab-header>`).join("")}
+      ${panels.map((panel, index) => /*html*/ `<vscode-tab-panel ${panel.class ? `class="${panel.class}"` : ''}>${panel.content}</vscode-tab-panel>`).join("")}
+    </vscode-tabs>`;
   }
 
   /**
-   * Generate a data grid component
+   * Generate a table component (replaces data grid)
    * @param grid - Grid configuration
    * @param content - Array of data to display
-   * @returns HTML string for the data grid
+   * @returns HTML string for the table
    */
   export function dataGrid<T>(grid: DataGrid<T>, content: T[]): string {
-    return /*html*/ `<vscode-data-grid ${renderAttributes(grid, "columns", "stickyHeader", "rowClass", "headerClass")} ${gridTemplateColumns(grid)}>
+    const columnsArray = grid.columns.map(col => col.size || 'auto');
+    return /*html*/ `<vscode-table ${renderAttributes(grid, "columns", "stickyHeader", "rowClass", "headerClass")} bordered columns='${JSON.stringify(columnsArray)}'>
         ${renderHeader(grid)}
-        ${content.map(row => renderRow(grid, row)).join("")}
-      </vscode-data-grid>`;
+        <vscode-table-body>
+          ${content.map(row => renderRow(grid, row)).join("")}
+        </vscode-table-body>
+      </vscode-table>`;
   }
 
   /**
-   * Generate grid-template-columns CSS attribute
-   * @param grid - Grid configuration
-   * @returns CSS attribute string or empty string
-   */
-  function gridTemplateColumns<T>(grid: DataGrid<T>) {
-    const attemptToSize = grid.columns.some(col => col.size);
-    if (attemptToSize) {
-      return `grid-template-columns="${grid.columns.map(col => col.size ? col.size : "auto").join(" ")}"`;
-    } else {
-      return ``;
-    }
-  }
-
-  /**
-   * Render the header row for a data grid
+   * Render the header row for a table
    * @param grid - Grid configuration
    * @returns HTML string for the header row
    */
   function renderHeader<T>(grid: DataGrid<T>) {
     if (grid.columns.filter(col => col.title).length) {
-      return /*html*/ `<vscode-data-grid-row row-type="${grid.stickyHeader ? "sticky-header" : "header"}" class="${grid.headerClass}"}>
-        ${grid.columns.map((col, index) => /*html*/ `<vscode-data-grid-cell cell-type="columnheader" grid-column="${index + 1}">${col.title || ""}</vscode-data-grid-cell>`).join("")}
-      </vscode-data-grid-row>`;
+      return /*html*/ `<vscode-table-header class="${grid.headerClass || ''}">
+        ${grid.columns.map((col, index) => /*html*/ `<vscode-table-header-cell>${col.title || ""}</vscode-table-header-cell>`).join("")}
+      </vscode-table-header>`;
     }
     else {
       return "";
@@ -319,15 +308,15 @@ export namespace Components {
   }
 
   /**
-   * Render a data row for a data grid
+   * Render a data row for a table
    * @param grid - Grid configuration
    * @param row - Data row to render
    * @returns HTML string for the data row
    */
   function renderRow<T>(grid: DataGrid<T>, row: T) {
-    return /*html*/ `<vscode-data-grid-row class="${grid.rowClass?.(row)}"}>
-        ${grid.columns.map((col, index) => /*html*/ `<vscode-data-grid-cell grid-column="${index + 1}" class="${col.cellClass?.(row) || ''}">${col.cellValue(row)}</vscode-data-grid-cell>`).join("")}
-      </vscode-data-grid-row>`;
+    return /*html*/ `<vscode-table-row class="${grid.rowClass?.(row) || ''}">
+        ${grid.columns.map((col, index) => /*html*/ `<vscode-table-cell class="${col.cellClass?.(row) || ''}">${col.cellValue(row)}</vscode-table-cell>`).join("")}
+      </vscode-table-row>`;
   }
 
   /**

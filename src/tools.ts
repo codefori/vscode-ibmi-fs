@@ -159,21 +159,21 @@ function castIfNeeded(columnName: string, length: number, hasFullSQL?: boolean):
  * @returns HTML string for the table
  */
 export function generateTableHtml(columns: Map<string, string>, obj: any): string {
-  let html = `<vscode-data-grid>`;
+  let html = `<vscode-table bordered>`;
 
   columns.forEach((label, key) => {
     if (key in obj[0]) {
       let value = obj[0][key as keyof typeof obj];
       if (!value)
         value = "-"
-      html = html.trim() + `<vscode-data-grid-row>
-        <vscode-data-grid-cell grid-column="1"><b>${label}</b></vscode-data-grid-cell>
-        <vscode-data-grid-cell grid-column="2">${infoValue(value)}</vscode-data-grid-cell>
-        </vscode-data-grid-row>`;
+      html = html.trim() + `<vscode-table-row>
+        <vscode-table-cell><b>${label}</b></vscode-table-cell>
+        <vscode-table-cell>${infoValue(value)}</vscode-table-cell>
+        </vscode-table-row>`;
     }
   });
 
-  html = html.trim() + `</vscode-data-grid>`;
+  html = html.trim() + `</vscode-table>`;
 
   return html;
 }
@@ -188,21 +188,21 @@ export function generateTableHtml(columns: Map<string, string>, obj: any): strin
 export function generateTableHtmlCode(columns: Map<string, string>, obj: any, inJson: string): string {
   let lblarray: string[] = JSON.parse(inJson)
 
-  let html = `<vscode-data-grid>`;
+  let html = `<vscode-table bordered>`;
 
   columns.forEach((label, key) => {
     if (key in obj[0]) {
       let value = obj[0][key as keyof typeof obj];
       if (!value)
         value = "-"
-      html = html.trim() + `<vscode-data-grid-row>
-        <vscode-data-grid-cell grid-column="1"><b>${label}</b></vscode-data-grid-cell>
-        <vscode-data-grid-cell grid-column="2">${lblarray.includes(key) ? '<code>' + value + '</code>' : value}</vscode-data-grid-cell>
-        </vscode-data-grid-row>`;
+      html = html.trim() + `<vscode-table-row>
+        <vscode-table-cell><b>${label}</b></vscode-table-cell>
+        <vscode-table-cell>${lblarray.includes(key) ? '<code>' + value + '</code>' : value}</vscode-table-cell>
+        </vscode-table-row>`;
     }
   });
 
-  html = html.trim() + `</vscode-data-grid>`;
+  html = html.trim() + `</vscode-table>`;
 
   return html;
 }
@@ -299,10 +299,10 @@ export function generateDetailTable(options: DetailTableOptions): string {
         : escapeHtml(value);
       
       rows.push(`
-      <vscode-data-grid-row>
-        <vscode-data-grid-cell grid-column="1" style="font-weight: 600; color: var(--vscode-descriptionForeground);">${escapeHtml(label)}</vscode-data-grid-cell>
-        <vscode-data-grid-cell grid-column="2">${displayValue}</vscode-data-grid-cell>
-      </vscode-data-grid-row>`);
+      <vscode-table-row>
+        <vscode-table-cell style="font-weight: 600; color: var(--vscode-descriptionForeground);">${escapeHtml(label)}</vscode-table-cell>
+        <vscode-table-cell>${displayValue}</vscode-table-cell>
+      </vscode-table-row>`);
     }
   });
 
@@ -320,42 +320,32 @@ export function generateDetailTable(options: DetailTableOptions): string {
   <div class="detail-table-container">
     <style>
       .detail-table-container {
-        display: block;
-        position: relative;
-        height: auto;
-        overflow: visible;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
       }
       
-      .detail-table-container vscode-data-grid {
-        border: 1px solid var(--vscode-panel-border);
-        border-radius: 4px;
-        display: grid !important;
-        height: auto !important;
-        min-height: 0 !important;
-        max-height: none !important;
+      .detail-table-container vscode-table {
+        width: 100%;
       }
       
-      .detail-table-container vscode-data-grid-row {
-        border-bottom: 1px solid var(--vscode-panel-border);
-      }
-      
-      .detail-table-container vscode-data-grid-row:last-child {
-        border-bottom: none;
-      }
-      
-      .detail-table-container vscode-data-grid-row:hover {
-        background-color: var(--vscode-list-hoverBackground);
-      }
-      
-      .detail-table-container vscode-data-grid-cell[grid-column="1"] {
+      .detail-table-container vscode-table-cell:first-child {
         padding: 12px 16px;
         font-weight: 600;
         color: var(--vscode-descriptionForeground);
+        white-space: normal;
+        word-wrap: break-word;
       }
       
-      .detail-table-container vscode-data-grid-cell[grid-column="2"] {
+      .detail-table-container vscode-table-cell:last-child {
         padding: 12px 16px;
         word-break: break-word;
+        white-space: normal;
+        word-wrap: break-word;
       }
       
       .detail-table-container code {
@@ -374,15 +364,15 @@ export function generateDetailTable(options: DetailTableOptions): string {
     </style>
     
     ${title || subtitle ? `
-    <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid var(--vscode-panel-border);">
+    <div style="margin-top: 20px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid var(--vscode-panel-border); width: 100%;">
       ${title ? `<h1 style="margin: 0 0 8px 0; font-size: 1.8em; font-weight: 600;">${escapeHtml(title)}</h1>` : ''}
       ${subtitle ? `<div style="color: var(--vscode-descriptionForeground); font-size: 0.95em;">${escapeHtml(subtitle)}</div>` : ''}
     </div>
     ` : ''}
     
-    <vscode-data-grid grid-template-columns="30% 70%">
+    <vscode-table columns='["30%", "70%"]'>
       ${rows.join('')}
-    </vscode-data-grid>
+    </vscode-table>
     
     ${actions.length > 0 ? `
     <div class="detail-table-actions">
@@ -446,27 +436,44 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     return str.replace(/[&<>"']/g, m => map[m]);
   };
 
-  // Generate grid-template-columns CSS
-  const gridTemplateColumns = columns.map(col => col.width || 'auto').join(' ');
+  // Calculate total fr units
+  const totalFr = columns.reduce((sum, col) => {
+    if (col.width && col.width.includes('fr')) {
+      const frValue = parseFloat(col.width.replace('fr', ''));
+      return sum + frValue;
+    }
+    return sum;
+  }, 0);
+  
+  // Generate columns array for vscode-table, converting fr to percentages
+  const columnsArray = columns.map(col => {
+    if (!col.width) return 'auto';
+    
+    if (col.width.includes('fr') && totalFr > 0) {
+      const frValue = parseFloat(col.width.replace('fr', ''));
+      const percentage = (frValue / totalFr) * 100;
+      return `${percentage.toFixed(2)}%`;
+    }
+    
+    return col.width;
+  });
 
   // Generate table rows
   const rows = data.map(row => {
     const cells = columns.map((col, index) => {
       const value = col.getValue(row);
       const cellClass = col.cellClass ? ` class="${col.cellClass}"` : '';
-      const gridCol = col.gridColumn || (index + 1);
-      return `<vscode-data-grid-cell grid-column="${gridCol}"${cellClass}>${escapeHtml(value)}</vscode-data-grid-cell>`;
+      return `<vscode-table-cell${cellClass}>${escapeHtml(value)}</vscode-table-cell>`;
     }).join('\n        ');
     
-    return `<vscode-data-grid-row>
+    return `<vscode-table-row>
         ${cells}
-      </vscode-data-grid-row>`;
+      </vscode-table-row>`;
   }).join('\n      ');
 
   // Generate table header
   const headerCells = columns.map((col, index) => {
-    const gridCol = col.gridColumn || (index + 1);
-    return `<vscode-data-grid-cell cell-type="columnheader" grid-column="${gridCol}">${escapeHtml(col.title)}</vscode-data-grid-cell>`;
+    return `<vscode-table-header-cell>${escapeHtml(col.title)}</vscode-table-header-cell>`;
   }).join('\n        ');
 
   return /*html*/`
@@ -507,8 +514,28 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
       font-size: 0.9em;
     }
     
-    vscode-data-grid {
+    vscode-table {
       width: 100%;
+    }
+    
+    vscode-table-cell {
+      white-space: normal;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    
+    vscode-table-header-cell {
+      white-space: normal;
+      word-wrap: break-word;
+    }
+    
+    /* Add spacing between buttons in action columns */
+    vscode-table-cell vscode-button {
+      margin-right: 8px;
+    }
+    
+    vscode-table-cell vscode-button:last-child {
+      margin-right: 0;
     }
     
     .empty-state {
@@ -530,15 +557,17 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     ` : ''}
     
     ${data.length > 0 ? `
-      <vscode-data-grid
-        ${stickyHeader ? 'generate-header="sticky"' : ''}
-        grid-template-columns="${gridTemplateColumns}"
+      <vscode-table
+        bordered-rows
+        columns='${JSON.stringify(columnsArray)}'
         aria-label="${escapeHtml(title)}">
-        <vscode-data-grid-row row-type="header">
+        <vscode-table-header>
           ${headerCells}
-        </vscode-data-grid-row>
-        ${rows}
-      </vscode-data-grid>
+        </vscode-table-header>
+        <vscode-table-body>
+          ${rows}
+        </vscode-table-body>
+      </vscode-table>
     ` : `
       <div class="empty-state">
         <p>${escapeHtml(emptyMessage)}</p>
@@ -547,20 +576,7 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
   </div>
   
   <script type="module">
-    import {
-      provideVSCodeDesignSystem,
-      vsCodeDataGrid,
-      vsCodeDataGridRow,
-      vsCodeDataGridCell
-    } from '@vscode/webview-ui-toolkit';
-    
-    // Register FAST Element components
-    provideVSCodeDesignSystem().register(
-      vsCodeDataGrid(),
-      vsCodeDataGridRow(),
-      vsCodeDataGridCell()
-    );
-    
+    // Components are automatically registered by @vscode-elements/elements bundle
     ${customScript}
   </script>
 </body>

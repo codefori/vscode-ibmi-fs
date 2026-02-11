@@ -377,7 +377,7 @@ export default class Jrn extends Base {
     // Custom CSS styles for the journal receiver chain table
     const customStyles = `
       /* Highlight receiver names with link color for better visibility */
-      .jrn-entries-table vscode-data-grid-cell[grid-column="1"] {
+      .jrn-entries-table vscode-table-cell:first-child {
         color: var(--vscode-textLink-foreground);
       }
     `;
