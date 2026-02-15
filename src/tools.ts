@@ -280,6 +280,38 @@ export function generateDetailTable(options: DetailTableOptions): string {
     return str.replace(/[&<>"']/g, m => map[m]);
   };
 
+  // Format value with icons and styling
+  const formatValue = (value: any, isCodeColumn: boolean): string => {
+    if (value === null || value === undefined || value.toString().trim() === '') {
+      return '<span style="color: var(--vscode-descriptionForeground); font-style: italic;">—</span>';
+    }
+    
+    const strValue = String(value).trim();
+    
+    // Handle YES/NO values with icons
+    if (strValue === 'YES') {
+      return '<span style="color: var(--vscode-testing-iconPassed, #73c991); font-weight: 600;">✓ YES</span>';
+    }
+    if (strValue === 'NO') {
+      return '<span style="color: var(--vscode-testing-iconFailed, #f48771); font-weight: 600;">✗ NO</span>';
+    }
+    
+    // Handle numeric values with formatting
+    if (!isNaN(Number(strValue)) && strValue !== '' && !isCodeColumn) {
+      const num = Number(strValue);
+      if (Number.isInteger(num)) {
+        return `<span style="font-family: var(--vscode-editor-font-family); color: var(--vscode-charts-blue);">${num.toLocaleString()}</span>`;
+      }
+    }
+    
+    // Handle code columns
+    if (isCodeColumn) {
+      return `<code style="background: var(--vscode-textCodeBlock-background); padding: 4px 8px; border-radius: 4px; font-family: var(--vscode-editor-font-family); border: 1px solid var(--vscode-panel-border); display: inline-block; max-width: 100%; overflow-x: auto;">${escapeHtml(value)}</code>`;
+    }
+    
+    return escapeHtml(value);
+  };
+
   // Generate table rows
   const rows: string[] = [];
   columns.forEach((label, key) => {
@@ -291,12 +323,7 @@ export function generateDetailTable(options: DetailTableOptions): string {
         return;
       }
       
-      // Non sostituire 0 con "-", gestisci solo null/undefined/stringa vuota
-      if (value === null || value === undefined || value.toString().trim() === '') value = "-";
-      
-      const displayValue = codeColumns.includes(key)
-        ? `<code style="background: var(--vscode-textCodeBlock-background); padding: 2px 6px; border-radius: 3px; font-family: var(--vscode-editor-font-family);">${escapeHtml(value)}</code>`
-        : escapeHtml(value);
+      const displayValue = formatValue(value, codeColumns.includes(key));
       
       rows.push(`
       <vscode-table-row>
@@ -322,35 +349,75 @@ export function generateDetailTable(options: DetailTableOptions): string {
       .detail-table-container {
         display: flex;
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
         padding: 0 20px;
         max-width: 1200px;
         margin: 0 auto;
         width: 100%;
+        box-sizing: border-box;
       }
       
       .detail-table-container vscode-table {
         width: 100%;
+        min-width: 100%;
+        border-radius: 6px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+        table-layout: fixed;
+      }
+      
+      .detail-table-container vscode-table-row {
+        display: grid !important;
+        grid-template-columns: 30% 70% !important;
+        width: 100% !important;
+        min-height: 48px;
+        align-items: center;
+      }
+      
+      .detail-table-container vscode-table-row:nth-child(even) {
+        background-color: var(--vscode-editor-background);
+      }
+      
+      .detail-table-container vscode-table-row:hover {
+        background-color: inherit !important;
+        transform: none !important;
+      }
+      
+      .detail-table-container vscode-table-cell:hover {
+        background-color: inherit !important;
       }
       
       .detail-table-container vscode-table-cell:first-child {
-        padding: 12px 16px;
+        padding: 16px 20px;
         font-weight: 600;
         color: var(--vscode-descriptionForeground);
         white-space: normal;
         word-wrap: break-word;
+        background-color: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.05);
+        border-right: 2px solid var(--vscode-panel-border);
+        min-height: 48px;
+        display: flex;
+        align-items: center;
       }
       
       .detail-table-container vscode-table-cell:last-child {
-        padding: 12px 16px;
+        padding: 16px 20px;
         word-break: break-word;
         white-space: normal;
         word-wrap: break-word;
+        font-family: var(--vscode-font-family);
+        min-height: 48px;
+        display: flex;
+        align-items: center;
       }
       
       .detail-table-container code {
         font-family: var(--vscode-editor-font-family);
         font-size: 0.95em;
+        background: var(--vscode-textCodeBlock-background);
+        padding: 4px 8px;
+        border-radius: 4px;
+        border: 1px solid var(--vscode-panel-border);
       }
       
       .detail-table-actions {
@@ -364,13 +431,13 @@ export function generateDetailTable(options: DetailTableOptions): string {
     </style>
     
     ${title || subtitle ? `
-    <div style="margin-top: 20px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid var(--vscode-panel-border); width: 100%;">
-      ${title ? `<h1 style="margin: 0 0 8px 0; font-size: 1.8em; font-weight: 600;">${escapeHtml(title)}</h1>` : ''}
-      ${subtitle ? `<div style="color: var(--vscode-descriptionForeground); font-size: 0.95em;">${escapeHtml(subtitle)}</div>` : ''}
+    <div style="margin-top: 20px; margin-bottom: 24px; padding: 16px 20px; background: linear-gradient(135deg, var(--vscode-editor-background) 0%, rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.03) 100%); border-left: 4px solid var(--vscode-focusBorder); border-radius: 4px; width: 100%; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);">
+      ${title ? `<h1 style="margin: 0 0 8px 0; font-size: 1.8em; font-weight: 600; color: var(--vscode-foreground);">${escapeHtml(title)}</h1>` : ''}
+      ${subtitle ? `<div style="color: var(--vscode-descriptionForeground); font-size: 0.95em; margin-top: 4px;">${escapeHtml(subtitle)}</div>` : ''}
     </div>
     ` : ''}
     
-    <vscode-table columns='["30%", "70%"]'>
+    <vscode-table columns='["35%", "65%"]'>
       ${rows.join('')}
     </vscode-table>
     
@@ -436,6 +503,33 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     return str.replace(/[&<>"']/g, m => map[m]);
   };
 
+  // Format value with icons and styling for FastTable
+  const formatFastValue = (value: string | number): string => {
+    if (value === null || value === undefined || value === '') {
+      return '<span style="color: var(--vscode-descriptionForeground); font-style: italic;">—</span>';
+    }
+    
+    const strValue = String(value).trim();
+    
+    // Handle YES/NO values with icons
+    if (strValue === 'YES') {
+      return '<span style="color: var(--vscode-testing-iconPassed, #73c991); font-weight: 600;">✓ YES</span>';
+    }
+    if (strValue === 'NO') {
+      return '<span style="color: var(--vscode-testing-iconFailed, #f48771); font-weight: 600;">✗ NO</span>';
+    }
+    
+    // Handle numeric values with formatting
+    if (!isNaN(Number(strValue)) && strValue !== '') {
+      const num = Number(strValue);
+      if (Number.isInteger(num) && num !== 0) {
+        return `<span style="font-family: var(--vscode-editor-font-family); color: var(--vscode-charts-blue);">${num.toLocaleString()}</span>`;
+      }
+    }
+    
+    return escapeHtml(value);
+  };
+
   // Calculate total fr units
   const totalFr = columns.reduce((sum, col) => {
     if (col.width && col.width.includes('fr')) {
@@ -463,7 +557,7 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     const cells = columns.map((col, index) => {
       const value = col.getValue(row);
       const cellClass = col.cellClass ? ` class="${col.cellClass}"` : '';
-      return `<vscode-table-cell${cellClass}>${escapeHtml(value)}</vscode-table-cell>`;
+      return `<vscode-table-cell${cellClass}>${formatFastValue(value)}</vscode-table-cell>`;
     }).join('\n        ');
     
     return `<vscode-table-row>
@@ -498,35 +592,70 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     }
     
     .header {
-      margin-bottom: 20px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid var(--vscode-panel-border);
+      margin-top: 0;
+      margin-bottom: 24px;
+      padding: 16px 20px;
+      background: linear-gradient(135deg, var(--vscode-editor-background) 0%, rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.03) 100%);
+      border-left: 4px solid var(--vscode-focusBorder);
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     }
     
     .header h1 {
-      margin: 0 0 10px 0;
-      font-size: 1.5em;
+      margin: 0 0 8px 0;
+      font-size: 1.8em;
       font-weight: 600;
+      color: var(--vscode-foreground);
     }
     
     .header .info {
       color: var(--vscode-descriptionForeground);
-      font-size: 0.9em;
+      font-size: 0.95em;
+      margin-top: 4px;
     }
     
     vscode-table {
       width: 100%;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+    }
+    
+    vscode-table-header {
+      background: linear-gradient(180deg, rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.08) 0%, rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.05) 100%);
+      border-bottom: 2px solid var(--vscode-focusBorder);
+    }
+    
+    vscode-table-header-cell {
+      white-space: normal;
+      word-wrap: break-word;
+      padding: 14px 16px;
+      font-weight: 700;
+      font-size: 0.95em;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--vscode-foreground);
+    }
+    
+    vscode-table-row {
+      transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+    
+    vscode-table-row:nth-child(even) {
+      background-color: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.02);
+    }
+    
+    vscode-table-row:hover {
+      background-color: var(--vscode-list-hoverBackground);
+      transform: translateX(2px);
     }
     
     vscode-table-cell {
       white-space: normal;
       word-wrap: break-word;
       overflow-wrap: break-word;
-    }
-    
-    vscode-table-header-cell {
-      white-space: normal;
-      word-wrap: break-word;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.08);
     }
     
     /* Add spacing between buttons in action columns */
