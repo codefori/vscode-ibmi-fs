@@ -402,7 +402,7 @@ function renderEntries(entries: Entry[], name: string) {
     emptyMessage: 'No entries in this binding directory.',
     customStyles: customStyles,
     customScript: ""
-  });
+  }) + `</div>`;
 }
 
 /**
