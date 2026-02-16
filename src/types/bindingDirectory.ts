@@ -388,7 +388,7 @@ function renderEntries(entries: Entry[], name: string) {
 
   const customStyles = `
     /* Custom styles for object name cells */
-    .modules-entries-table vscode-data-grid-cell[grid-column="1"] {
+    .modules-entries-table vscode-table-cell:first-child {
       color: var(--vscode-textLink-foreground);
     }
   `;
@@ -402,7 +402,7 @@ function renderEntries(entries: Entry[], name: string) {
     emptyMessage: 'No entries in this binding directory.',
     customStyles: customStyles,
     customScript: ""
-  });
+  }) + `</div>`;
 }
 
 /**
@@ -419,7 +419,7 @@ function renderExports(exports: Export[]) {
 
   const customStyles = `
     /* Custom styles for procedure name cells */
-    .exports-entries-bd-table vscode-data-grid-cell[grid-column="1"] {
+    .exports-entries-bd-table vscode-table-cell:first-child {
       color: var(--vscode-textLink-foreground);
     }
   `;

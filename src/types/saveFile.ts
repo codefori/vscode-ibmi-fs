@@ -1331,7 +1331,8 @@ export class SaveFile extends Base {
         FROM TABLE (
             QSYS2.SAVE_FILE_OBJECTS(
         SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
-        )`);
+        )
+        where member_name is not null`);
       this.members.push(...memberRows.map(this.toEntryMember));
 
       // Fetch spooled files
@@ -1574,7 +1575,7 @@ function renderObjects(entries: Object[]) {
   // Custom CSS styles for the objects table
   const customStyles = `
       /* Highlight object names with link color for better visibility */
-      .savf-object-table vscode-data-grid-cell[grid-column="1"] {
+      .savf-object-table vscode-table-cell:first-child {
       color: var(--vscode-textLink-foreground);
       }
   `;

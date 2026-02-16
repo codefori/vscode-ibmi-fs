@@ -37,8 +37,8 @@ export default abstract class Base implements CustomDocument {
 
   /**
    * Generate the HTML for the custom editor
-   * Uses the webview-ui-toolkit framework for components
-   * Reference: https://github.com/microsoft/vscode-webview-ui-toolkit/tree/main/src
+   * Uses the @vscode-elements/elements framework for components
+   * Reference: https://github.com/vscode-elements/elements
    * @returns HTML string to be displayed in the webview
    */
   abstract generateHTML(): string;

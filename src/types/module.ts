@@ -639,7 +639,7 @@ function renderProcs(exports: Entry[]) {
 
   const customStyles = `
     /* Custom styles for procedure name cells */
-    .procs-entries-table vscode-data-grid-cell[grid-column="1"] {
+    .procs-entries-table vscode-table-cell:first-child {
       color: var(--vscode-textLink-foreground);
     }
   `;
@@ -694,7 +694,7 @@ function renderExports(exports: ImpExport[]) {
 
   const customStyles = `
     /* Custom styles for procedure name cells */
-    .exports-entries-table vscode-data-grid-cell[grid-column="1"] {
+    .exports-entries-table vscode-table-cell:first-child {
       color: var(--vscode-textLink-foreground);
     }
   `;

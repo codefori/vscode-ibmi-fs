@@ -285,8 +285,7 @@ This extension requires the [Code for IBM i](https://marketplace.visualstudio.co
 
 1. Connect to your IBM i system using Code for IBM i
 2. Navigate to the Object Browser
-3. Right-click on supported objects to see available actions
-4. Double-click on objects to open them in the custom editor
+3. Actions available inside the **Action Bar** (top right)
 
 ## Requirements
 

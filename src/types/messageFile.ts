@@ -113,7 +113,7 @@ export default class Msgf extends Base {
 
     const customStyles = `
       /* Custom styles for cells - specific to messagefile entries table */
-      .messagefile-entries-table vscode-data-grid-cell[grid-column="1"] {
+      .messagefile-entries-table vscode-table-cell:first-child {
         color: var(--vscode-textLink-foreground);
       }
     `;

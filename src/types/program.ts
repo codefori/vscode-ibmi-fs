@@ -411,7 +411,7 @@ function renderBounds(modules: Module[], srvpgms: Srvpgm[]) {
 
   const customStyles = `
     /* Custom styles for module name cells */
-    .modules-entries-table vscode-data-grid-cell[grid-column="1"] {
+    .modules-entries-table vscode-table-cell:first-child {
       color: var(--vscode-textLink-foreground);
     }
   `;
@@ -434,7 +434,7 @@ function renderBounds(modules: Module[], srvpgms: Srvpgm[]) {
 
   const customStylesSrvpgm = `
     /* Custom styles for service program name cells */
-    .srvpgm-entries-table vscode-data-grid-cell[grid-column="1"] {
+    .srvpgm-entries-table vscode-table-cell:first-child {
       color: var(--vscode-textLink-foreground);
     }
   `;
@@ -466,7 +466,7 @@ function renderExports(exports: Export[]) {
 
   const customStyles = `
     /* Custom styles for procedure name cells */
-    .exports-entries-table vscode-data-grid-cell[grid-column="1"] {
+    .exports-entries-table vscode-table-cell:first-child {
       color: var(--vscode-textLink-foreground);
     }
   `;
