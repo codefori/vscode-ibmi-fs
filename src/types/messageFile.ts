@@ -21,6 +21,7 @@ import { getInstance } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import { generateFastTable, FastTableColumn } from "../tools";
 import * as vscode from 'vscode';
+import { t } from '../l10n';
 
 /**
  * Interface representing a message file entry
@@ -89,7 +90,7 @@ export default class Msgf extends Base {
       this._entries = [];
       this._entries.push(...entryRows.map(this.toEntry));
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -102,13 +103,13 @@ export default class Msgf extends Base {
   generateHTML(): string {
     // Define table columns with widths
     const columns: FastTableColumn<Entry>[] = [
-      { title: "MSGID", getValue: e => e.msgid, width: "0.25fr" },
-      { title: "First Level", getValue: e => e.msgtxt1, width: "1fr" },
-      { title: "Second Level", getValue: e => e.msgtxt2, width: "2fr" },
-      { title: "Sev.", getValue: e => e.severity, width: "0.2fr" },
-      { title: "Reply Type", getValue: e => e.replytype, width: "0.2fr" },
-      { title: "Reply Dft", getValue: e => e.replydft, width: "0.2fr" },
-      { title: "Reply Valid", getValue: e => e.replyvalid, width: "0.2fr" }
+      { title: t("MSGID"), getValue: e => e.msgid, width: "0.25fr" },
+      { title: t("First Level"), getValue: e => e.msgtxt1, width: "1fr" },
+      { title: t("Second Level"), getValue: e => e.msgtxt2, width: "2fr" },
+      { title: t("Sev."), getValue: e => String(e.severity), width: "0.2fr" },
+      { title: t("Reply Type"), getValue: e => e.replytype, width: "0.2fr" },
+      { title: t("Reply Dft"), getValue: e => e.replydft, width: "0.2fr" },
+      { title: t("Reply Valid"), getValue: e => e.replyvalid, width: "0.2fr" }
     ];
 
     const customStyles = `
@@ -119,12 +120,12 @@ export default class Msgf extends Base {
     `;
 
     return `<div class="messagefile-entries-table">` + generateFastTable({
-      title: `Message File: ${this.library}/${this.name}`,
-      subtitle: `Total Messages: ${this._entries.length}`,
+      title: t("Message File: {0}/{1}", this.library, this.name),
+      subtitle: t("Total Messages: {0}", String(this._entries.length)),
       columns: columns,
       data: this._entries,
       stickyHeader: true,
-      emptyMessage: 'No messages found in this message file.',
+      emptyMessage: t("No messages found in this message file."),
       customStyles: customStyles,
     }) + `</div>`;
   }

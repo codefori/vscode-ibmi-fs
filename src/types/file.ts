@@ -24,6 +24,7 @@ import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, ge
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
+import { t } from '../l10n';
 
 /**
  * Namespace containing actions for FILE objects
@@ -174,7 +175,7 @@ export default class File extends Base {
         await this.fetchStatsIndex();
       }
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -188,28 +189,28 @@ export default class File extends Base {
     const connection = ibmi?.getConnection();
     if (connection) {
       this.columns =new Map<string, string>([
-        ['TABLE_SCHEMA','SQL schema name'],
-        ['TABLE_NAME','SQL table name'],
-        ['SQL_OBJECT_TYPE','SQL object type'],
-        ['COLUMN_COUNT','Column count'],
-        ['IS_INSERTABLE_INTO','Is insertable into'],
-        ['TABLE_TEXT','Text'],
-        ['TABLE_OWNER','Owner'],
-        ['TABLE_DEFINER','Created by user'],
-        ['OBJCREATED','Creation date/time'],
-        ['LAST_ALTERED_TIMESTAMP','Last altered date/time'],
-        ['LAST_USED_TIMESTAMP','Last used date'],
-        ['DAYS_USED_COUNT','Days used count'],
-        ['OBJSIZE','Object size'],
-        ['IASP_NAME','iASP'],
-        ['JOURNALED','Currently journaled'],
-        ['JOURNAL_NAME','Current or last journal'],
-        ['ENABLED','Enabled'],
-        ['MAINTENANCE','Maintained by'],
-        ['REFRESH','Refresh type'],
-        ['REFRESH_TIME','Last refresh date/time'],
-        ['MQT_DEFINITION','MQT definition'],
-        ['ISOLATION','Isolation level']
+        ['TABLE_SCHEMA', t('SQL schema name')],
+        ['TABLE_NAME', t('SQL table name')],
+        ['SQL_OBJECT_TYPE', t('SQL object type')],
+        ['COLUMN_COUNT', t('Column count')],
+        ['IS_INSERTABLE_INTO', t('Is insertable into')],
+        ['TABLE_TEXT', t('Text')],
+        ['TABLE_OWNER', t('Owner')],
+        ['TABLE_DEFINER', t('Created by user')],
+        ['OBJCREATED', t('Creation date/time')],
+        ['LAST_ALTERED_TIMESTAMP', t('Last altered date/time')],
+        ['LAST_USED_TIMESTAMP', t('Last used date')],
+        ['DAYS_USED_COUNT', t('Days used count')],
+        ['OBJSIZE', t('Object size')],
+        ['IASP_NAME', t('iASP')],
+        ['JOURNALED', t('Currently journaled')],
+        ['JOURNAL_NAME', t('Current or last journal')],
+        ['ENABLED', t('Enabled')],
+        ['MAINTENANCE', t('Maintained by')],
+        ['REFRESH', t('Refresh type')],
+        ['REFRESH_TIME', t('Last refresh date/time')],
+        ['MQT_DEFINITION', t('MQT definition')],
+        ['ISOLATION', t('Isolation level')]
       ]);
 
       this.file = await connection.runSQL(
@@ -243,7 +244,7 @@ export default class File extends Base {
                 AND SYSTEM_TABLE_NAME = '${this.name}'
           Fetch first row only`)
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   } 
@@ -257,10 +258,10 @@ export default class File extends Base {
     const connection = ibmi?.getConnection();
     if (connection) {
       this.columnsview =new Map<string, string>([
-        ['VIEW_DEFINITION','View definition'],
-        ['IS_INSERTABLE_INTO','Is insertable into'],
-        ['IS_UPDATABLE','Is updatable'],
-        ['IS_DELETABLE','Is deletable']
+        ['VIEW_DEFINITION', t('View definition')],
+        ['IS_INSERTABLE_INTO', t('Is insertable into')],
+        ['IS_UPDATABLE', t('Is updatable')],
+        ['IS_DELETABLE', t('Is deletable')]
       ]);
 
       this.view = await connection.runSQL(
@@ -279,7 +280,7 @@ export default class File extends Base {
                     AND SYSTEM_VIEW_NAME = '${this.name}'
           Fetch first row only`)
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   } 
@@ -324,7 +325,7 @@ export default class File extends Base {
                 AND SYSTEM_TABLE_NAME = '${this.name}'
           Fetch first row only`)
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   } 
@@ -350,7 +351,7 @@ export default class File extends Base {
           )`)
       this.depobjs.push(...entryRows.map(this.toDepObj));
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -376,7 +377,7 @@ export default class File extends Base {
               AND TABLE_NAME = '${this.name}'`)
       this.members.push(...entryRows.map(this.toMember));
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -390,20 +391,20 @@ export default class File extends Base {
     const connection = ibmi?.getConnection();
     if (connection) {
       this.columns =new Map<string, string>([
-        ['INDEX_SCHEMA','SQL schema name'],
-        ['INDEX_NAME','SQL index name'],
-        ['SQL_OBJECT_TYPE','SQL object type'],
-        ['COLUMN_COUNT','Column count'],
-        ['INDEX_TEXT','Text'],
-        ['INDEX_OWNER','Owner'],
-        ['INDEX_DEFINER','Created by user'],
-        ['OBJCREATED','Creation date/time'],
-        ['LAST_USED_TIMESTAMP','Last used date'],
-        ['DAYS_USED_COUNT','Days used count'],
-        ['OBJSIZE','Object size'],
-        ['IASP_NAME','iASP'],
-        ['JOURNALED','Currently journaled'],
-        ['JOURNAL_NAME','Current or last journal']
+        ['INDEX_SCHEMA', t('SQL schema name')],
+        ['INDEX_NAME', t('SQL index name')],
+        ['SQL_OBJECT_TYPE', t('SQL object type')],
+        ['COLUMN_COUNT', t('Column count')],
+        ['INDEX_TEXT', t('Text')],
+        ['INDEX_OWNER', t('Owner')],
+        ['INDEX_DEFINER', t('Created by user')],
+        ['OBJCREATED', t('Creation date/time')],
+        ['LAST_USED_TIMESTAMP', t('Last used date')],
+        ['DAYS_USED_COUNT', t('Days used count')],
+        ['OBJSIZE', t('Object size')],
+        ['IASP_NAME', t('iASP')],
+        ['JOURNALED', t('Currently journaled')],
+        ['JOURNAL_NAME', t('Current or last journal')]
       ]);
 
       this.file = await connection.runSQL(
@@ -429,7 +430,7 @@ export default class File extends Base {
                 AND SYSTEM_INDEX_NAME = '${this.name}'
           Fetch first row only`)
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -483,7 +484,7 @@ export default class File extends Base {
                 AND SYSTEM_INDEX_NAME = '${this.name}'
           Fetch first row only`)
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -496,23 +497,23 @@ export default class File extends Base {
   generateHTML(): string {
 
     const panels: Components.Panel[] = [
-      { title: "Detail", content: this.renderMainPanel() },
+      { title: t("Detail"), content: this.renderMainPanel() },
     ];
 
     if(this.objtype === 'VIEW') {
-      panels.push({ title: "View info", content: this.renderViewPanel() })
+      panels.push({ title: t("View info"), content: this.renderViewPanel() })
     }
 
     if(this.stats) {
-      panels.push({ title: "Statistics", content: this.renderStatsPanel() })
+      panels.push({ title: t("Statistics"), content: this.renderStatsPanel() })
     }
 
     if(this.depobjs.length>0){
-      panels.push({ title: "Dependent objects", content: this.renderDepObjs(), badge:this.depobjs.length });
+      panels.push({ title: t("Dependent objects"), content: this.renderDepObjs(), badge:this.depobjs.length });
     }
 
     if(this.members.length>0){
-      panels.push({ title: "Members", content: this.renderMembers(), badge:this.members.length });
+      panels.push({ title: t("Members"), content: this.renderMembers(), badge:this.members.length });
     }
 
     return Components.panels(panels);
@@ -527,8 +528,8 @@ export default class File extends Base {
   private renderMainPanel(): string {
     // Generate the detail table with file information
     return generateDetailTable({
-      title: `File: ${this.library}/${this.name}`,
-      subtitle: 'File Information',
+      title: t("File: {0}/{1}", this.library, this.name),
+      subtitle: t('File Information'),
       columns: this.columns,
       data: this.file,
       codeColumns:['MQT_DEFINITION'],
@@ -613,12 +614,12 @@ export default class File extends Base {
   renderDepObjs() {
     // Define table columns with their properties
     const columns: FastTableColumn<DepObj>[] = [
-      { title: "Schema", width: "1fr", getValue: e => e.schema },
-      { title: "Name", width: "1fr", getValue: e => e.name },
-      { title: "SQL type", width: "0.7fr", getValue: e => e.type },
-      { title: "Owner", width: "0.7fr", getValue: e => e.owner },
-      { title: "Text", width: "2fr", getValue: e => e.text },
-      { title: "Last altered", width: "0.7fr", getValue: e => e.altered }
+      { title: t("Schema"), width: "1fr", getValue: e => e.schema },
+      { title: t("Name"), width: "1fr", getValue: e => e.name },
+      { title: t("SQL type"), width: "0.7fr", getValue: e => e.type },
+      { title: t("Owner"), width: "0.7fr", getValue: e => e.owner },
+      { title: t("Text"), width: "2fr", getValue: e => e.text },
+      { title: t("Last altered"), width: "0.7fr", getValue: e => e.altered }
     ];
 
     // Generate and return the complete table HTML
@@ -628,7 +629,7 @@ export default class File extends Base {
       columns: columns,
       data: this.depobjs,
       stickyHeader: true,
-      emptyMessage: 'No dependent objects found',
+      emptyMessage: t('No dependent objects found'),
     }) + ``;
   }
 
@@ -641,12 +642,12 @@ export default class File extends Base {
   renderMembers() {
     // Define table columns with their properties
     const columns: FastTableColumn<Member>[] = [
-      { title: "Member", width: "1fr", getValue: e => e.member  },
-      { title: "Rows", width: "0.7fr", getValue: e => e.rows },
-      { title: "Deleted rows", width: "0.7fr", getValue: e => e.delrows },
-      { title: "Size", width: "0.7fr", getValue: e => e.size },
-      { title: "Last change", width: "1fr", getValue: e => e.lastchg },
-      { title: "Text", width: "1fr", getValue: e => e.text }
+      { title: t("Member"), width: "1fr", getValue: e => e.member  },
+      { title: t("Rows"), width: "0.7fr", getValue: e => e.rows },
+      { title: t("Deleted rows"), width: "0.7fr", getValue: e => e.delrows },
+      { title: t("Size"), width: "0.7fr", getValue: e => e.size },
+      { title: t("Last change"), width: "1fr", getValue: e => e.lastchg },
+      { title: t("Text"), width: "1fr", getValue: e => e.text }
     ];
 
     // Generate and return the complete table HTML
@@ -656,7 +657,7 @@ export default class File extends Base {
       columns: columns,
       data: this.members,
       stickyHeader: true,
-      emptyMessage: 'No members objects found',
+      emptyMessage: t('No members objects found'),
     }) + ``;
   }
 

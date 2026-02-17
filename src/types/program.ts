@@ -24,6 +24,7 @@ import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getColumns, generateDetailTable, FastTableColumn, generateFastTable } from "../tools";
+import { t } from '../l10n';
 
 /**
  * Interface representing a bound module within a program
@@ -215,7 +216,7 @@ export class Pgm extends Base {
 
       this.isSrvpgm = this.pgm[0].OBJECT_TYPE === '*SRVPGM';
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -269,7 +270,7 @@ export class Pgm extends Base {
 
       this.srvpgms.push(...entryRows.map(toSrvpgm));
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -290,7 +291,7 @@ export class Pgm extends Base {
 
       this.exports.push(...entryRows.map(toExport));
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -300,14 +301,14 @@ export class Pgm extends Base {
    * @returns HTML string containing tabbed interface with program details, bounds, and exports
    */
   generateHTML(): string {
-    const panels: Components.Panel[] = [{ title: "Detail", content: this.renderPgmPanel() }];
+    const panels: Components.Panel[] = [{ title: t("Detail"), content: this.renderPgmPanel() }];
 
     if (this.srvpgms.length + this.modules.length > 0) {
-      panels.push({ title: "Bounds", badge: this.srvpgms.length + this.modules.length, content: renderBounds(this.modules, this.srvpgms) })
+      panels.push({ title: t("Bounds"), badge: this.srvpgms.length + this.modules.length, content: renderBounds(this.modules, this.srvpgms) })
     }
 
     if (this.isSrvpgm) {
-      panels.push({ title: "Exports", badge: this.exports.length, content: renderExports(this.exports) });
+      panels.push({ title: t("Exports"), badge: this.exports.length, content: renderExports(this.exports) });
     }
 
     return Components.panels(panels);
@@ -336,8 +337,8 @@ export class Pgm extends Base {
    */
   private renderPgmPanel(): string {
     return generateDetailTable({
-      title: `${this.isSrvpgm ? 'Service Program' : 'Program'}: ${this.library}/${this.name}`,
-      subtitle: `${this.isSrvpgm ? 'Service Program' : 'Program'} Information`,
+      title: t("{0}: {1}/{2}", this.isSrvpgm ? t('Service Program') : t('Program'), this.library, this.name),
+      subtitle: t("{0} Information", this.isSrvpgm ? t('Service Program') : t('Program')),
       columns: this.columns,
       data: this.pgm,
       codeColumns: ['COPYRIGHT_STRINGS', 'EXPORT_SIGNATURES'],
@@ -398,15 +399,15 @@ function toExport(row: Tools.DB2Row): Export {
  */
 function renderBounds(modules: Module[], srvpgms: Srvpgm[]) {
   let columnsmod: FastTableColumn<Module>[] = [
-    { title: "Module", width: "1fr", getValue: e => e.module },
-    { title: "Type", width: "0.5fr", getValue: e => e.type },
-    { title: "Creation", width: "1fr", getValue: e => e.creation },
-    { title: "Source", width: "2fr", getValue: e => e.source },
-    { title: "Source Change", width: "1fr", getValue: e => e.sourcechg },
-    { title: "Debug Data", width: "0.5fr", getValue: e => e.debug },
-    { title: "Creation Release", width: "0.5fr", getValue: e => e.crtrls },
-    { title: "Target Release", width: "0.5fr", getValue: e => e.tgtrls },
-    { title: "RTVCLSRC", width: "0.7fr", getValue: e => e.rtvclsrc },
+    { title: t("Module"), width: "1fr", getValue: e => e.module },
+    { title: t("Type"), width: "0.5fr", getValue: e => e.type },
+    { title: t("Creation"), width: "1fr", getValue: e => e.creation },
+    { title: t("Source"), width: "2fr", getValue: e => e.source },
+    { title: t("Source Change"), width: "1fr", getValue: e => e.sourcechg },
+    { title: t("Debug Data"), width: "0.5fr", getValue: e => e.debug },
+    { title: t("Creation Release"), width: "0.5fr", getValue: e => e.crtrls },
+    { title: t("Target Release"), width: "0.5fr", getValue: e => e.tgtrls },
+    { title: t("RTVCLSRC"), width: "0.7fr", getValue: e => e.rtvclsrc },
   ];
 
   const customStyles = `
@@ -417,19 +418,19 @@ function renderBounds(modules: Module[], srvpgms: Srvpgm[]) {
   `;
   
   let html = `<div class="modules-entries-table">` + generateFastTable({
-    title: `Modules`,
+    title: t(`Modules`),
     subtitle: ``,
     columns: columnsmod,
     data: modules,
     stickyHeader: true,
-    emptyMessage: 'No modules in this pgm.',
+    emptyMessage: t('No modules in this pgm.'),
     customStyles: customStyles,
   }) + `</div>${Components.divider()}`;
 
   let columnssrvpgm: FastTableColumn<Srvpgm>[] = [
-    { title: "Service program", width: "1.5fr", getValue: e => e.srvpgm },
-    { title: "Signature", width: "3fr", getValue: e => e.signature },
-    { title: "Activation", width: "1fr", getValue: e => e.activation },
+    { title: t("Service program"), width: "1.5fr", getValue: e => e.srvpgm },
+    { title: t("Signature"), width: "3fr", getValue: e => e.signature },
+    { title: t("Activation"), width: "1fr", getValue: e => e.activation },
   ];
 
   const customStylesSrvpgm = `
@@ -440,12 +441,12 @@ function renderBounds(modules: Module[], srvpgms: Srvpgm[]) {
   `;
   
   html = html.trim() + `<div class="srvpgm-entries-table">` + generateFastTable({
-    title: `Service Programs`,
+    title: t(`Service Programs`),
     subtitle: ``,
     columns: columnssrvpgm,
     data: srvpgms,
     stickyHeader: true,
-    emptyMessage: 'No service programs in this program.',
+    emptyMessage: t('No service programs in this program.'),
     customStyles: customStylesSrvpgm,
     customScript: ""
   }) + `</div>`;
@@ -460,8 +461,8 @@ function renderBounds(modules: Module[], srvpgms: Srvpgm[]) {
  */
 function renderExports(exports: Export[]) {
   const columns: FastTableColumn<Export>[] = [
-    { title: "Procedure", width: "1.5fr", getValue: e => e.method },
-    { title: "Usage", width: "0.5fr", getValue: e => e.usage },
+    { title: t("Procedure"), width: "1.5fr", getValue: e => e.method },
+    { title: t("Usage"), width: "0.5fr", getValue: e => e.usage },
   ];
 
   const customStyles = `
@@ -477,7 +478,7 @@ function renderExports(exports: Export[]) {
     columns: columns,
     data: exports,
     stickyHeader: true,
-    emptyMessage: 'No exports in this service program.',
+    emptyMessage: t('No exports in this service program.'),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;

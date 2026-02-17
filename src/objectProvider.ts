@@ -4,6 +4,7 @@ import Base from './types/base';
 import { generateError, generatePage } from './webviewToolkit';
 import { openSqlTemplate, openTextTemplate } from './tools';
 import path = require('path');
+import { t } from './l10n';
 
 import { Dtaara } from './types/dataArea';
 import { Dtaq } from './types/dataQueue';
@@ -179,7 +180,7 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
     });
 
     if (document.failedFetch) {
-      webviewPanel.webview.html = generateError(`Failed to fetch data. Please close this window.`);
+      webviewPanel.webview.html = generateError(t(`Failed to fetch data. Please close this window.`));
     } else {
       webviewPanel.webview.html = generatePage(document.generateHTML());
       webviewPanel.webview.onDidReceiveMessage(async body => {
@@ -274,7 +275,7 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
         }
     }
   } else {
-    throw new Error(`Invalid path.`);
+    throw new Error(t(`Invalid path.`));
   }
   return;
 }
@@ -296,7 +297,7 @@ async function shouldOpenInTextEditor(uri: vscode.Uri): Promise<boolean> {
       case 'QRYDFN':
         let qrysql=await fetchQrydfn(library,objectName);
         if(qrysql.trim()===''){
-          vscode.window.showErrorMessage(`Unable to fetch query definition.`);
+          vscode.window.showErrorMessage(t(`Unable to fetch query definition.`));
         } else {
           await openSqlTemplate(qrysql);
         }

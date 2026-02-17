@@ -3,6 +3,7 @@ import { getInstance } from "./ibmi";
 import { Components } from "./webviewToolkit";
 import { ObjectFilters } from '@halcyontech/vscode-ibmi-types';
 import * as vscode from 'vscode';
+import { t } from './l10n';
 
 /**
  * Column definition for FastTable
@@ -120,7 +121,10 @@ export async function getColumns(ibmi: IBMi, table: String, schema = 'QSYS2') {
     const name = column.COLUMN_NAME!.toString();
     const heading = parseHeading(column.COLUMN_HEADING!.toString());
     const length = Number(column.LENGTH);
-    columns.set(name, heading);
+    // Translate using the column name as key (more stable than heading)
+    // Falls back to heading if no translation exists for column name
+    const translatedLabel = t(name, heading);
+    columns.set(name, translatedLabel);
   });
 
   return columns;

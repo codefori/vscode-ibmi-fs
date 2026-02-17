@@ -25,6 +25,7 @@ import {
 import Base from "./base";
 import { getInstance } from "../ibmi";
 import path = require("path");
+import { t } from '../l10n';
 
 /**
  * Regular expression for parsing DDM file header information from DSPDDMF output
@@ -70,10 +71,10 @@ export class DdmFile extends Base {
         this.headers.shift();
         this.headers.shift();
       } else {
-        vscode.window.showErrorMessage(`Unable to display DDM file:\n${ddmf.stderr}`);
+        vscode.window.showErrorMessage(t("Unable to display DDM file:\n{0}", ddmf.stderr));
       }
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -160,8 +161,8 @@ export class DdmFile extends Base {
     data.push(tmpdata);
 
     return generateDetailTable({
-      title: `DDM File: ${this.library}/${this.name}`,
-      subtitle: "DDM File Information",
+      title: t("DDM File: {0}/{1}", this.library, this.name),
+      subtitle: t("DDM File Information"),
       columns: columns,
       data: data
     });

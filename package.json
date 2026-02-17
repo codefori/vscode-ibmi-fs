@@ -2,6 +2,7 @@
   "name": "vscode-ibmi-fs",
   "displayName": "IBM i FileSystem",
   "description": "File system provider for IBM i QSYS",
+  "l10n": "./l10n",
   "version": "0.0.3-dev0",
   "preview": true,
   "license": "MIT",

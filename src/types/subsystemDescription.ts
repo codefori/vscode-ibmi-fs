@@ -28,6 +28,7 @@ import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected } from "../tools";
 import ObjectProvider from '../objectProvider';
+import { t } from '../l10n';
 
 export namespace SubsystemActions {
   /**
@@ -87,7 +88,7 @@ export namespace SubsystemActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
         return false;
       }
 
@@ -98,21 +99,21 @@ export namespace SubsystemActions {
           WHERE SUBSYSTEM_DESCRIPTION = '${name}'
             AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${library}'`)
       if(sbsd[0].STATUS === "ACTIVE") {
-        vscode.window.showErrorMessage(`Sbsd ${library}/${name} already active`);
+        vscode.window.showErrorMessage(t("Sbsd {0}/{1} already active", library, name));
         return false;
       }
 
-      if (await vscode.window.showWarningMessage(`Are you sure you want to start ${library}/${name}?`, { modal: true }, "Start SBSD")) {
+      if (await vscode.window.showWarningMessage(t("Are you sure you want to start {0}/{1}?", library, name), { modal: true }, t("Start SBSD"))) {
         const cmdrun: CommandResult = await connection.runCommand({
           command: `STRSBS SBSD(${library}/${name})`,
           environment: `ile`
         });
 
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(`Subsystem ${library}/${name} activated.`);
+          vscode.window.showInformationMessage(t("Subsystem {0}/{1} activated.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to start subsystem ${library}/${name}:\n${cmdrun.stderr}`);
+          vscode.window.showErrorMessage(t("Unable to start subsystem {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
           return false;
         }
       }
@@ -120,7 +121,7 @@ export namespace SubsystemActions {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return false;
     }
   };
@@ -139,7 +140,7 @@ export namespace SubsystemActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
         return false;
       }
 
@@ -150,35 +151,35 @@ export namespace SubsystemActions {
           WHERE SUBSYSTEM_DESCRIPTION = '${name}'
             AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${library}'`)
       if(sbsd[0].STATUS === "INACTIVE") {
-        vscode.window.showErrorMessage(`Sbsd ${library}/${name} already inactive`);
+        vscode.window.showErrorMessage(t("Sbsd {0}/{1} already inactive", library, name));
         return false;
       }
 
       // Ask user to choose end option
       const endOption = await vscode.window.showQuickPick(
         [
-          { label: "*IMMED", description: "End immediately", value: "*IMMED" },
-          { label: "*CNTRLD", description: "Controlled end (default 30 sec delay)", value: "*CNTRLD" }
+          { label: "*IMMED", description: t("End immediately"), value: "*IMMED" },
+          { label: "*CNTRLD", description: t("Controlled end (default 30 sec delay)"), value: "*CNTRLD" }
         ],
         {
-          placeHolder: "Select how to end the subsystem",
-          title: `End Subsystem ${library}/${name}`,
+          placeHolder: t("Select how to end the subsystem"),
+          title: t("End Subsystem {0}/{1}", library, name),
           canPickMany: false
         }
       );
 
       if (endOption) {
-        if (await vscode.window.showWarningMessage(`Are you sure you want to end ${library}/${name} with option ${endOption.label}?`, { modal: true }, "End SBSD")) {
+        if (await vscode.window.showWarningMessage(t("Are you sure you want to end {0}/{1} with option {2}?", library, name, endOption.label), { modal: true }, t("End SBSD"))) {
           const cmdrun: CommandResult = await connection.runCommand({
             command: `ENDSBS SBS(${name}) OPTION(${endOption.value})`,
             environment: `ile`
           });
 
           if (cmdrun.code === 0) {
-            vscode.window.showInformationMessage(`Subsystem ${library}/${name} ended.`);
+            vscode.window.showInformationMessage(t("Subsystem {0}/{1} ended.", library, name));
             return true;
           } else {
-            vscode.window.showErrorMessage(`Unable to end subsystem ${library}/${name}:\n${cmdrun.stderr}`);
+            vscode.window.showErrorMessage(t("Unable to end subsystem {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
             return false;
           }
         } else {
@@ -189,7 +190,7 @@ export namespace SubsystemActions {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return false;
     }
   };
@@ -205,7 +206,7 @@ export namespace SubsystemActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      if (await vscode.window.showWarningMessage(`Are you sure you want to end job ${item.job} ?`, { modal: true }, "End job")) {
+      if (await vscode.window.showWarningMessage(t("Are you sure you want to end job {0} ?", item.job), { modal: true }, t("End job"))) {
 
         // Execute ENDJOB command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
@@ -215,17 +216,17 @@ export namespace SubsystemActions {
 
         // Check command execution result
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(`Job ended.`);
+          vscode.window.showInformationMessage(t("Job ended."));
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to end selected job:\n${cmdrun.stderr}`);
+          vscode.window.showErrorMessage(t("Unable to end selected job:\n{0}", String(cmdrun.stderr)));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return false;    
     }
   };
@@ -627,32 +628,32 @@ export class Sbsd extends Base {
    */
   generateHTML(): string {
     const panels: Components.Panel[] = [
-      { title: "Detail", content: this.renderPgmPanel() },
-      { title: "Pools", content: renderPools(this.pools), badge: this.pools.length }
+      { title: t("Detail"), content: this.renderPgmPanel() },
+      { title: t("Pools"), content: renderPools(this.pools), badge: this.pools.length }
     ];
 
     if (this.ajes.length > 0) {
-      panels.push({ title: "AJEs", badge: this.ajes.length, content: renderAjes(this.ajes) })
+      panels.push({ title: t("AJEs"), badge: this.ajes.length, content: renderAjes(this.ajes) })
     }
 
     if (this.wses.length > 0) {
-      panels.push({ title: "WSEs", badge: this.wses.length, content: renderWses(this.wses) })
+      panels.push({ title: t("WSEs"), badge: this.wses.length, content: renderWses(this.wses) })
     }
 
     if (this.jobqes.length > 0) {
-      panels.push({ title: "JOBQEs", badge: this.jobqes.length, content: renderJobqes(this.jobqes) })
+      panels.push({ title: t("JOBQEs"), badge: this.jobqes.length, content: renderJobqes(this.jobqes) })
     }
 
     if (this.rtges.length > 0) {
-      panels.push({ title: "RTGEs", badge: this.rtges.length, content: renderRtges(this.rtges) })
+      panels.push({ title: t("RTGEs"), badge: this.rtges.length, content: renderRtges(this.rtges) })
     }
 
     if (this.pjes.length > 0) {
-      panels.push({ title: "PJEs", badge: this.pjes.length, content: renderPjes(this.pjes) })
+      panels.push({ title: t("PJEs"), badge: this.pjes.length, content: renderPjes(this.pjes) })
     }
 
     if (this.sbs[0].STATUS==='ACTIVE') {
-      panels.push({ title: "JOBs", badge: this.jobs.length, content: renderJobs(this.jobs) })
+      panels.push({ title: t("JOBs"), badge: this.jobs.length, content: renderJobs(this.jobs) })
     }
 
     return Components.panels(panels);
@@ -709,7 +710,7 @@ export class Sbsd extends Base {
   private renderPgmPanel(): string {
     return generateDetailTable({
       title: `Subsystem Description: ${this.library}/${this.name}`,
-      subtitle: `Subsystem Description Information`,
+      subtitle: t(`Subsystem Description Information`),
       columns: this.columns,
       data: this.sbs,
       hideNullValues: true
@@ -837,8 +838,8 @@ function toJob(row: Tools.DB2Row): Job {
  */
 function renderPools(data: GenEntry[]) {
   const columns: FastTableColumn<GenEntry>[] = [
-    { title: "Pool ID", width: "1fr", getValue: e => e.value1 },
-    { title: "Pool Name", width: "2fr", getValue: e => e.value2 },
+    { title: t("Pool ID"), width: "1fr", getValue: e => e.value1 },
+    { title: t("Pool Name"), width: "2fr", getValue: e => e.value2 },
   ];
 
   return generateFastTable({
@@ -847,7 +848,7 @@ function renderPools(data: GenEntry[]) {
     columns: columns,
     data: data,
     stickyHeader: true,
-    emptyMessage: 'No pools for this subsystem.',
+    emptyMessage: t("No pools for this subsystem."),
     customScript: ""
   })
 }
@@ -859,8 +860,8 @@ function renderPools(data: GenEntry[]) {
  */
 function renderAjes(data: GenEntry[]) {
   const columns: FastTableColumn<GenEntry>[] = [
-    { title: "Autostart job", width: "1fr", getValue: e => e.value2 },
-    { title: "Job description", width: "2fr", getValue: e => e.value1 },
+    { title: t("Autostart job"), width: "1fr", getValue: e => e.value2 },
+    { title: t("Job description"), width: "2fr", getValue: e => e.value1 },
   ];
 
   const customStyles = `
@@ -875,7 +876,7 @@ function renderAjes(data: GenEntry[]) {
     columns: columns,
     data: data,
     stickyHeader: true,
-    emptyMessage: 'No AJE for this subsystem.',
+    emptyMessage: t("No AJE for this subsystem."),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;
@@ -888,11 +889,11 @@ function renderAjes(data: GenEntry[]) {
  */
 function renderWses(data: Wse[]) {
   const columns: FastTableColumn<Wse>[] = [
-    { title: "WS name", width: "1fr", getValue: e => e.wsname },
-    { title: "WS type", width: "1fr", getValue: e => e.wstype },
-    { title: "Jobd", width: "2fr", getValue: e => e.jobd},
-    { title: "Allocation", width: "1fr", getValue: e => e.alloc},
-    { title: "Max Active jobs", width: "1fr", getValue: e => e.maxact},
+    { title: t("WS name"), width: "1fr", getValue: e => e.wsname },
+    { title: t("WS type"), width: "1fr", getValue: e => e.wstype },
+    { title: t("Jobd"), width: "2fr", getValue: e => e.jobd},
+    { title: t("Allocation"), width: "1fr", getValue: e => e.alloc},
+    { title: t("Max Active jobs"), width: "1fr", getValue: e => e.maxact},
   ];
   
   return generateFastTable({
@@ -901,7 +902,7 @@ function renderWses(data: Wse[]) {
     columns: columns,
     data: data,
     stickyHeader: true,
-    emptyMessage: 'No WSE for this subsystem.',
+    emptyMessage: t("No WSE for this subsystem."),
     customScript: ""
   });
 }
@@ -913,14 +914,14 @@ function renderWses(data: Wse[]) {
  */
 function renderJobqes(data: Jobqe[]) {
   const columns: FastTableColumn<Jobqe>[] = [
-    { title: "Jobq", width: "1.5fr", getValue: e => e.name },
-    { title: "Status", width: "0.7fr", getValue: e => e.status },
-    { title: "Sequence", width: "0.5fr", getValue: e => e.seq },
-    { title: "Max jobs", width: "0.5fr", getValue: e => e.maxjobs },
-    { title: "ACT jobs", width: "0.5fr", getValue: e => e.act },
-    { title: "HLD jobs", width: "0.5fr", getValue: e => e.hold },
-    { title: "RLS jobs", width: "0.5fr", getValue: e => e.rel },
-    { title: "SCD jobs", width: "0.5fr", getValue: e => e.sched },
+    { title: t("Jobq"), width: "1.5fr", getValue: e => e.name },
+    { title: t("Status"), width: "0.7fr", getValue: e => e.status },
+    { title: t("Sequence"), width: "0.5fr", getValue: e => String(e.seq) },
+    { title: t("Max jobs"), width: "0.5fr", getValue: e => String(e.maxjobs) },
+    { title: t("ACT jobs"), width: "0.5fr", getValue: e => String(e.act) },
+    { title: t("HLD jobs"), width: "0.5fr", getValue: e => String(e.hold) },
+    { title: t("RLS jobs"), width: "0.5fr", getValue: e => String(e.rel) },
+    { title: t("SCD jobs"), width: "0.5fr", getValue: e => String(e.sched) },
   ];
 
   const customStyles = `
@@ -935,7 +936,7 @@ function renderJobqes(data: Jobqe[]) {
     columns: columns,
     data: data,
     stickyHeader: true,
-    emptyMessage: 'No JOBQE for this subsystem.',
+    emptyMessage: t("No JOBQE for this subsystem."),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;
@@ -948,13 +949,13 @@ function renderJobqes(data: Jobqe[]) {
  */
 function renderRtges(data: Rtge[]) {
   const columns: FastTableColumn<Rtge>[] = [
-    { title: "Sequence", width: "0.5fr", getValue: e => e.seq },
-    { title: "Program", width: "1.5fr", getValue: e => e.pgm },
-    { title: "Class", width: "1.5fr", getValue: e => e.class },
-    { title: "Step", width: "0.5fr", getValue: e => e.steps },
-    { title: "Pool", width: "0.5fr", getValue: e => e.poolid },
-    { title: "Comparison start", width: "0.5fr", getValue: e => e.cmpstart },
-    { title: "Comparison data", width: "1fr", getValue: e => e.cmpdta },
+    { title: t("Sequence"), width: "0.5fr", getValue: e => String(e.seq) },
+    { title: t("Program"), width: "1.5fr", getValue: e => e.pgm },
+    { title: t("Class"), width: "1.5fr", getValue: e => e.class },
+    { title: t("Step"), width: "0.5fr", getValue: e => String(e.steps) },
+    { title: t("Pool"), width: "0.5fr", getValue: e => String(e.poolid) },
+    { title: t("Comparison start"), width: "0.5fr", getValue: e => String(e.cmpstart) },
+    { title: t("Comparison data"), width: "1fr", getValue: e => e.cmpdta },
   ];
 
   const customStyles = `
@@ -969,7 +970,7 @@ function renderRtges(data: Rtge[]) {
     columns: columns,
     data: data,
     stickyHeader: true,
-    emptyMessage: 'No RTGES for this subsystem.',
+    emptyMessage: t("No RTGES for this subsystem."),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;
@@ -982,17 +983,17 @@ function renderRtges(data: Rtge[]) {
  */
 function renderPjes(data: Pje[]) {
   const columns: FastTableColumn<Pje>[] = [
-    { title: "Name", width: "0.7fr", getValue: e => e.pjname },
-    { title: "Program", width: "1.5fr", getValue: e => e.pgm },
-    { title: "Class", width: "1.5fr", getValue: e => e.class },
-    { title: "Jobd", width: "1.5fr", getValue: e => e.jobd },
-    { title: "User", width: "0.7fr", getValue: e => e.user },
-    { title: "Start", width: "0.3fr", getValue: e => e.start },
-    { title: "Initial", width: "0.3fr", getValue: e => e.inl },
-    { title: "Threshold", width: "0.3fr", getValue: e => e.threshold },
-    { title: "Additional", width: "0.3fr", getValue: e => e.add },
-    { title: "Max", width: "0.3fr", getValue: e => e.maxjobs },
-    { title: "Reuse", width: "0.3fr", getValue: e => e.maxuse },
+    { title: t("Name"), width: "0.7fr", getValue: e => e.pjname },
+    { title: t("Program"), width: "1.5fr", getValue: e => e.pgm },
+    { title: t("Class"), width: "1.5fr", getValue: e => e.class },
+    { title: t("Jobd"), width: "1.5fr", getValue: e => e.jobd },
+    { title: t("User"), width: "0.7fr", getValue: e => e.user },
+    { title: t("Start"), width: "0.3fr", getValue: e => String(e.start) },
+    { title: t("Initial"), width: "0.3fr", getValue: e => String(e.inl) },
+    { title: t("Threshold"), width: "0.3fr", getValue: e => String(e.threshold) },
+    { title: t("Additional"), width: "0.3fr", getValue: e => String(e.add) },
+    { title: t("Max"), width: "0.3fr", getValue: e => String(e.maxjobs) },
+    { title: t("Reuse"), width: "0.3fr", getValue: e => String(e.maxuse) },
   ];
 
   const customStyles = `
@@ -1007,7 +1008,7 @@ function renderPjes(data: Pje[]) {
     columns: columns,
     data: data,
     stickyHeader: true,
-    emptyMessage: 'No PJES for this subsystem.',
+    emptyMessage: t("No PJES for this subsystem."),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;
@@ -1020,21 +1021,21 @@ function renderPjes(data: Pje[]) {
  */
 function renderJobs(data: Job[]) {
   const columns: FastTableColumn<Job>[] = [
-    { title: "Job", width: "1.5fr", getValue: e => e.job },
-    { title: "User", width: "0.7fr", getValue: e => e.user },
-    { title: "Type", width: "0.5fr", getValue: e => e.type },
-    { title: "Function", width: "0.7fr", getValue: e => e.function },
-    { title: "Status", width: "0.5fr", getValue: e => e.status },
-    { title: "Temp. Stg.", width: "0.5fr", getValue: e => e.tmpstg },
-    { title: "CPU", width: "0.5fr", getValue: e => e.cpu },
-    { title: "I/O", width: "0.5fr", getValue: e => e.io },
+    { title: t("Job"), width: "1.5fr", getValue: e => e.job },
+    { title: t("User"), width: "0.7fr", getValue: e => e.user },
+    { title: t("Type"), width: "0.5fr", getValue: e => e.type },
+    { title: t("Function"), width: "0.7fr", getValue: e => e.function },
+    { title: t("Status"), width: "0.5fr", getValue: e => e.status },
+    { title: t("Temp. Stg."), width: "0.5fr", getValue: e => String(e.tmpstg) },
+    { title: t("CPU"), width: "0.5fr", getValue: e => String(e.cpu) },
+    { title: t("I/O"), width: "0.5fr", getValue: e => String(e.io) },
     {
-      title: "Actions",
+      title: t("Actions"),
       width: "1fr",
       getValue: e => {
         // Encode job entry as URL parameter for action handlers
         const arg = encodeURIComponent(JSON.stringify(e));
-        return `<vscode-button appearance="secondary" href="action:endJob?entry=${arg}">End ❌</vscode-button>`;
+        return `<vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${t("End")} ❌</vscode-button>`;
       }
     }
   ];
@@ -1051,7 +1052,7 @@ function renderJobs(data: Job[]) {
     columns: columns,
     data: data,
     stickyHeader: true,
-    emptyMessage: 'No running jobs for this subsystem.',
+    emptyMessage: t("No running jobs for this subsystem."),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;

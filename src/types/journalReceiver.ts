@@ -22,6 +22,7 @@ import Base from "./base";
 import { getInstance } from "../ibmi";
 import { getColumns, generateDetailTable } from "../tools";
 import * as vscode from 'vscode';
+import { t } from '../l10n';
 
 /**
  * Journal Receiver (JRNRCV) object class
@@ -92,7 +93,7 @@ export default class Jrnrcv extends Base {
         where JOURNAL_RECEIVER_LIBRARY= '${this.library}' and JOURNAL_RECEIVER_NAME = '${this.name}'
           Fetch first row only`)
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -104,7 +105,7 @@ export default class Jrnrcv extends Base {
   generateHTML(): string {
     return generateDetailTable({
       title: `Journal Receiver: ${this.library}/${this.name}`,
-      subtitle: 'Journal Receiver Information',
+      subtitle: t('Journal Receiver Information'),
       columns: this.columns,
       data: this.jrnrcv,
       hideNullValues:true

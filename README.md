@@ -292,6 +292,36 @@ This extension requires the [Code for IBM i](https://marketplace.visualstudio.co
 - Code for IBM i extension
 - Active connection to an IBM i system
 
+## Localization (L10N)
+
+This extension supports multiple languages through VSCode's built-in localization framework.
+
+### Supported Languages
+
+- 🇬🇧 **English** (default)
+- 🇮🇹 **Italian** (Italiano)
+
+### Features
+
+- 🌍 **Automatic language detection** - The extension automatically uses your VSCode display language
+- 📝 **1,271 translated strings** including:
+  - User interface messages and labels
+  - Tab and panel titles
+  - Table column headers
+  - 808 IBM i database column names
+- 🔄 **Dynamic translation** - All UI elements are translated in real-time
+
+### Adding New Languages
+
+To contribute translations for a new language:
+
+1. Create a new file `l10n/bundle.l10n.<locale>.json` (e.g., `bundle.l10n.fr.json` for French)
+2. Copy the structure from `l10n/bundle.l10n.en.json`
+3. Translate all values while keeping the keys unchanged
+4. Submit a pull request
+
+Translation files use the standard VSCode L10N format where English text serves as the key.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.

@@ -24,6 +24,7 @@ import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, generateRandomString } from "../tools";
+import { t } from '../l10n';
 
 /**
  * Interface representing a procedure entry in a module
@@ -127,7 +128,7 @@ export class Module extends Base {
       });
 
       if (cmdrun.code !== 0) {
-        vscode.window.showErrorMessage(`Unable to fetch data:\n${cmdrun.stderr}`);
+        vscode.window.showErrorMessage(t("Unable to fetch data:\n{0}", cmdrun.stderr));
         return;
       }
 
@@ -202,7 +203,7 @@ export class Module extends Base {
         environment: `ile`
       });
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -232,7 +233,7 @@ export class Module extends Base {
       });
 
       if (cmdrun.code !== 0) {
-        vscode.window.showErrorMessage(`Unable to fetch data:\n${cmdrun.stderr}`);
+        vscode.window.showErrorMessage(t("Unable to fetch data:\n{0}", cmdrun.stderr));
         return;
       }
 
@@ -281,7 +282,7 @@ export class Module extends Base {
         environment: `ile`
       });
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -313,7 +314,7 @@ export class Module extends Base {
       });
 
       if (cmdrun1.code !== 0 && cmdrun2.code !== 0) {
-        vscode.window.showErrorMessage(`Unable to fetch data:\n${cmdrun1.stderr}\n${cmdrun2.stderr}`);
+        vscode.window.showErrorMessage(t("Unable to fetch data:\n{0}\n{1}", cmdrun1.stderr, cmdrun2.stderr));
         return;
       }
 
@@ -352,7 +353,7 @@ export class Module extends Base {
         environment: `ile`
       });
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -377,7 +378,7 @@ export class Module extends Base {
       });
 
       if (cmdrun.code !== 0 ) {
-        vscode.window.showErrorMessage(`Unable to fetch data:\n${cmdrun.stderr}`);
+        vscode.window.showErrorMessage(t("Unable to fetch data:\n{0}", cmdrun.stderr));
         return;
       }
 
@@ -398,7 +399,7 @@ export class Module extends Base {
         environment: `ile`
       });
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -422,7 +423,7 @@ export class Module extends Base {
       });
 
       if (cmdrun.code !== 0 ) {
-        vscode.window.showErrorMessage(`Unable to fetch data:\n${cmdrun.stderr}`);
+        vscode.window.showErrorMessage(t("Unable to fetch data:\n{0}", cmdrun.stderr));
         return;
       }
 
@@ -440,7 +441,7 @@ export class Module extends Base {
         environment: `ile`
       });
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -463,7 +464,7 @@ export class Module extends Base {
       });
 
       if (cmdrun.code !== 0 ) {
-        vscode.window.showErrorMessage(`Unable to fetch data:\n${cmdrun.stderr}`);
+        vscode.window.showErrorMessage(t("Unable to fetch data:\n{0}", cmdrun.stderr));
         return;
       }
 
@@ -479,7 +480,7 @@ export class Module extends Base {
         environment: `ile`
       });
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -497,24 +498,24 @@ export class Module extends Base {
    */
   generateHTML(): string {
     const panels: Components.Panel[] = [
-      { title: "Detail", content: this.renderModule() },
-      { title: "Size", content: this.renderSize() },
+      { title: t("Detail"), content: this.renderModule() },
+      { title: t("Size"), content: this.renderSize() },
     ];
 
     if (this.impexports.length>0) {
-      panels.push({ title: "Imports/Exports", badge: this.impexports.length, content: renderExports(this.impexports) });
+      panels.push({ title: t("Imports/Exports"), badge: this.impexports.length, content: renderExports(this.impexports) });
     }
 
     if (this.procs.length>0) {
-      panels.push({ title: "Procedures", badge: this.procs.length, content: renderProcs(this.procs) });
+      panels.push({ title: t("Procedures"), badge: this.procs.length, content: renderProcs(this.procs) });
     }
 
     if (this.sysobj.length>0) {
-      panels.push({ title: "System objects reference", badge: this.sysobj.length, content: renderSysobj(this.sysobj) });
+      panels.push({ title: t("System objects reference"), badge: this.sysobj.length, content: renderSysobj(this.sysobj) });
     }
 
     if (this.copyrights.length>0) {
-      panels.push({ title: "Copyright", badge: this.copyrights.length, content: renderCopyright(this.copyrights) });
+      panels.push({ title: t("Copyright"), badge: this.copyrights.length, content: renderCopyright(this.copyrights) });
     }
 
     return Components.panels(panels);
@@ -545,8 +546,8 @@ export class Module extends Base {
    */
   private renderModule(): string {
     return generateDetailTable({
-      title: `Module: ${this.library}/${this.name}`,
-      subtitle: `Module Information`,
+      title: t("Module: {0}/{1}", this.library, this.name),
+      subtitle: t(`Module Information`),
       columns: this.columns,
       data: this.module,
       hideNullValues: true
@@ -632,9 +633,9 @@ function toCopyRight(row: Tools.DB2Row): Copyright {
  */
 function renderProcs(exports: Entry[]) {
   const columns: FastTableColumn<Entry>[] = [
-    { title: "Procedure", width: "1.5fr", getValue: e => e.entry },
-    { title: "Procedure type", width: "0.5fr", getValue: e => e.type },
-    { title: "Optimization", width: "0.5fr", getValue: e => e.arg3 },
+    { title: t("Procedure"), width: "1.5fr", getValue: e => e.entry },
+    { title: t("Procedure type"), width: "0.5fr", getValue: e => e.type },
+    { title: t("Optimization"), width: "0.5fr", getValue: e => e.arg3 },
   ];
 
   const customStyles = `
@@ -650,7 +651,7 @@ function renderProcs(exports: Entry[]) {
     columns: columns,
     data: exports,
     stickyHeader: true,
-    emptyMessage: 'No procedures in this module.',
+    emptyMessage: t('No procedures in this module.'),
     customStyles: customStyles,
   }) + `</div>`;
 }
@@ -663,9 +664,9 @@ function renderProcs(exports: Entry[]) {
  */
 function renderSysobj(exports: Entry[]) {
   const columns: FastTableColumn<Entry>[] = [
-    { title: "Library", width: "1fr", getValue: e => e.arg3 },
-    { title: "Object", width: "1fr", getValue: e => e.entry },
-    { title: "Object type", width: "0.5fr", getValue: e => e.type },
+    { title: t("Library"), width: "1fr", getValue: e => e.arg3 },
+    { title: t("Object"), width: "1fr", getValue: e => e.entry },
+    { title: t("Object type"), width: "0.5fr", getValue: e => e.type },
   ];
   
   return `<div class="exports-sysobj-table">` + generateFastTable({
@@ -674,7 +675,7 @@ function renderSysobj(exports: Entry[]) {
     columns: columns,
     data: exports,
     stickyHeader: true,
-    emptyMessage: 'No system objects referenced in this module.',
+    emptyMessage: t('No system objects referenced in this module.'),
   }) + `</div>`;
 }
 
@@ -686,10 +687,10 @@ function renderSysobj(exports: Entry[]) {
  */
 function renderExports(exports: ImpExport[]) {
   const columns: FastTableColumn<ImpExport>[] = [
-    { title: "Symbol", width: "1.5fr", getValue: e => e.method },
-    { title: "Symbol type", width: "0.5fr", getValue: e => e.type },
-    { title: "Optimization", width: "0.5fr", getValue: e => e.optimization },
-    { title: "Category", width: "0.5fr", getValue: e => e.impexp },
+    { title: t("Symbol"), width: "1.5fr", getValue: e => e.method },
+    { title: t("Symbol type"), width: "0.5fr", getValue: e => e.type },
+    { title: t("Optimization"), width: "0.5fr", getValue: e => e.optimization },
+    { title: t("Category"), width: "0.5fr", getValue: e => e.impexp },
   ];
 
   const customStyles = `
@@ -705,7 +706,7 @@ function renderExports(exports: ImpExport[]) {
     columns: columns,
     data: exports,
     stickyHeader: true,
-    emptyMessage: 'No imports/exports in this module.',
+    emptyMessage: t('No imports/exports in this module.'),
     customStyles: customStyles,
   }) + `</div>`;
 }
@@ -718,7 +719,7 @@ function renderExports(exports: ImpExport[]) {
  */
 function renderCopyright(crs: Copyright[]) {
   const columns: FastTableColumn<Copyright>[] = [
-    { title: "Text", width: "100%", getValue: e => e.value },
+    { title: t("Text"), width: "100%", getValue: e => e.value },
   ];
   
   return `<div class="crs-entries-table">` + generateFastTable({
@@ -727,6 +728,6 @@ function renderCopyright(crs: Copyright[]) {
     columns: columns,
     data: crs,
     stickyHeader: true,
-    emptyMessage: 'No copyright information in this module.',
+    emptyMessage: t('No copyright information in this module.'),
   }) + `</div>`;
 }
