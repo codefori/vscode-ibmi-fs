@@ -26,7 +26,7 @@ import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected } from "../tools";
+import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected, checkViewExists, checkTableFunctionExists } from "../tools";
 import ObjectProvider from '../objectProvider';
 
 export namespace SubsystemActions {
@@ -404,6 +404,13 @@ export class Sbsd extends Base {
     const connection = ibmi?.getConnection();
 
     if (connection) {
+      // Check if SUBSYSTEM_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'SUBSYSTEM_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "SUBSYSTEM_INFO"));
+        return;
+      }
+
       this.columns = await getColumns(connection, 'SUBSYSTEM_INFO');
 
       // Query to get subsystem information
@@ -437,6 +444,13 @@ export class Sbsd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if SUBSYSTEM_POOL_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'SUBSYSTEM_POOL_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "SUBSYSTEM_POOL_INFO"));
+        return;
+      }
+
       this.pools.length = 0;
       const entryRows = await connection.runSQL(`
         SELECT POOL_ID,
@@ -460,10 +474,17 @@ export class Sbsd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if AUTOSTART_JOB_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'AUTOSTART_JOB_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "AUTOSTART_JOB_INFO"));
+        return;
+      }
+
       this.ajes.length = 0;
       const entryRows = await connection.runSQL(`
         SELECT AUTOSTART_JOB_NAME,
-          JOB_DESCRIPTION_LIBRARY CONCAT '/' CONCAT JOB_DESCRIPTION JOB_DESCRIPTION 
+          JOB_DESCRIPTION_LIBRARY CONCAT '/' CONCAT JOB_DESCRIPTION JOB_DESCRIPTION
         FROM QSYS2.AUTOSTART_JOB_INFO
         WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
           AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`);
@@ -483,6 +504,13 @@ export class Sbsd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if WORKSTATION_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'WORKSTATION_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "WORKSTATION_INFO"));
+        return;
+      }
+
       this.wses.length = 0;
       const entryRows = await connection.runSQL(`
         SELECT WORKSTATION_NAME,
@@ -508,10 +536,17 @@ export class Sbsd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if ROUTING_ENTRY_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'ROUTING_ENTRY_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "ROUTING_ENTRY_INFO"));
+        return;
+      }
+
       this.rtges.length = 0;
       const entryRows = await connection.runSQL(`
         SELECT SEQUENCE_NUMBER,
-          PROGRAM_LIBRARY concat '/' concat PROGRAM_NAME PROGRAM_NAME, 
+          PROGRAM_LIBRARY concat '/' concat PROGRAM_NAME PROGRAM_NAME,
           CLASS_LIBRARY concat '/' concat CLASS CLASS,
           case when MAXIMUM_STEPS is null then 'NOMAX' else char(MAXIMUM_STEPS) end MAXIMUM_STEPS,
           POOL_ID,
@@ -535,6 +570,13 @@ export class Sbsd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if PRESTART_JOB_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'PRESTART_JOB_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "PRESTART_JOB_INFO"));
+        return;
+      }
+
       this.pjes.length = 0;
       const entryRows = await connection.runSQL(`
         SELECT PRESTART_JOB_NAME,
@@ -600,6 +642,13 @@ export class Sbsd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if ACTIVE_JOB_INFO table function exists
+      const funcExists = await checkTableFunctionExists(connection, 'QSYS2', 'ACTIVE_JOB_INFO');
+      if (!funcExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "TABLE FUNCTION", "QSYS2", "ACTIVE_JOB_INFO"));
+        return;
+      }
+
       this.jobs.length = 0;
       const entryRows = await connection.runSQL(`
         SELECT JOB_NAME,

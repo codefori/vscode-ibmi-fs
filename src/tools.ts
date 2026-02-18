@@ -767,3 +767,169 @@ export async function openTextTemplate(content: string, language: string = 'plai
     return false;
   }
 }
+
+/**
+ * Check if a SQL object (view, table function, procedure, etc.) exists in the system
+ * Uses QSYS2.SYSTABLES for views and tables, QSYS2.SYSPROCS for procedures
+ * @param ibmi - IBM i connection instance
+ * @param schema - Schema/library name
+ * @param objectName - Object name to check
+ * @param objectType - Type of object: 'VIEW', 'TABLE', 'FUNCTION', 'PROCEDURE', 'ALIAS'
+ * @returns Promise<boolean> - True if object exists, false otherwise
+ */
+export async function checkSqlObjectExists(
+  ibmi: IBMi,
+  schema: string,
+  objectName: string,
+  objectType: 'VIEW' | 'TABLE' | 'FUNCTION' | 'PROCEDURE' | 'ALIAS'
+): Promise<boolean> {
+  try {
+    let query: string;
+    
+    switch (objectType) {
+      case 'VIEW':
+      case 'TABLE':
+      case 'ALIAS':
+        // Check in SYSTABLES for views, tables, and aliases
+        query = `
+          SELECT COUNT(*) as OBJECT_COUNT
+          FROM QSYS2.SYSTABLES
+          WHERE TABLE_SCHEMA = '${schema.toUpperCase()}'
+            AND TABLE_NAME = '${objectName.toUpperCase()}'
+            AND TABLE_TYPE = '${objectType}'
+        `;
+        break;
+        
+      case 'FUNCTION':
+        // Check in SYSFUNCS for functions (including table functions)
+        query = `
+          SELECT COUNT(*) as OBJECT_COUNT
+          FROM QSYS2.SYSFUNCS
+          WHERE ROUTINE_SCHEMA = '${schema.toUpperCase()}'
+            AND ROUTINE_NAME = '${objectName.toUpperCase()}'
+        `;
+        break;
+        
+      case 'PROCEDURE':
+        // Check in SYSPROCS for procedures
+        query = `
+          SELECT COUNT(*) as OBJECT_COUNT
+          FROM QSYS2.SYSPROCS
+          WHERE ROUTINE_SCHEMA = '${schema.toUpperCase()}'
+            AND ROUTINE_NAME = '${objectName.toUpperCase()}'
+        `;
+        break;
+        
+      default:
+        throw new Error(`Unsupported object type: ${objectType}`);
+    }
+    
+    const result = await ibmi.runSQL(query);
+    
+    if (result && result.length > 0) {
+      const count = Number(result[0].OBJECT_COUNT);
+      return count > 0;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error(`Error checking SQL object existence: ${error}`);
+    return false;
+  }
+}
+
+/**
+ * Check if a view exists in the system
+ * @param ibmi - IBM i connection instance
+ * @param schema - Schema/library name
+ * @param viewName - View name to check
+ * @returns Promise<boolean> - True if view exists, false otherwise
+ */
+export async function checkViewExists(ibmi: IBMi, schema: string, viewName: string): Promise<boolean> {
+  return checkSqlObjectExists(ibmi, schema, viewName, 'VIEW');
+}
+
+/**
+ * Check if a table function exists in the system
+ * @param ibmi - IBM i connection instance
+ * @param schema - Schema/library name
+ * @param functionName - Function name to check
+ * @returns Promise<boolean> - True if function exists, false otherwise
+ */
+export async function checkTableFunctionExists(ibmi: IBMi, schema: string, functionName: string): Promise<boolean> {
+  return checkSqlObjectExists(ibmi, schema, functionName, 'FUNCTION');
+}
+
+/**
+ * Check if a procedure exists in the system
+ * @param ibmi - IBM i connection instance
+ * @param schema - Schema/library name
+ * @param procedureName - Procedure name to check
+ * @returns Promise<boolean> - True if procedure exists, false otherwise
+ */
+export async function checkProcedureExists(ibmi: IBMi, schema: string, procedureName: string): Promise<boolean> {
+  return checkSqlObjectExists(ibmi, schema, procedureName, 'PROCEDURE');
+}
+
+/**
+ * Check if a table exists in the system
+ * @param ibmi - IBM i connection instance
+ * @param schema - Schema/library name
+ * @param tableName - Table name to check
+ * @returns Promise<boolean> - True if table exists, false otherwise
+ */
+export async function checkTableExists(ibmi: IBMi, schema: string, tableName: string): Promise<boolean> {
+  return checkSqlObjectExists(ibmi, schema, tableName, 'TABLE');
+}
+
+/**
+ * Validate and execute SQL with object existence check
+ * This function checks if the required SQL objects exist before executing the query
+ * @param ibmi - IBM i connection instance
+ * @param sqlStatement - SQL statement to execute
+ * @param requiredObjects - Array of objects to check before execution
+ * @returns Promise with execution result or error
+ */
+export async function executeSqlWithValidation(
+  ibmi: IBMi,
+  sqlStatement: string,
+  requiredObjects: Array<{
+    schema: string;
+    name: string;
+    type: 'VIEW' | 'TABLE' | 'FUNCTION' | 'PROCEDURE' | 'ALIAS';
+  }>
+): Promise<{ success: boolean; data?: any[]; error?: string; missingObjects?: string[] }> {
+  try {
+    // Check all required objects
+    const missingObjects: string[] = [];
+    
+    for (const obj of requiredObjects) {
+      const exists = await checkSqlObjectExists(ibmi, obj.schema, obj.name, obj.type);
+      if (!exists) {
+        missingObjects.push(`${obj.schema}.${obj.name} (${obj.type})`);
+      }
+    }
+    
+    // If any objects are missing, return error
+    if (missingObjects.length > 0) {
+      return {
+        success: false,
+        error: `Missing SQL objects: ${missingObjects.join(', ')}`,
+        missingObjects
+      };
+    }
+    
+    // All objects exist, execute the SQL
+    const result = await ibmi.runSQL(sqlStatement);
+    return {
+      success: true,
+      data: result
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      error: `SQL execution error: ${error}`
+    };
+  }
+}

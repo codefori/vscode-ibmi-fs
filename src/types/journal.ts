@@ -18,7 +18,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, getProtected, openSqlTemplate } from "../tools";
+import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, getProtected, openSqlTemplate, checkViewExists, checkTableFunctionExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -74,6 +74,17 @@ export namespace JournalActions {
   export const dspJrn = async (item: IBMiObject | Jrn): Promise<boolean> => {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
+
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      // Check if DISPLAY_JOURNAL table function exists
+      const funcExists = await checkTableFunctionExists(connection, 'QSYS2', 'DISPLAY_JOURNAL');
+      if (!funcExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "TABLE FUNCTION", "QSYS2", "DISPLAY_JOURNAL"));
+        return false;
+      }
+    }
 
     // Generate SQL statement to display journal entries
     const sqlStatement = `-- Extract journal entries, ref: https://www.ibm.com/docs/en/i/7.6.0?topic=services-display-journal-table-function
@@ -203,6 +214,13 @@ export default class Jrn extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if JOURNAL_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'JOURNAL_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "JOURNAL_INFO"));
+        return;
+      }
+
       this.columns = await getColumns(connection, 'JOURNAL_INFO');
 
       this.jrn = await connection.runSQL(
@@ -280,6 +298,13 @@ export default class Jrn extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if JOURNAL_RECEIVER_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'JOURNAL_RECEIVER_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "JOURNAL_RECEIVER_INFO"));
+        return;
+      }
+
       this._entries.length=0;
       const entryRows = await connection.runSQL(
         `SELECT JOURNAL_RECEIVER_LIBRARY CONCAT '/' CONCAT JOURNAL_RECEIVER_NAME JOURNAL_RECEIVER_NAME,

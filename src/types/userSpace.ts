@@ -19,7 +19,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable, getProtected } from "../tools";
+import { getColumns, generateDetailTable, getProtected, checkViewExists, checkTableFunctionExists, checkProcedureExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -86,6 +86,13 @@ export namespace UserSpaceActions {
         return false;
       }
 
+      // Check if USER_SPACE table function exists
+      const funcExists = await checkTableFunctionExists(connection, 'QSYS2', 'USER_SPACE');
+      if (!funcExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "TABLE FUNCTION", "QSYS2", "USER_SPACE"));
+        return false;
+      }
+
       let sql = `SELECT DATA FROM TABLE(QSYS2.USER_SPACE(
                     USER_SPACE => '${item.name}', USER_SPACE_LIBRARY => '${item.library}'))`
       let usrspc = await connection.runSQL(sql)
@@ -114,6 +121,13 @@ export namespace UserSpaceActions {
       });
 
       if (newvalue && start) {
+        // Check if CHANGE_USER_SPACE procedure exists
+        const procExists = await checkProcedureExists(connection, 'QSYS2', 'CHANGE_USER_SPACE');
+        if (!procExists) {
+          vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "PROCEDURE", "QSYS2", "CHANGE_USER_SPACE"));
+          return false;
+        }
+
         try {
           await connection.runSQL(`CALL QSYS2.CHANGE_USER_SPACE(USER_SPACE => '${name}',
                             USER_SPACE_LIBRARY => '${library}',
@@ -152,6 +166,20 @@ export class Usrspc extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if USER_SPACE_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'USER_SPACE_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "USER_SPACE_INFO"));
+        return;
+      }
+
+      // Check if USER_SPACE table function exists
+      const funcExists = await checkTableFunctionExists(connection, 'QSYS2', 'USER_SPACE');
+      if (!funcExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "TABLE FUNCTION", "QSYS2", "USER_SPACE"));
+        return;
+      }
+
       this.columns = await getColumns(connection, 'USER_SPACE_INFO');
       // Add custom columns for data display
       this.columns.set('DATA', 'Data');

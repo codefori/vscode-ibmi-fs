@@ -25,7 +25,7 @@
 
 import Base from "./base";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable } from "../tools";
+import { getColumns, generateDetailTable, checkViewExists, checkTableFunctionExists } from "../tools";
 import * as vscode from 'vscode';
 import { CommandResult } from "@halcyontech/vscode-ibmi-types";
 
@@ -67,6 +67,13 @@ export default class Cls extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if OBJECT_STATISTICS table function exists (used by CLASS_INFO)
+      const objectStatsExists = await checkTableFunctionExists(connection, 'QSYS2', 'OBJECT_STATISTICS');
+      if (!objectStatsExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "TABLE FUNCTION", "QSYS2", "OBJECT_STATISTICS"));
+        return;
+      }
+
       // Check if required SQL objects exist in the temporary library
       // We need: QWCRCLSI procedure, CLASS_INFO view, and CLASS_INFO function
       let check = await connection.runSQL(

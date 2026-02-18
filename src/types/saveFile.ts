@@ -31,6 +31,8 @@ import {
   generateFastTable,
   getProtected,
   getQSYSObjectPath,
+  checkViewExists,
+  checkTableFunctionExists,
 } from "../tools";
 import { Components } from "../webviewToolkit";
 import Base from "./base";
@@ -1239,6 +1241,13 @@ export class SaveFile extends Base {
     let isIfs: boolean = false;
 
     if (connection) {
+      // Check if SAVE_FILE_INFO view exists
+      const saveFileInfoExists = await checkViewExists(connection, 'QSYS2', 'SAVE_FILE_INFO');
+      if (!saveFileInfoExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
+        return;
+      }
+
       // Get save file information from system catalog
       this.savf = await connection.runSQL(
         `SELECT SAVE_FILE_LIBRARY, 
@@ -1304,6 +1313,13 @@ export class SaveFile extends Base {
     const connection = ibmi?.getConnection();
 
     if (connection) {
+      // Check if SAVE_FILE_OBJECTS table function exists
+      const saveFileObjectsExists = await checkTableFunctionExists(connection, 'QSYS2', 'SAVE_FILE_OBJECTS');
+      if (!saveFileObjectsExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "TABLE FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
+        return;
+      }
+
       // Fetch all objects
       this.objects.length = 0;
       const objectsRows = await connection.runSQL(`

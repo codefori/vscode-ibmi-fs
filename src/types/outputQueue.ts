@@ -20,7 +20,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable, generateFastTable, FastTableColumn, getProtected } from "../tools";
+import { getColumns, generateDetailTable, generateFastTable, FastTableColumn, getProtected, checkViewExists, checkTableFunctionExists, checkProcedureExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -266,6 +266,13 @@ export namespace OutputQueueActions {
         return false;
       }
 
+      // Check if OUTPUT_QUEUE_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'OUTPUT_QUEUE_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "OUTPUT_QUEUE_INFO"));
+        return false;
+      }
+
       // Query output queue to get writer information
       let outq = await connection.runSQL(
         `SELECT NETWORK_CONNECTION_TYPE, NUMBER_OF_WRITERS
@@ -403,7 +410,18 @@ export namespace OutputQueueActions {
         }
       });
 
+<<<<<<< Updated upstream
       if (await vscode.window.showWarningMessage(`Are you sure you want to delete spools that are older than ${days} days from Output Queue ${library}/${name}?`, { modal: true }, "Delete old spools")) {
+=======
+      // Check if DELETE_OLD_SPOOLED_FILES procedure exists
+      const procExists = await checkProcedureExists(connection, 'SYSTOOLS', 'DELETE_OLD_SPOOLED_FILES');
+      if (!procExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "PROCEDURE", "SYSTOOLS", "DELETE_OLD_SPOOLED_FILES"));
+        return false;
+      }
+
+      if (await vscode.window.showWarningMessage(t("Are you sure you want to delete spools that are older than {0} days from Output Queue {1}/{2}?", String(days), library, name), { modal: true }, t("Delete old spools"))) {
+>>>>>>> Stashed changes
         try {
           await connection.runSQL(`CALL SYSTOOLS.DELETE_OLD_SPOOLED_FILES(DELETE_OLDER_THAN => CURRENT DATE - ${days} DAYS,
                                         P_OUTPUT_QUEUE_NAME => '${name}',
@@ -487,7 +505,19 @@ export namespace OutputQueueActions {
           const config = connection.getConfig();
           const tempRemotePath = config.tempDir + '/' + item.job.replaceAll("/", "_") + '_' + item.spoolname + '_' + item.nbr + '.pdf';
 
+<<<<<<< Updated upstream
           progress.report({ message: 'Generating PDF...' });
+=======
+          // Check if GENERATE_PDF function exists
+          const funcExists = await checkTableFunctionExists(connection, 'SYSTOOLS', 'GENERATE_PDF');
+          if (!funcExists) {
+            result.successful = false;
+            result.error = t("SQL object {0} {1}/{2} not found", "TABLE FUNCTION", "SYSTOOLS", "GENERATE_PDF");
+            return result;
+          }
+
+          progress.report({ message: t("Generating PDF...") });
+>>>>>>> Stashed changes
           const genpdf = await connection.runSQL(` select SYSTOOLS.GENERATE_PDF(
                             JOB_NAME            => '${item.job}',
                             SPOOLED_FILE_NAME   => '${item.spoolname}',
@@ -587,6 +617,13 @@ export default class Outq extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if OUTPUT_QUEUE_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'OUTPUT_QUEUE_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "OUTPUT_QUEUE_INFO"));
+        return;
+      }
+
       this.columns = await getColumns(connection, 'OUTPUT_QUEUE_INFO');
 
       this.outq = await connection.runSQL(
@@ -626,6 +663,13 @@ export default class Outq extends Base {
     const connection = ibmi?.getConnection();
 
     if (connection) {
+      // Check if OUTPUT_QUEUE_ENTRIES_BASIC view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'OUTPUT_QUEUE_ENTRIES_BASIC');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "OUTPUT_QUEUE_ENTRIES_BASIC"));
+        return;
+      }
+
       const entryRows = await connection.runSQL(
         `select to_char(CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') as CREATE_TIMESTAMP,
             SPOOLED_FILE_NAME,

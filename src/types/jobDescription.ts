@@ -18,7 +18,7 @@
 
 import Base from "./base";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable } from "../tools";
+import { getColumns, generateDetailTable, checkViewExists } from "../tools";
 import * as vscode from 'vscode';
 
 /**
@@ -39,6 +39,13 @@ export default class Jobd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if JOB_DESCRIPTION_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'JOB_DESCRIPTION_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "JOB_DESCRIPTION_INFO"));
+        return;
+      }
+
       this.columns = await getColumns(connection, 'JOB_DESCRIPTION_INFO');
 
       this.jobd = await connection.runSQL(

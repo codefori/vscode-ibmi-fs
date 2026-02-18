@@ -22,7 +22,7 @@ import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected } from "../tools";
+import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected, checkViewExists } from "../tools";
 import ObjectProvider from '../objectProvider';
 
 /**
@@ -238,6 +238,13 @@ export class Binddir extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if BINDING_DIRECTORY_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'BINDING_DIRECTORY_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "BINDING_DIRECTORY_INFO"));
+        return;
+      }
+
       this.entries.length = 0;
       const entryRows = await connection.runSQL(`
         SELECT ENTRY_LIBRARY CONCAT '/' CONCAT ENTRY AS ENTRY,
@@ -263,6 +270,18 @@ export class Binddir extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if required views exist
+      const bindDirViewExists = await checkViewExists(connection, 'QSYS2', 'BINDING_DIRECTORY_INFO');
+      const exportViewExists = await checkViewExists(connection, 'QSYS2', 'PROGRAM_EXPORT_IMPORT_INFO');
+      
+      if (!bindDirViewExists || !exportViewExists) {
+        const missing = [];
+        if (!bindDirViewExists) missing.push("QSYS2/BINDING_DIRECTORY_INFO");
+        if (!exportViewExists) missing.push("QSYS2/PROGRAM_EXPORT_IMPORT_INFO");
+        vscode.window.showErrorMessage(t("Required SQL objects not found: {0}", missing.join(", ")));
+        return;
+      }
+
       this.exports.length = 0;
       const entryRows = await connection.runSQL(`
         SELECT ENTRY_LIBRARY CONCAT '/' CONCAT ENTRY as ENTRY,

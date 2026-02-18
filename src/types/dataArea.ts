@@ -17,7 +17,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable, getProtected } from "../tools";
+import { getColumns, generateDetailTable, getProtected, checkViewExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -98,7 +98,18 @@ export namespace DataAreaActions {
         return false;
       }
 
+<<<<<<< Updated upstream
       // Fetch dta 
+=======
+      // Check if DATA_AREA_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'DATA_AREA_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "DATA_AREA_INFO"));
+        return false;
+      }
+
+      // Fetch dta
+>>>>>>> Stashed changes
       const dtaSql = `SELECT DATA_AREA_TYPE, LENGTH, DECIMAL_POSITIONS, DATA_AREA_VALUE
           FROM QSYS2.DATA_AREA_INFO
           WHERE DATA_AREA_NAME = '${name}' AND DATA_AREA_LIBRARY = '${library}'
@@ -267,6 +278,13 @@ export class Dtaara extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if DATA_AREA_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'DATA_AREA_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "DATA_AREA_INFO"));
+        return;
+      }
+
       this.columns = await getColumns(connection, 'DATA_AREA_INFO');
       
       // First query to get data area type

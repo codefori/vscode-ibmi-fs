@@ -23,7 +23,12 @@ import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
+<<<<<<< Updated upstream
 import { getColumns, generateDetailTable, FastTableColumn, generateFastTable } from "../tools";
+=======
+import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, checkViewExists } from "../tools";
+import { t } from '../l10n';
+>>>>>>> Stashed changes
 
 /**
  * Interface representing a bound module within a program
@@ -259,6 +264,13 @@ export class Pgm extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if BOUND_SRVPGM_INFO view exists
+      const boundSrvpgmInfoExists = await checkViewExists(connection, 'QSYS2', 'BOUND_SRVPGM_INFO');
+      if (!boundSrvpgmInfoExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "BOUND_SRVPGM_INFO"));
+        return;
+      }
+
       this.srvpgms.length = 0;
       const entryRows = await connection.runSQL(`
         SELECT BOUND_SERVICE_PROGRAM_LIBRARY CONCAT '/' CONCAT BOUND_SERVICE_PROGRAM as srvpgm,
@@ -282,6 +294,13 @@ export class Pgm extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if PROGRAM_EXPORT_IMPORT_INFO view exists
+      const programExportImportInfoExists = await checkViewExists(connection, 'QSYS2', 'PROGRAM_EXPORT_IMPORT_INFO');
+      if (!programExportImportInfoExists) {
+        vscode.window.showErrorMessage(t("SQL object {0} {1}/{2} not found", "VIEW", "QSYS2", "PROGRAM_EXPORT_IMPORT_INFO"));
+        return;
+      }
+
       this.exports.length = 0;
       const entryRows = await connection.runSQL(`
         select SYMBOL_NAME, SYMBOL_USAGE 
