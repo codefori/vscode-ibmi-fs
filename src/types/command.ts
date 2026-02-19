@@ -22,6 +22,7 @@ import Base from "./base";
 import { getInstance } from "../ibmi";
 import { getColumns, generateDetailTable } from "../tools";
 import * as vscode from 'vscode';
+import { t } from '../l10n';
 
 /**
  * Command (*CMD) object class
@@ -96,7 +97,7 @@ export default class Cmd extends Base {
         AND COMMAND_NAME = '${this.name}'
         Fetch first row only`)
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -107,8 +108,8 @@ export default class Cmd extends Base {
    */
   generateHTML(): string {
     return generateDetailTable({
-      title: `Command: ${this.library}/${this.name}`,
-      subtitle: 'Command Information',
+      title: t("Command: {0}/{1}", this.library, this.name),
+      subtitle: t('Command Information'),
       columns: this.columns,
       data: this.cmd,
       hideNullValues: true

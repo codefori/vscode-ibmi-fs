@@ -20,6 +20,7 @@ import Base from "./base";
 import { getInstance } from "../ibmi";
 import { getColumns, generateDetailTable } from "../tools";
 import * as vscode from 'vscode';
+import { t } from '../l10n';
 
 /**
  * Job Description (JOBD) object class
@@ -53,7 +54,7 @@ export default class Jobd extends Base {
           WHERE JOB_DESCRIPTION = '${this.name}' AND JOB_DESCRIPTION_LIBRARY = '${this.library}'
           Fetch first row only`)
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -64,8 +65,8 @@ export default class Jobd extends Base {
    */
   generateHTML(): string {
     return generateDetailTable({
-      title: `Job Description: ${this.library}/${this.name}`,
-      subtitle: 'Job Description Information',
+      title: t("Job Description: {0}/{1}", this.library, this.name),
+      subtitle: t('Job Description Information'),
       columns: this.columns,
       data: this.jobd
     });

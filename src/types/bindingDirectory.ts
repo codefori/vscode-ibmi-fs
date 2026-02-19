@@ -24,6 +24,7 @@ import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected } from "../tools";
 import ObjectProvider from '../objectProvider';
+import { t } from '../l10n';
 
 /**
  * Namespace containing Binding Directory action commands
@@ -72,12 +73,12 @@ export namespace BindingDirectoryActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,bnddir.split('/')[0])){
-        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
         return false;
       }
       
       // Show confirmation dialog to prevent accidental removal
-      if (await vscode.window.showWarningMessage(`Are you sure you want to remove ${item.object}?`, { modal: true }, "Remove object")) {
+      if (await vscode.window.showWarningMessage(t("Are you sure you want to remove {0}?", item.object), { modal: true }, t("Remove object"))) {
         // Execute RMVBNDDIRE command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
           command: `RMVBNDDIRE BNDDIR(${bnddir}) OBJ(${item.object})`,
@@ -86,17 +87,17 @@ export namespace BindingDirectoryActions {
 
         // Check command execution result
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(`Item removed.`);
+          vscode.window.showInformationMessage(t("Item removed."));
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to remove selected item:\n${cmdrun.stderr}`);
+          vscode.window.showErrorMessage(t("Unable to remove selected item:\n{0}", String(cmdrun.stderr)));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return false;
     }
   };
@@ -113,7 +114,7 @@ export namespace BindingDirectoryActions {
     if (connection) {
 
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
         return false;
       }
     
@@ -123,11 +124,11 @@ export namespace BindingDirectoryActions {
       const ibmiPattern = /^[A-Za-z#@$][A-Za-z0-9#@$_]{0,9}\/[A-Za-z#@$][A-Za-z0-9#@$_]{0,9}$/;
 
       obj = await vscode.window.showInputBox({
-        placeHolder: "LIBXXX/OBJXXX",
-        title: `Object to bind`,
+        placeHolder: t("LIBXXX/OBJXXX"),
+        title: t("Object to bind"),
         validateInput: (obj) => {
           if (obj.length < 3 || !ibmiPattern.test(obj)) {
-            return `You need to specify a valid path`;
+            return t("You need to specify a valid path");
           }
         },
       });
@@ -135,8 +136,8 @@ export namespace BindingDirectoryActions {
       objtype = await vscode.window.showQuickPick(
         ["*SRVPGM", "*MODULE"],
         {
-          placeHolder: "Object type",
-          title: "Object type",
+          placeHolder: t("Object type"),
+          title: t("Object type"),
           canPickMany: false,
         },
       );
@@ -144,8 +145,8 @@ export namespace BindingDirectoryActions {
       activation = await vscode.window.showQuickPick(
         ["*IMMED", "*DEFER"],
         {
-          placeHolder: "Object activation",
-          title: "Object activation",
+          placeHolder: t("Object activation"),
+          title: t("Object activation"),
           canPickMany: false,
         },
       );
@@ -160,10 +161,10 @@ export namespace BindingDirectoryActions {
 
         // Check command execution result
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(`Item added.`);
+          vscode.window.showInformationMessage(t("Item added."));
           return true;
         } else {
-          vscode.window.showErrorMessage(`Unable to add selected item:\n${cmdrun.stderr}`);
+          vscode.window.showErrorMessage(t("Unable to add selected item:\n{0}", String(cmdrun.stderr)));
           return false;
         }
       }
@@ -171,7 +172,7 @@ export namespace BindingDirectoryActions {
         return false;
       }
     } else {
-        vscode.window.showErrorMessage(`Not connected to IBM i`);
+        vscode.window.showErrorMessage(t("Not connected to IBM i"));
         return false;
       }
   };
@@ -250,7 +251,7 @@ export class Binddir extends Base {
 
       this.entries.push(...entryRows.map(toEntry));
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -277,7 +278,7 @@ export class Binddir extends Base {
 
       this.exports.push(...entryRows.map(toExport));
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -288,8 +289,8 @@ export class Binddir extends Base {
    */
   generateHTML(): string {
     return Components.panels([
-      { title: "Entries", content: renderEntries(this.entries, this.library + '/' + this.name), badge: this.entries.length },
-      { title: "Exports", content: renderExports(this.exports), badge: this.exports.length },
+      { title: t("Entries"), content: renderEntries(this.entries, this.library + '/' + this.name), badge: this.entries.length },
+      { title: t("Exports"), content: renderExports(this.exports), badge: this.exports.length },
     ]);
   }
 
@@ -370,18 +371,18 @@ function toExport(row: Tools.DB2Row): Export {
  */
 function renderEntries(entries: Entry[], name: string) {
   const columnsmod: FastTableColumn<Entry>[] = [
-    { title: "Object", width: "2fr", getValue: e => e.object },
-    { title: "Type", width: "1fr", getValue: e => e.type },
-    { title: "Activation", width: "1fr", getValue: e => e.activation },
-    { title: "Creation", width: "2fr", getValue: e => e.creation },
+    { title: t("Object"), width: "2fr", getValue: e => e.object },
+    { title: t("Type"), width: "1fr", getValue: e => e.type },
+    { title: t("Activation"), width: "1fr", getValue: e => e.activation },
+    { title: t("Creation"), width: "2fr", getValue: e => e.creation },
     {
-      title: "Actions",
+      title: t("Actions"),
       width: "1fr",
       getValue: e => {
         // Encode entry as URL parameter for action handlers
         const arg = encodeURIComponent(JSON.stringify(e));
         
-        return `<vscode-button appearance="secondary" href="action:remove?entry=${arg}">Remove ❌</vscode-button>`;
+        return `<vscode-button appearance="secondary" href="action:remove?entry=${arg}">${t("Remove")} ❌</vscode-button>`;
       }
     }
   ];
@@ -394,12 +395,12 @@ function renderEntries(entries: Entry[], name: string) {
   `;
   
   return `<div class="modules-entries-table">` + generateFastTable({
-    title: `Binding Directory: ` + name,
-    subtitle: `Total entries: ` + entries.length,
+    title: t("Binding Directory: {0}", name),
+    subtitle: t("Total entries: {0}", String(entries.length)),
     columns: columnsmod,
     data: entries,
     stickyHeader: true,
-    emptyMessage: 'No entries in this binding directory.',
+    emptyMessage: t("No entries in this binding directory."),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;
@@ -412,9 +413,9 @@ function renderEntries(entries: Entry[], name: string) {
  */
 function renderExports(exports: Export[]) {
   const columns: FastTableColumn<Export>[] = [
-    { title: "Procedure", width: "1.5fr", getValue: e => e.method },
-    { title: "Object", width: "1.5fr", getValue: e => e.object },
-    { title: "Usage", width: "0.5fr", getValue: e => e.usage },
+    { title: t("Procedure"), width: "1.5fr", getValue: e => e.method },
+    { title: t("Object"), width: "1.5fr", getValue: e => e.object },
+    { title: t("Usage"), width: "0.5fr", getValue: e => e.usage },
   ];
 
   const customStyles = `
@@ -430,7 +431,7 @@ function renderExports(exports: Export[]) {
     columns: columns,
     data: exports,
     stickyHeader: true,
-    emptyMessage: 'No exports in this binding directory.',
+    emptyMessage: t("No exports in this binding directory."),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;

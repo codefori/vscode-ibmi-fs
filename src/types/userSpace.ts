@@ -23,6 +23,7 @@ import { getColumns, generateDetailTable, getProtected } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
+import { t } from '../l10n';
 
 /**
  * Namespace containing actions for User Space objects
@@ -82,7 +83,7 @@ export namespace UserSpaceActions {
     if (connection) {
 
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(`Unable to perform object action because it is protected.`);
+        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
         return false;
       }
 
@@ -93,22 +94,22 @@ export namespace UserSpaceActions {
 
       // Get the start position for the change
       let start = await vscode.window.showInputBox({
-        title: `Start position`,
+        title: t("Start position"),
         value: '1',
         validateInput: start => {
           if (!isStringNumber(start) || parseInt(start) <= 0) {
-            return `The start position must be a number bigger or equal than 1`;
+            return t("The start position must be a number bigger or equal than 1");
           }
         }
       });
 
       // Get the new value
       let newvalue = await vscode.window.showInputBox({
-        title: `Change USRSPC value`,
+        title: t("Change USRSPC value"),
         value: curvalue,
         validateInput: newvalue => {
           if (newvalue.length < 1) {
-            return `Insert a new value`;
+            return t("Insert a new value");
           }
         }
       });
@@ -119,17 +120,17 @@ export namespace UserSpaceActions {
                             USER_SPACE_LIBRARY => '${library}',
                             DATA => '${newvalue}',
                             START_POSITION => ${start})`);
-          vscode.window.showInformationMessage(`User Space ${library}/${name} updated.`);
+          vscode.window.showInformationMessage(t("User Space {0}/{1} updated.", library, name));
           return true;
         } catch (error) {
-          vscode.window.showErrorMessage(`An error occurred while updating the USRSPC ${library}/${name}`);
+          vscode.window.showErrorMessage(t("An error occurred while updating the USRSPC {0}/{1}", library, name));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return false;
     }
   }
@@ -154,8 +155,8 @@ export class Usrspc extends Base {
     if (connection) {
       this.columns = await getColumns(connection, 'USER_SPACE_INFO');
       // Add custom columns for data display
-      this.columns.set('DATA', 'Data');
-      this.columns.set('DATA_BINARY', 'Binary Data');
+      this.columns.set('DATA', t("Data"));
+      this.columns.set('DATA_BINARY', t("Binary Data"));
 
       let sql = `SELECT SIZE, EXTENDABLE, INITIAL_VALUE, OBJECT_DOMAIN, TEXT_DESCRIPTION, y.data, y.data_binary
                   FROM QSYS2.USER_SPACE_INFO x, TABLE(QSYS2.USER_SPACE(
@@ -163,7 +164,7 @@ export class Usrspc extends Base {
                   WHERE x.USER_SPACE = '${this.name}' AND x.user_space_library='${this.library}'`
       this.usrspc = await connection.runSQL(sql)
     } else {
-      vscode.window.showErrorMessage(`Not connected to IBM i`);
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
   }
@@ -175,7 +176,7 @@ export class Usrspc extends Base {
   generateHTML(): string {
     return generateDetailTable({
       title: `User Space: ${this.library}/${this.name}`,
-      subtitle: 'User Space Information',
+      subtitle: t('User Space Information'),
       columns: this.columns,
       data: this.usrspc,
       codeColumns: ['DATA', 'DATA_BINARY']

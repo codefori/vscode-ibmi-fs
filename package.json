@@ -1,7 +1,8 @@
 {
   "name": "vscode-ibmi-fs",
-  "displayName": "IBM i FileSystem",
-  "description": "File system provider for IBM i QSYS",
+  "displayName": "%displayName%",
+  "description": "%description%",
+  "l10n": "./l10n",
   "version": "0.0.3-dev0",
   "preview": true,
   "license": "MIT",
@@ -96,145 +97,145 @@
     "commands": [
       {
         "command": "vscode-ibmi-fs.downloadSavf",
-        "title": "Download Save File",
+        "title": "%command.downloadSavf.title%",
         "category": "IBM i FS",
         "icon": "$(cloud-download)"
       },
       {
         "command": "vscode-ibmi-fs.uploadSavf",
-        "title": "Upload Save File",
+        "title": "%command.uploadSavf.title%",
         "category": "IBM i FS",
         "icon": "$(cloud-upload)"
       },
       {
         "command": "vscode-ibmi-fs.clearSavf",
-        "title": "Clear Save File",
+        "title": "%command.clearSavf.title%",
         "category": "IBM i FS",
         "icon": "$(trash)"
       },
       {
         "command": "vscode-ibmi-fs.savf",
-        "title": "Save to Save File",
+        "title": "%command.savf.title%",
         "category": "IBM i FS",
         "icon": "$(save)"
       },
       {
         "command": "vscode-ibmi-fs.restore",
-        "title": "Restore from Save File",
+        "title": "%command.restore.title%",
         "category": "IBM i FS",
         "icon": "$(issue-reopened)"
       },
       {
         "command": "vscode-ibmi-fs.clearDataQueue",
-        "title": "Clear Data Queue",
+        "title": "%command.clearDataQueue.title%",
         "category": "IBM i FS",
         "icon": "$(trash)"
       },
       {
         "command": "vscode-ibmi-fs.sendToDataQueue",
-        "title": "Send data to Data Queue",
+        "title": "%command.sendToDataQueue.title%",
         "category": "IBM i FS",
         "icon": "$(arrow-right)"
       },
       {
         "command": "vscode-ibmi-fs.HldJobq",
-        "title": "Hold Job Queue",
+        "title": "%command.HldJobq.title%",
         "category": "IBM i FS",
         "icon": "$(primitive-square)"
       },
       {
         "command": "vscode-ibmi-fs.RlsJobq",
-        "title": "Release Job Queue",
+        "title": "%command.RlsJobq.title%",
         "category": "IBM i FS",
         "icon": "$(play)"
       },
       {
         "command": "vscode-ibmi-fs.ClrJobq",
-        "title": "Clear Job Queue",
+        "title": "%command.ClrJobq.title%",
         "category": "IBM i FS",
         "icon": "$(trash)"
       },
       {
         "command": "vscode-ibmi-fs.HldOutq",
-        "title": "Hold Output Queue",
+        "title": "%command.HldOutq.title%",
         "category": "IBM i FS",
         "icon": "$(primitive-square)"
       },
       {
         "command": "vscode-ibmi-fs.RlsOutq",
-        "title": "Release Output Queue",
+        "title": "%command.RlsOutq.title%",
         "category": "IBM i FS",
         "icon": "$(play)"
       },
       {
         "command": "vscode-ibmi-fs.ClrOutq",
-        "title": "Clear Output Queue",
+        "title": "%command.ClrOutq.title%",
         "category": "IBM i FS",
         "icon": "$(trash)"
       },
       {
         "command": "vscode-ibmi-fs.MngWtr",
-        "title": "Manage Writer",
+        "title": "%command.MngWtr.title%",
         "category": "IBM i FS",
         "icon": "$(debug-disconnect)"
       },
       {
         "command": "vscode-ibmi-fs.DelOldSpool",
-        "title": "Delete old spools",
+        "title": "%command.DelOldSpool.title%",
         "category": "IBM i FS",
         "icon": "$(calendar)"
       },
       {
         "command": "vscode-ibmi-fs.ChgDtaara",
-        "title": "Change DTAARA",
+        "title": "%command.ChgDtaara.title%",
         "category": "IBM i FS",
         "icon": "$(edit)"
       },
       {
         "command": "vscode-ibmi-fs.chgUsrspc",
-        "title": "Change USRSPC",
+        "title": "%command.chgUsrspc.title%",
         "category": "IBM i FS",
         "icon": "$(edit)"
       },
       {
         "command": "vscode-ibmi-fs.Addbnddire",
-        "title": "Add Binding Directory Entry",
+        "title": "%command.Addbnddire.title%",
         "category": "IBM i FS",
         "icon": "$(plus)"
       },
       {
         "command": "vscode-ibmi-fs.GenJrnRcv",
-        "title": "Generate new Journal Receiver",
+        "title": "%command.GenJrnRcv.title%",
         "category": "IBM i FS",
         "icon": "$(git-pull-request-new-changes)"
       },
       {
         "command": "vscode-ibmi-fs.DspJrn",
-        "title": "Display Journal",
+        "title": "%command.DspJrn.title%",
         "category": "IBM i FS",
         "icon": "$(file-code)"
       },
       {
         "command": "vscode-ibmi-fs.StrSbs",
-        "title": "Start Subsystem",
+        "title": "%command.StrSbs.title%",
         "category": "IBM i FS",
         "icon": "$(play)"
       },
       {
         "command": "vscode-ibmi-fs.EndSbs",
-        "title": "End Subsystem",
+        "title": "%command.EndSbs.title%",
         "category": "IBM i FS",
         "icon": "$(primitive-square)"
       },
       {
         "command": "vscode-ibmi-fs.clearMessageQueue",
-        "title": "Clear Message Queue",
+        "title": "%command.clearMessageQueue.title%",
         "category": "IBM i FS",
         "icon": "$(trash)"
       },
       {
         "command": "vscode-ibmi-fs.QueryFile",
-        "title": "Query file",
+        "title": "%command.QueryFile.title%",
         "category": "IBM i FS",
         "icon": "$(file-code)"
       }
@@ -470,12 +471,15 @@
     "vscode:prepublish": "npm run build",
     "compile": "npm run clean && webpack",
     "watch": "npm run clean && webpack --watch",
-    "build": "npm run clean && webpack --mode production --devtool hidden-source-map"
+    "build": "npm run clean && webpack --mode production --devtool hidden-source-map",
+    "nls": "npx @vscode/l10n-dev export --outDir ./l10n ./src",
+    "pseudo-nls": "npx @vscode/l10n-dev generate-pseudo -o ./l10n/ ./l10n/bundle.l10n.json ./package.nls.json"
   },
   "devDependencies": {
     "@halcyontech/vscode-ibmi-types": "^2.17.2",
     "@types/node": "^20",
     "@types/vscode": "^1.90.0",
+    "@vscode/l10n-dev": "^0.0.35",
     "esbuild": "^0.19.12",
     "esbuild-loader": "^4.2.2",
     "rimraf": "^5.0.5",
