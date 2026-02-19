@@ -21,7 +21,7 @@ import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected } from "../tools";
+import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected, checkProcedureExists, checkTableFunctionExists, checkViewExists } from "../tools";
 import ObjectProvider from '../objectProvider';
 import { t } from '../l10n';
 
@@ -96,6 +96,13 @@ export namespace DataQueueActions {
     if (connection) {
       if(getProtected(connection,item.library)){
         vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        return false;
+      }
+
+      // Check if CLEAR_DATA_QUEUE procedure exists
+      const procedureExists = await checkProcedureExists(connection, 'QSYS2', 'CLEAR_DATA_QUEUE');
+      if (!procedureExists) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "PROCEDURE", "QSYS2", "CLEAR_DATA_QUEUE"));
         return false;
       }
 
@@ -189,6 +196,14 @@ export namespace DataQueueActions {
         const ibmi = getInstance();
         const connection = ibmi?.getConnection();
         if (connection) {
+          // Check if required procedures exist
+          const procName = fmt === t("YES") ? 'SEND_DATA_QUEUE_UTF8' : 'SEND_DATA_QUEUE';
+          const procedureExists = await checkProcedureExists(connection, 'QSYS2', procName);
+          if (!procedureExists) {
+            vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "PROCEDURE", "QSYS2", procName));
+            return false;
+          }
+
           try {
             // Use UTF8 or standard procedure based on user input
             if (fmt === t("YES")) {
@@ -277,6 +292,12 @@ export class Dtaq extends Base {
     const connection = ibmi?.getConnection();
 
     if (connection) {
+      // Check if DATA_QUEUE_INFO view exists
+      if (!await checkViewExists(connection, 'QSYS2', 'DATA_QUEUE_INFO')) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_QUEUE_INFO"));
+        return;
+      }
+
       this.columns = await getColumns(connection, 'DATA_QUEUE_INFO');
       let sql: string;
 
@@ -335,6 +356,13 @@ export class Dtaq extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if DATA_QUEUE_ENTRIES function exists
+      const functionExists = await checkTableFunctionExists(connection, 'QSYS2', 'DATA_QUEUE_ENTRIES');
+      if (!functionExists) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "DATA_QUEUE_ENTRIES"));
+        return;
+      }
+
       this._entries.length = 0;
       const entryRows = await connection.runSQL(`
                 Select MESSAGE_DATA,

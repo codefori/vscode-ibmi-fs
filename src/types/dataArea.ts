@@ -17,7 +17,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable, getProtected } from "../tools";
+import { getColumns, generateDetailTable, getProtected, checkViewExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -96,6 +96,12 @@ export namespace DataAreaActions {
 
       if(getProtected(connection,item.library)){
         vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        return false;
+      }
+
+      // Check if DATA_AREA_INFO view exists
+      if (!await checkViewExists(connection, 'QSYS2', 'DATA_AREA_INFO')) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_AREA_INFO"));
         return false;
       }
 
@@ -268,8 +274,14 @@ export class Dtaara extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if DATA_AREA_INFO view exists
+      if (!await checkViewExists(connection, 'QSYS2', 'DATA_AREA_INFO')) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_AREA_INFO"));
+        return;
+      }
+
       this.columns = await getColumns(connection, 'DATA_AREA_INFO');
-      
+
       // First query to get data area type
       this.dta = await connection.runSQL(
         `SELECT DATA_AREA_TYPE

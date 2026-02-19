@@ -25,7 +25,7 @@
 
 import Base from "./base";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable } from "../tools";
+import { getColumns, generateDetailTable, checkProcedureExists, checkViewExists, checkTableFunctionExists } from "../tools";
 import * as vscode from 'vscode';
 import { CommandResult } from "@halcyontech/vscode-ibmi-types";
 import { t } from '../l10n';
@@ -70,27 +70,14 @@ export default class Cls extends Base {
     if (connection) {
       // Check if required SQL objects exist in the temporary library
       // We need: QWCRCLSI procedure, CLASS_INFO view, and CLASS_INFO function
-      let check = await connection.runSQL(
-        `SELECT SUM(CONTEGGIO) AS objok
-          FROM (
-                  SELECT COUNT(*) AS CONTEGGIO
-                      FROM qsys2.sysroutines
-                      WHERE specific_schema = '${connection.getConfig().tempLibrary}'
-                            AND SPECIFIC_NAME = 'QWCRCLSI'
-                  UNION ALL
-                  SELECT COUNT(*) AS CONTEGGIO
-                      FROM QSYS2.sysviews
-                      WHERE table_schema = '${connection.getConfig().tempLibrary}'
-                            AND table_name = 'CLASS_INFO'
-                  UNION ALL
-                  SELECT COUNT(*) AS CONTEGGIO
-                      FROM QSYS2.SYSFUNCS
-                      WHERE specific_schema = '${connection.getConfig().tempLibrary}'
-                            AND SPECIFIC_NAME = 'CLASS_INFO'
-         )`);
+      const tempLib = connection.getConfig().tempLibrary;
+      
+      const procedureExists = await checkProcedureExists(connection, tempLib, 'QWCRCLSI');
+      const viewExists = await checkViewExists(connection, tempLib, 'CLASS_INFO');
+      const functionExists = await checkTableFunctionExists(connection, tempLib, 'CLASS_INFO');
      
      // If any of the 3 required objects are missing, create them all
-     if(!check || check[0].OBJOK!==3){
+     if(!procedureExists || !viewExists || !functionExists){
        try{
          // Write SQL script to create the required objects
           const content=connection.getContent();
@@ -259,7 +246,7 @@ export default class Cls extends Base {
             });
 
             if (runsql.code !== 0) {
-              vscode.window.showErrorMessage(t("Unable to create necessary objects for displaying classes."));
+              vscode.window.showErrorMessage(t("Unable to create necessary SQL objects for displaying classes."));
               return;
             } else {
               // Clean up the temporary SQL script file
@@ -269,12 +256,12 @@ export default class Cls extends Base {
               });
             }
           } else {
-            vscode.window.showErrorMessage(t("Unable to create necessary objects for displaying classes."));
+            vscode.window.showErrorMessage(t("Unable to create necessary SQL objects for displaying classes."));
             return;
           }
         } catch (error) {
           console.dir(error)
-          vscode.window.showErrorMessage(t("Unable to create necessary objects for displaying classes."));
+          vscode.window.showErrorMessage(t("Unable to create necessary SQL objects for displaying classes."));
           return;
         }
       }

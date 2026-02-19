@@ -20,7 +20,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
-import { generateFastTable, FastTableColumn, getProtected } from "../tools";
+import { generateFastTable, FastTableColumn, getProtected, checkViewExists } from "../tools";
 import * as vscode from 'vscode';
 import ObjectProvider from "../objectProvider";
 import { t } from '../l10n';
@@ -148,6 +148,12 @@ export default class Msgq extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if MESSAGE_QUEUE_INFO view exists
+      if (!await checkViewExists(connection, 'QSYS2', 'MESSAGE_QUEUE_INFO')) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_QUEUE_INFO"));
+        return;
+      }
+
       const entryRows = await connection.runSQL(
         `SELECT MESSAGE_ID,
           MESSAGE_TEXT,

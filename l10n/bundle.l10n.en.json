@@ -1269,5 +1269,6 @@
   "message": "message",
   "xxx days": "xxx days",
   "{0} Information": "{0} Information",
-  "{0}: {1}/{2}": "{0}: {1}/{2}"
+  "{0}: {1}/{2}": "{0}: {1}/{2}",
+  "SQL {0} {1}/{2} not found. Please check your IBM i system.": "SQL {0} {1}/{2} not found. Please check your IBM i system."
 }

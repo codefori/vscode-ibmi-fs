@@ -18,7 +18,7 @@
 
 import Base from "./base";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable } from "../tools";
+import { getColumns, generateDetailTable, checkViewExists } from "../tools";
 import * as vscode from 'vscode';
 import { t } from '../l10n';
 
@@ -40,6 +40,12 @@ export default class Jobd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if JOB_DESCRIPTION_INFO view exists
+      if (!await checkViewExists(connection, 'QSYS2', 'JOB_DESCRIPTION_INFO')) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_DESCRIPTION_INFO"));
+        return;
+      }
+
       this.columns = await getColumns(connection, 'JOB_DESCRIPTION_INFO');
 
       this.jobd = await connection.runSQL(

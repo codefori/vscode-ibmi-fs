@@ -20,7 +20,7 @@
 
 import Base from "./base";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable } from "../tools";
+import { getColumns, generateDetailTable, checkViewExists } from "../tools";
 import * as vscode from 'vscode';
 import { t } from '../l10n';
 
@@ -43,6 +43,12 @@ export default class Cmd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if COMMAND_INFO view exists
+      if (!await checkViewExists(connection, 'QSYS2', 'COMMAND_INFO')) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "COMMAND_INFO"));
+        return;
+      }
+
       this.columns = await getColumns(connection, 'COMMAND_INFO');
 
       this.cmd = await connection.runSQL(`SELECT PROXY_COMMAND,

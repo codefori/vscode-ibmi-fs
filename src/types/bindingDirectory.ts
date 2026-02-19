@@ -22,7 +22,7 @@ import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected } from "../tools";
+import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected, checkViewExists } from "../tools";
 import ObjectProvider from '../objectProvider';
 import { t } from '../l10n';
 
@@ -239,6 +239,12 @@ export class Binddir extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if BINDING_DIRECTORY_INFO view exists
+      if (!await checkViewExists(connection, 'QSYS2', 'BINDING_DIRECTORY_INFO')) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BINDING_DIRECTORY_INFO"));
+        return;
+      }
+
       this.entries.length = 0;
       const entryRows = await connection.runSQL(`
         SELECT ENTRY_LIBRARY CONCAT '/' CONCAT ENTRY AS ENTRY,
@@ -264,6 +270,16 @@ export class Binddir extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if required SQL objects exist
+      if (!await checkViewExists(connection, 'QSYS2', 'BINDING_DIRECTORY_INFO')) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BINDING_DIRECTORY_INFO"));
+        return;
+      }
+      if (!await checkViewExists(connection, 'QSYS2', 'PROGRAM_EXPORT_IMPORT_INFO')) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "PROGRAM_EXPORT_IMPORT_INFO"));
+        return;
+      }
+
       this.exports.length = 0;
       const entryRows = await connection.runSQL(`
         SELECT ENTRY_LIBRARY CONCAT '/' CONCAT ENTRY as ENTRY,

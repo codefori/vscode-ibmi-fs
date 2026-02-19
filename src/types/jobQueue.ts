@@ -18,7 +18,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, getProtected } from "../tools";
+import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, getProtected, checkTableFunctionExists, checkViewExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -106,6 +106,12 @@ export namespace JobQueueActions {
         return false;
       }
 
+      // Check if JOB_QUEUE_INFO view exists
+      if (!await checkViewExists(connection, 'QSYS2', 'JOB_QUEUE_INFO')) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
+        return false;
+      }
+
       //check if the jobq is already held
       let jobq = await connection.runSQL(
         `SELECT JOB_QUEUE_STATUS
@@ -155,6 +161,12 @@ export namespace JobQueueActions {
 
       if(getProtected(connection,item.library)){
         vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        return false;
+      }
+
+      // Check if JOB_QUEUE_INFO view exists
+      if (!await checkViewExists(connection, 'QSYS2', 'JOB_QUEUE_INFO')) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
         return false;
       }
 
@@ -402,6 +414,13 @@ export default class Jobq extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if JOB_QUEUE_ENTRIES function exists
+      const functionExists = await checkViewExists(connection, 'SYSTOOLS', 'JOB_QUEUE_ENTRIES');
+      if (!functionExists) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "SYSTOOLS", "JOB_QUEUE_ENTRIES"));
+        return;
+      }
+
       const entryRows = await connection.runSQL(
         `SELECT JOB_NAME,
                 SUBMITTER_JOB_NAME,

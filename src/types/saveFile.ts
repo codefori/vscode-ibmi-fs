@@ -31,6 +31,8 @@ import {
   generateFastTable,
   getProtected,
   getQSYSObjectPath,
+  checkViewExists,
+  checkTableFunctionExists,
 } from "../tools";
 import { Components } from "../webviewToolkit";
 import Base from "./base";
@@ -148,6 +150,13 @@ export namespace SaveFileActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if SAVE_FILE_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'SAVE_FILE_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
+        return false;
+      }
+
       const savfInfo = await connection.runSQL(
         `SELECT SAVE_COMMAND
         FROM QSYS2.SAVE_FILE_INFO
@@ -260,6 +269,13 @@ export namespace SaveFileActions {
     if (connection) {
       if(getProtected(connection,target.library)){
         vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        return false;
+      }
+
+      // Check if SAVE_FILE_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'SAVE_FILE_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
         return false;
       }
 
@@ -434,6 +450,13 @@ export namespace SaveFileActions {
     if (connection) {
       if(getProtected(connection,target.library)){
         vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        return false;
+      }
+
+      // Check if SAVE_FILE_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'SAVE_FILE_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
         return false;
       }
 
@@ -840,6 +863,13 @@ export namespace SaveFileActions {
         return false;
       }
 
+      // Check if SAVE_FILE_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'SAVE_FILE_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
+        return false;
+      }
+
       const savfInfo = await connection.runSQL(
         `SELECT SAVE_COMMAND
         FROM QSYS2.SAVE_FILE_INFO
@@ -1240,11 +1270,18 @@ export class SaveFile extends Base {
     let isIfs: boolean = false;
 
     if (connection) {
+      // Check if SAVE_FILE_INFO view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'SAVE_FILE_INFO');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
+        return;
+      }
+
       // Get save file information from system catalog
       this.savf = await connection.runSQL(
-        `SELECT SAVE_FILE_LIBRARY, 
-        SAVE_FILE, 
-        SAVE_COMMAND 
+        `SELECT SAVE_FILE_LIBRARY,
+        SAVE_FILE,
+        SAVE_COMMAND
         FROM QSYS2.SAVE_FILE_INFO WHERE
         SAVE_FILE_LIBRARY = '${this.library}' AND SAVE_FILE = '${this.name}'
         Fetch first row only`,
@@ -1305,6 +1342,13 @@ export class SaveFile extends Base {
     const connection = ibmi?.getConnection();
 
     if (connection) {
+      // Check if SAVE_FILE_OBJECTS function exists
+      const functionExists = await checkTableFunctionExists(connection, 'QSYS2', 'SAVE_FILE_OBJECTS');
+      if (!functionExists) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
+        return;
+      }
+
       // Fetch all objects
       this.objects.length = 0;
       const objectsRows = await connection.runSQL(`

@@ -20,7 +20,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable, generateFastTable, FastTableColumn, getProtected } from "../tools";
+import { getColumns, generateDetailTable, generateFastTable, FastTableColumn, getProtected, checkTableFunctionExists, checkViewExists, checkProcedureExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -267,6 +267,12 @@ export namespace OutputQueueActions {
         return false;
       }
 
+      // Check if OUTPUT_QUEUE_INFO view exists
+      if (!await checkViewExists(connection, 'QSYS2', 'OUTPUT_QUEUE_INFO')) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_INFO"));
+        return false;
+      }
+
       // Query output queue to get writer information
       let outq = await connection.runSQL(
         `SELECT NETWORK_CONNECTION_TYPE, NUMBER_OF_WRITERS
@@ -405,6 +411,12 @@ export namespace OutputQueueActions {
       });
 
       if (await vscode.window.showWarningMessage(t("Are you sure you want to delete spools that are older than {0} days from Output Queue {1}/{2}?", String(days), library, name), { modal: true }, t("Delete old spools"))) {
+        // Check if DELETE_OLD_SPOOLED_FILES procedure exists
+        if (!await checkProcedureExists(connection, 'SYSTOOLS', 'DELETE_OLD_SPOOLED_FILES')) {
+          vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "PROCEDURE", "SYSTOOLS", "DELETE_OLD_SPOOLED_FILES"));
+          return false;
+        }
+
         try {
           await connection.runSQL(`CALL SYSTOOLS.DELETE_OLD_SPOOLED_FILES(DELETE_OLDER_THAN => CURRENT DATE - ${days} DAYS,
                                         P_OUTPUT_QUEUE_NAME => '${name}',
@@ -464,6 +476,20 @@ export namespace OutputQueueActions {
    */
   export const genPdf = async (item: Entry): Promise<boolean> => {
     let name = 'generatedPDF'
+
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      // Check if GENERATE_PDF function exists
+      const functionExists = await checkTableFunctionExists(connection, 'SYSTOOLS', 'GENERATE_PDF');
+      if (!functionExists) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "SYSTOOLS", "GENERATE_PDF"));
+        return false;
+      }
+    } else {
+      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      return false;
+    }
 
     const saveLocation = await vscode.window.showSaveDialog({
       title: t("Download PDF File"),
@@ -627,6 +653,13 @@ export default class Outq extends Base {
     const connection = ibmi?.getConnection();
 
     if (connection) {
+      // Check if OUTPUT_QUEUE_ENTRIES_BASIC view exists
+      const viewExists = await checkTableFunctionExists(connection, 'QSYS2', 'OUTPUT_QUEUE_ENTRIES_BASIC');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_ENTRIES_BASIC"));
+        return;
+      }
+
       const entryRows = await connection.runSQL(
         `select to_char(CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') as CREATE_TIMESTAMP,
             SPOOLED_FILE_NAME,

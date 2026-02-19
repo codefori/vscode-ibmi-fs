@@ -19,7 +19,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
-import { generateFastTable, FastTableColumn } from "../tools";
+import { generateFastTable, FastTableColumn, checkViewExists } from "../tools";
 import * as vscode from 'vscode';
 import { t } from '../l10n';
 
@@ -72,6 +72,13 @@ export default class Msgf extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Check if MESSAGE_FILE_DATA view exists
+      const viewExists = await checkViewExists(connection, 'QSYS2', 'MESSAGE_FILE_DATA');
+      if (!viewExists) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_FILE_DATA"));
+        return;
+      }
+
       const entryRows = await connection.runSQL(
         `SELECT MESSAGE_ID,
                 MESSAGE_TEXT,
