@@ -18,7 +18,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, getProtected, openSqlTemplate, checkTableFunctionExists, checkViewExists } from "../tools";
+import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, getProtected, openSqlTemplate, checkTableFunctionExists, checkViewExists, executeSqlIfExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -218,15 +218,10 @@ export default class Jrn extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if JOURNAL_INFO view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'JOURNAL_INFO')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOURNAL_INFO"));
-        return;
-      }
-
       this.columns = await getColumns(connection, 'JOURNAL_INFO');
 
-      this.jrn = await connection.runSQL(
+      this.jrn = await executeSqlIfExists(
+        connection,
         `SELECT JOURNAL_ASPGRP,
           ATTACHED_JOURNAL_RECEIVER_LIBRARY CONCAT '/' CONCAT ATTACHED_JOURNAL_RECEIVER_NAME ATTACHED_JOURNAL_RECEIVER_NAME,
           MESSAGE_QUEUE_LIBRARY CONCAT '/' CONCAT MESSAGE_QUEUE MESSAGE_QUEUE,
@@ -287,7 +282,16 @@ export default class Jrn extends Base {
           JOURNAL_ENTRY_FILTERING
         FROM QSYS2.JOURNAL_INFO
         where JOURNAL_NAME='${this.name}' and JOURNAL_LIBRARY= '${this.library}'
-          Fetch first row only`)
+          Fetch first row only`,
+        'QSYS2',
+        'JOURNAL_INFO',
+        'VIEW'
+      );
+
+      if (this.jrn === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOURNAL_INFO"));
+        return;
+      }
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
@@ -301,14 +305,9 @@ export default class Jrn extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if JOURNAL_RECEIVER_INFO view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'JOURNAL_RECEIVER_INFO')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOURNAL_RECEIVER_INFO"));
-        return;
-      }
-
       this._entries.length=0;
-      const entryRows = await connection.runSQL(
+      const entryRows = await executeSqlIfExists(
+        connection,
         `SELECT JOURNAL_RECEIVER_LIBRARY CONCAT '/' CONCAT JOURNAL_RECEIVER_NAME JOURNAL_RECEIVER_NAME,
           JOURNAL_RECEIVER_ASP_NAME,
           THRESHOLD,
@@ -323,7 +322,17 @@ export default class Jrn extends Base {
         FROM QSYS2.JOURNAL_RECEIVER_INFO
         WHERE JOURNAL_NAME = '${this.name}'
               AND JOURNAL_LIBRARY = '${this.library}'
-        ORDER BY ATTACH_TIMESTAMP ASC`)
+        ORDER BY ATTACH_TIMESTAMP ASC`,
+        'QSYS2',
+        'JOURNAL_RECEIVER_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOURNAL_RECEIVER_INFO"));
+        return;
+      }
+
       this._entries.push(...entryRows.map(this.toEntry));
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));

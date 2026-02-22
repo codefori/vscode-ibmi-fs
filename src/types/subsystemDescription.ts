@@ -26,7 +26,7 @@ import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected, checkViewExists, checkTableFunctionExists } from "../tools";
+import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected, checkViewExists, checkTableFunctionExists, executeSqlIfExists } from "../tools";
 import ObjectProvider from '../objectProvider';
 import { t } from '../l10n';
 
@@ -93,11 +93,22 @@ export namespace SubsystemActions {
       }
 
       // Check if the subsystem is already active
-      let sbsd = await connection.runSQL(
+      let sbsd = await executeSqlIfExists(
+        connection,
         `SELECT STATUS
           FROM QSYS2.SUBSYSTEM_INFO
           WHERE SUBSYSTEM_DESCRIPTION = '${name}'
-            AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${library}'`)
+            AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${library}'`,
+        'QSYS2',
+        'SUBSYSTEM_INFO',
+        'VIEW'
+      );
+
+      if (sbsd === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_INFO"));
+        return false;
+      }
+
       if(sbsd[0].STATUS === "ACTIVE") {
         vscode.window.showErrorMessage(t("Sbsd {0}/{1} already active", library, name));
         return false;
@@ -145,11 +156,22 @@ export namespace SubsystemActions {
       }
 
       // Check if the subsystem is already inactive
-      let sbsd = await connection.runSQL(
+      let sbsd = await executeSqlIfExists(
+        connection,
         `SELECT STATUS
           FROM QSYS2.SUBSYSTEM_INFO
           WHERE SUBSYSTEM_DESCRIPTION = '${name}'
-            AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${library}'`)
+            AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${library}'`,
+        'QSYS2',
+        'SUBSYSTEM_INFO',
+        'VIEW'
+      );
+
+      if (sbsd === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_INFO"));
+        return false;
+      }
+
       if(sbsd[0].STATUS === "INACTIVE") {
         vscode.window.showErrorMessage(t("Sbsd {0}/{1} already inactive", library, name));
         return false;
@@ -405,17 +427,11 @@ export class Sbsd extends Base {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-      // Check if SUBSYSTEM_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'SUBSYSTEM_INFO');
-      if (!viewExists) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_INFO"));
-        return;
-      }
-
       this.columns = await getColumns(connection, 'SUBSYSTEM_INFO');
 
       // Query to get subsystem information
-      this.sbs = await connection.runSQL(
+      this.sbs = await executeSqlIfExists(
+        connection,
         `SELECT STATUS,
             MAXIMUM_ACTIVE_JOBS,
             CURRENT_ACTIVE_JOBS,
@@ -430,7 +446,16 @@ export class Sbsd extends Base {
           FROM QSYS2.SUBSYSTEM_INFO
           WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
                 AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'
-          Fetch first row only`);
+          Fetch first row only`,
+        'QSYS2',
+        'SUBSYSTEM_INFO',
+        'VIEW'
+      );
+
+      if (this.sbs === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_INFO"));
+        return;
+      }
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);
       return;
@@ -445,20 +470,23 @@ export class Sbsd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if SUBSYSTEM_POOL_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'SUBSYSTEM_POOL_INFO');
-      if (!viewExists) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_POOL_INFO"));
-        return;
-      }
-
       this.pools.length = 0;
-      const entryRows = await connection.runSQL(`
-        SELECT POOL_ID,
+      const entryRows = await executeSqlIfExists(
+        connection,
+        `SELECT POOL_ID,
           POOL_NAME
         FROM QSYS2.SUBSYSTEM_POOL_INFO
         WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
-          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`);
+          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`,
+        'QSYS2',
+        'SUBSYSTEM_POOL_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_POOL_INFO"));
+        return;
+      }
 
       this.pools.push(...entryRows.map(toGenEntryPool));
     } else {
@@ -475,20 +503,23 @@ export class Sbsd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if AUTOSTART_JOB_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'AUTOSTART_JOB_INFO');
-      if (!viewExists) {
+      this.ajes.length = 0;
+      const entryRows = await executeSqlIfExists(
+        connection,
+        `SELECT AUTOSTART_JOB_NAME,
+          JOB_DESCRIPTION_LIBRARY CONCAT '/' CONCAT JOB_DESCRIPTION JOB_DESCRIPTION
+        FROM QSYS2.AUTOSTART_JOB_INFO
+        WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
+          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`,
+        'QSYS2',
+        'AUTOSTART_JOB_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
         vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "AUTOSTART_JOB_INFO"));
         return;
       }
-
-      this.ajes.length = 0;
-      const entryRows = await connection.runSQL(`
-        SELECT AUTOSTART_JOB_NAME,
-          JOB_DESCRIPTION_LIBRARY CONCAT '/' CONCAT JOB_DESCRIPTION JOB_DESCRIPTION 
-        FROM QSYS2.AUTOSTART_JOB_INFO
-        WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
-          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`);
 
       this.ajes.push(...entryRows.map(toGenEntryAje));
     } else {
@@ -505,23 +536,26 @@ export class Sbsd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if WORKSTATION_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'WORKSTATION_INFO');
-      if (!viewExists) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "WORKSTATION_INFO"));
-        return;
-      }
-
       this.wses.length = 0;
-      const entryRows = await connection.runSQL(`
-        SELECT WORKSTATION_NAME,
+      const entryRows = await executeSqlIfExists(
+        connection,
+        `SELECT WORKSTATION_NAME,
           WORKSTATION_TYPE,
           JOB_DESCRIPTION_LIBRARY concat '/' concat JOB_DESCRIPTION JOB_DESCRIPTION ,
           ALLOCATION,
           MAXIMUM_ACTIVE_JOBS
         FROM QSYS2.WORKSTATION_INFO
         WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
-          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`);
+          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`,
+        'QSYS2',
+        'WORKSTATION_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "WORKSTATION_INFO"));
+        return;
+      }
       this.wses.push(...entryRows.map(toWse));
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);
@@ -537,17 +571,11 @@ export class Sbsd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if ROUTING_ENTRY_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'ROUTING_ENTRY_INFO');
-      if (!viewExists) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "ROUTING_ENTRY_INFO"));
-        return;
-      }
-
       this.rtges.length = 0;
-      const entryRows = await connection.runSQL(`
-        SELECT SEQUENCE_NUMBER,
-          PROGRAM_LIBRARY concat '/' concat PROGRAM_NAME PROGRAM_NAME, 
+      const entryRows = await executeSqlIfExists(
+        connection,
+        `SELECT SEQUENCE_NUMBER,
+          PROGRAM_LIBRARY concat '/' concat PROGRAM_NAME PROGRAM_NAME,
           CLASS_LIBRARY concat '/' concat CLASS CLASS,
           case when MAXIMUM_STEPS is null then 'NOMAX' else char(MAXIMUM_STEPS) end MAXIMUM_STEPS,
           POOL_ID,
@@ -555,7 +583,16 @@ export class Sbsd extends Base {
           COMPARISON_START
         FROM QSYS2.ROUTING_ENTRY_INFO
         WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
-          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`);
+          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`,
+        'QSYS2',
+        'ROUTING_ENTRY_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "ROUTING_ENTRY_INFO"));
+        return;
+      }
       this.rtges.push(...entryRows.map(toRtge));
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);
@@ -571,16 +608,10 @@ export class Sbsd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if PRESTART_JOB_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'PRESTART_JOB_INFO');
-      if (!viewExists) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "PRESTART_JOB_INFO"));
-        return;
-      }
-
       this.pjes.length = 0;
-      const entryRows = await connection.runSQL(`
-        SELECT PRESTART_JOB_NAME,
+      const entryRows = await executeSqlIfExists(
+        connection,
+        `SELECT PRESTART_JOB_NAME,
           PRESTART_JOB_PROGRAM_LIBRARY CONCAT '/' CONCAT PRESTART_JOB_PROGRAM PRESTART_JOB_PROGRAM,
           USER_PROFILE,
           JOB_DESCRIPTION_LIBRARY CONCAT '/' CONCAT JOB_DESCRIPTION JOB_DESCRIPTION,
@@ -599,7 +630,16 @@ export class Sbsd extends Base {
           CLASS_LIBRARY CONCAT '/' CONCAT CLASS CLASS
         FROM QSYS2.PRESTART_JOB_INFO
         WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
-          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`);
+          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`,
+        'QSYS2',
+        'PRESTART_JOB_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "PRESTART_JOB_INFO"));
+        return;
+      }
       this.pjes.push(...entryRows.map(toPje));
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);
@@ -615,16 +655,10 @@ export class Sbsd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if JOB_QUEUE_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'JOB_QUEUE_INFO');
-      if (!viewExists) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
-        return;
-      }
-
       this.jobqes.length = 0;
-      const entryRows = await connection.runSQL(`
-        SELECT JOB_QUEUE_LIBRARY CONCAT '/' CONCAT JOB_QUEUE_NAME JOB_QUEUE_NAME,
+      const entryRows = await executeSqlIfExists(
+        connection,
+        `SELECT JOB_QUEUE_LIBRARY CONCAT '/' CONCAT JOB_QUEUE_NAME JOB_QUEUE_NAME,
           JOB_QUEUE_STATUS,
           SEQUENCE_NUMBER,
           CASE WHEN MAXIMUM_ACTIVE_JOBS =-1 THEN 'NOMAX' ELSE CHAR(MAXIMUM_ACTIVE_JOBS) END MAXIMUM_ACTIVE_JOBS,
@@ -634,7 +668,16 @@ export class Sbsd extends Base {
           SCHEDULED_JOBS
         FROM QSYS2.JOB_QUEUE_INFO
         WHERE SUBSYSTEM_NAME = '${this.name}'
-          AND SUBSYSTEM_LIBRARY_NAME = '${this.library}'`);
+          AND SUBSYSTEM_LIBRARY_NAME = '${this.library}'`,
+        'QSYS2',
+        'JOB_QUEUE_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
+        return;
+      }
       this.jobqes.push(...entryRows.map(toJobqe));
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);
@@ -651,8 +694,9 @@ export class Sbsd extends Base {
     const connection = ibmi?.getConnection();
     if (connection) {
       this.jobs.length = 0;
-      const entryRows = await connection.runSQL(`
-        SELECT JOB_NAME,
+      const entryRows = await executeSqlIfExists(
+        connection,
+        `SELECT JOB_NAME,
           AUTHORIZATION_NAME,
           JOB_TYPE,
           FUNCTION_TYPE CONCAT '-' CONCAT "FUNCTION" "FUNCTION",
@@ -663,7 +707,17 @@ export class Sbsd extends Base {
         FROM TABLE (
                 QSYS2.ACTIVE_JOB_INFO(SUBSYSTEM_LIST_FILTER => '${this.name}', DETAILED_INFO => 'NONE', RESET_STATISTICS => 'YES')
             )
-        WHERE JOB_TYPE <> 'SBS'`);
+        WHERE JOB_TYPE <> 'SBS'`,
+        'QSYS2',
+        'ACTIVE_JOB_INFO',
+        'FUNCTION'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "ACTIVE_JOB_INFO"));
+        return;
+      }
+
       this.jobs.push(...entryRows.map(toJob));
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);

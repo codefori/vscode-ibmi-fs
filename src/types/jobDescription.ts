@@ -18,7 +18,7 @@
 
 import Base from "./base";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable, checkViewExists } from "../tools";
+import { getColumns, generateDetailTable, checkViewExists, executeSqlIfExists } from "../tools";
 import * as vscode from 'vscode';
 import { t } from '../l10n';
 
@@ -40,15 +40,10 @@ export default class Jobd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if JOB_DESCRIPTION_INFO view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'JOB_DESCRIPTION_INFO')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_DESCRIPTION_INFO"));
-        return;
-      }
-
       this.columns = await getColumns(connection, 'JOB_DESCRIPTION_INFO');
 
-      this.jobd = await connection.runSQL(
+      this.jobd = await executeSqlIfExists(
+        connection,
         `SELECT AUTHORIZATION_NAME, JOB_DATE, ACCOUNTING_CODE, ROUTING_DATA, REQUEST_DATA,
           LIBRARY_LIST_COUNT, LIBRARY_LIST, JOB_SWITCHES, TEXT_DESCRIPTION, JOB_QUEUE_LIBRARY CONCAT '/' CONCAT JOB_QUEUE AS JOB_QUEUE, JOB_QUEUE_PRIORITY,
           HOLD_ON_JOB_QUEUE, OUTPUT_QUEUE_LIBRARY CONCAT '/' CONCAT OUTPUT_QUEUE AS OUTPUT_QUEUE, OUTPUT_QUEUE_PRIORITY, SPOOLED_FILE_ACTION, PRINTER_DEVICE,
@@ -58,7 +53,16 @@ export default class Jobd extends Base {
           DDM_CONVERSATION
           FROM QSYS2.JOB_DESCRIPTION_INFO
           WHERE JOB_DESCRIPTION = '${this.name}' AND JOB_DESCRIPTION_LIBRARY = '${this.library}'
-          Fetch first row only`)
+          Fetch first row only`,
+        'QSYS2',
+        'JOB_DESCRIPTION_INFO',
+        'VIEW'
+      );
+
+      if (this.jobd === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_DESCRIPTION_INFO"));
+        return;
+      }
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;

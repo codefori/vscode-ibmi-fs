@@ -18,7 +18,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, getProtected, checkTableFunctionExists, checkViewExists } from "../tools";
+import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, getProtected, checkTableFunctionExists, checkViewExists, executeSqlIfExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -106,18 +106,23 @@ export namespace JobQueueActions {
         return false;
       }
 
-      // Check if JOB_QUEUE_INFO view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'JOB_QUEUE_INFO')) {
+      //check if the jobq is already held
+      let jobq = await executeSqlIfExists(
+        connection,
+        `SELECT JOB_QUEUE_STATUS
+          FROM QSYS2.JOB_QUEUE_INFO
+          WHERE JOB_QUEUE_NAME = '${name}' AND JOB_QUEUE_LIBRARY = '${library}'
+          Fetch first row only`,
+        'QSYS2',
+        'JOB_QUEUE_INFO',
+        'VIEW'
+      );
+
+      if (jobq === null) {
         vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
         return false;
       }
 
-      //check if the jobq is already held
-      let jobq = await connection.runSQL(
-        `SELECT JOB_QUEUE_STATUS
-          FROM QSYS2.JOB_QUEUE_INFO
-          WHERE JOB_QUEUE_NAME = '${name}' AND JOB_QUEUE_LIBRARY = '${library}'
-          Fetch first row only`)
       if(jobq[0].JOB_QUEUE_STATUS === "HELD") {
         vscode.window.showErrorMessage(t("Jobq {0}/{1} already held", library, name));
         return false;
@@ -164,18 +169,23 @@ export namespace JobQueueActions {
         return false;
       }
 
-      // Check if JOB_QUEUE_INFO view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'JOB_QUEUE_INFO')) {
+      //check if the jobq is already released
+      let jobq = await executeSqlIfExists(
+        connection,
+        `SELECT JOB_QUEUE_STATUS
+          FROM QSYS2.JOB_QUEUE_INFO
+          WHERE JOB_QUEUE_NAME = '${name}' AND JOB_QUEUE_LIBRARY = '${library}'
+          Fetch first row only`,
+        'QSYS2',
+        'JOB_QUEUE_INFO',
+        'VIEW'
+      );
+
+      if (jobq === null) {
         vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
         return false;
       }
 
-      //check if the jobq is already released
-      let jobq = await connection.runSQL(
-        `SELECT JOB_QUEUE_STATUS
-          FROM QSYS2.JOB_QUEUE_INFO
-          WHERE JOB_QUEUE_NAME = '${name}' AND JOB_QUEUE_LIBRARY = '${library}'
-          Fetch first row only`)
       if(jobq[0].JOB_QUEUE_STATUS !== "HELD") {
         vscode.window.showErrorMessage(t("Jobq {0}/{1} not held", library, name));
         return false;
@@ -395,12 +405,22 @@ export default class Jobq extends Base {
     if (connection) {
       this.columns = await getColumns(connection, 'JOB_QUEUE_INFO');
 
-      this.jobq = await connection.runSQL(
+      this.jobq = await executeSqlIfExists(
+        connection,
         `SELECT JOB_QUEUE_STATUS, NUMBER_OF_JOBS, SUBSYSTEM_LIBRARY_NAME CONCAT '/' CONCAT SUBSYSTEM_NAME AS SUBSYSTEM_NAME, MAXIMUM_ACTIVE_JOBS, ACTIVE_JOBS, HELD_JOBS,
             RELEASED_JOBS, SCHEDULED_JOBS, TEXT_DESCRIPTION
           FROM QSYS2.JOB_QUEUE_INFO
           WHERE JOB_QUEUE_NAME = '${this.name}' AND JOB_QUEUE_LIBRARY = '${this.library}'
-          Fetch first row only`)
+          Fetch first row only`,
+        'QSYS2',
+        'JOB_QUEUE_INFO',
+        'VIEW'
+      );
+
+      if (this.jobq === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
+        return;
+      }
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
@@ -414,20 +434,24 @@ export default class Jobq extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if JOB_QUEUE_ENTRIES function exists
-      const functionExists = await checkViewExists(connection, 'SYSTOOLS', 'JOB_QUEUE_ENTRIES');
-      if (!functionExists) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "SYSTOOLS", "JOB_QUEUE_ENTRIES"));
-        return;
-      }
-
-      const entryRows = await connection.runSQL(
+      const entryRows = await executeSqlIfExists(
+        connection,
         `SELECT JOB_NAME,
                 SUBMITTER_JOB_NAME,
                 to_char(JOB_ENTERED_SYSTEM_TIME, 'yyyy-mm-dd HH24:mi') as JOB_ENTERED_SYSTEM_TIME, JOB_QUEUE_STATUS,
                 case when JOB_SCHEDULED_TIME is not null then to_char(JOB_SCHEDULED_TIME, 'yyyy-mm-dd HH24:mi') else null end as JOB_SCHEDULED_TIME
             FROM SYSTOOLS.JOB_QUEUE_ENTRIES
-            WHERE JOB_QUEUE_NAME = '${this.name}' AND JOB_QUEUE_LIBRARY = '${this.library}'`)
+            WHERE JOB_QUEUE_NAME = '${this.name}' AND JOB_QUEUE_LIBRARY = '${this.library}'`,
+        'SYSTOOLS',
+        'JOB_QUEUE_ENTRIES',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "SYSTOOLS", "JOB_QUEUE_ENTRIES"));
+        return;
+      }
+
       this._entries = [];
       this._entries.push(...entryRows.map(this.toEntry));
     } else {

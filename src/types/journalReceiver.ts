@@ -20,7 +20,7 @@
 
 import Base from "./base";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable, checkViewExists } from "../tools";
+import { getColumns, generateDetailTable, checkViewExists, executeSqlIfExists } from "../tools";
 import * as vscode from 'vscode';
 import { t } from '../l10n';
 
@@ -42,15 +42,10 @@ export default class Jrnrcv extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if JOURNAL_RECEIVER_INFO view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'JOURNAL_RECEIVER_INFO')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOURNAL_RECEIVER_INFO"));
-        return;
-      }
-
       this.columns = await getColumns(connection, 'JOURNAL_RECEIVER_INFO');
 
-      this.jrnrcv = await connection.runSQL(
+      this.jrnrcv = await executeSqlIfExists(
+        connection,
         `SELECT DESCRIPTIVE_TEXT,
           JOURNAL_RECEIVER_ASP_NAME,
           JOURNAL_LIBRARY concat '/' concat JOURNAL_NAME JOURNAL_NAME,
@@ -97,7 +92,16 @@ export default class Jrnrcv extends Base {
           FILTER_PROGRAM_JSON
         FROM QSYS2.JOURNAL_RECEIVER_INFO
         where JOURNAL_RECEIVER_LIBRARY= '${this.library}' and JOURNAL_RECEIVER_NAME = '${this.name}'
-          Fetch first row only`)
+          Fetch first row only`,
+        'QSYS2',
+        'JOURNAL_RECEIVER_INFO',
+        'VIEW'
+      );
+
+      if (this.jrnrcv === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOURNAL_RECEIVER_INFO"));
+        return;
+      }
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;

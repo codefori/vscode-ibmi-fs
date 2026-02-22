@@ -20,7 +20,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, getProtected, openSqlTemplate, checkTableFunctionExists, checkViewExists } from "../tools";
+import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, getProtected, openSqlTemplate, checkTableFunctionExists, checkViewExists, executeSqlIfExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -147,17 +147,21 @@ export default class File extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if OBJECT_STATISTICS function exists
-      if (!await checkTableFunctionExists(connection, 'QSYS2', 'OBJECT_STATISTICS')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OBJECT_STATISTICS"));
-        return;
-      }
-
-      const objTypeResult = await connection.runSQL(
+      const objTypeResult = await executeSqlIfExists(
+        connection,
         `SELECT SQL_OBJECT_TYPE
           FROM TABLE (
                   QSYS2.OBJECT_STATISTICS('${this.library}', 'FILE', '${this.name}')
-              )`);
+              )`,
+        'QSYS2',
+        'OBJECT_STATISTICS',
+        'FUNCTION'
+      );
+
+      if (objTypeResult === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OBJECT_STATISTICS"));
+        return;
+      }
       
       if (objTypeResult && objTypeResult.length > 0) {
         this.objtype = String(objTypeResult[0].SQL_OBJECT_TYPE);
@@ -169,7 +173,7 @@ export default class File extends Base {
 
       if (this.objtype === 'TABLE' || this.objtype === 'VIEW') {
         await this.fetchInfoFile();
-        if( this.objtype === 'VIEW') {  
+        if( this.objtype === 'VIEW') {
           await this.fetchInfoView();
         } else {
           await this.fetchStatsFile();
@@ -194,16 +198,6 @@ export default class File extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if required SQL objects exist
-      if (!await checkTableFunctionExists(connection, 'QSYS2', 'OBJECT_STATISTICS')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OBJECT_STATISTICS"));
-        return;
-      }
-      if (!await checkViewExists(connection, 'QSYS2', 'SYSTABLES')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSTABLES"));
-        return;
-      }
-
       this.columns =new Map<string, string>([
         ['TABLE_SCHEMA', t('SQL schema name')],
         ['TABLE_NAME', t('SQL table name')],
@@ -229,7 +223,8 @@ export default class File extends Base {
         ['ISOLATION', t('Isolation level')]
       ]);
 
-      this.file = await connection.runSQL(
+      this.file = await executeSqlIfExists(
+        connection,
         `SELECT TABLE_SCHEMA,
             TABLE_NAME,
             X.SQL_OBJECT_TYPE,
@@ -258,12 +253,21 @@ export default class File extends Base {
               ) X
           WHERE SYSTEM_TABLE_SCHEMA = '${this.library}'
                 AND SYSTEM_TABLE_NAME = '${this.name}'
-          Fetch first row only`)
+          Fetch first row only`,
+        'QSYS2',
+        'SYSTABLES',
+        'VIEW'
+      );
+
+      if (this.file === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSTABLES"));
+        return;
+      }
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
-  } 
+  }
 
   /**
    * Fetch view-specific information from QSYS2.SYSVIEWS
@@ -273,12 +277,6 @@ export default class File extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if SYSVIEWS view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'SYSVIEWS')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSVIEWS"));
-        return;
-      }
-
       this.columnsview =new Map<string, string>([
         ['VIEW_DEFINITION', t('View definition')],
         ['IS_INSERTABLE_INTO', t('Is insertable into')],
@@ -286,7 +284,8 @@ export default class File extends Base {
         ['IS_DELETABLE', t('Is deletable')]
       ]);
 
-      this.view = await connection.runSQL(
+      this.view = await executeSqlIfExists(
+        connection,
         `SELECT VIEW_DEFINITION,
             IS_INSERTABLE_INTO,
             CASE
@@ -300,12 +299,21 @@ export default class File extends Base {
           FROM QSYS2.SYSVIEWS
           WHERE SYSTEM_VIEW_SCHEMA = '${this.library}'
                     AND SYSTEM_VIEW_NAME = '${this.name}'
-          Fetch first row only`)
+          Fetch first row only`,
+        'QSYS2',
+        'SYSVIEWS',
+        'VIEW'
+      );
+
+      if (this.view === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSVIEWS"));
+        return;
+      }
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
-  } 
+  }
 
   /**
    * Fetch file statistics from QSYS2.SYSTABLESTAT
@@ -315,15 +323,11 @@ export default class File extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if SYSTABLESTAT view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'SYSTABLESTAT')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSTABLESTAT"));
-        return;
-      }
-
       this.columnsstats = await getColumns(connection, 'SYSTABLESTAT');
 
-      this.stats = await connection.runSQL(
+      // Use executeSqlIfExists to check and execute in one call
+      this.stats = await executeSqlIfExists(
+        connection,
         `SELECT NUMBER_PARTITIONS,
           NUMBER_ROWS,
           NUMBER_DELETED_ROWS,
@@ -351,12 +355,22 @@ export default class File extends Base {
         FROM QSYS2.SYSTABLESTAT
           WHERE SYSTEM_TABLE_SCHEMA = '${this.library}'
                 AND SYSTEM_TABLE_NAME = '${this.name}'
-          Fetch first row only`)
+          Fetch first row only`,
+        'QSYS2',
+        'SYSTABLESTAT',
+        'VIEW'
+      );
+
+      // If stats is null, the view doesn't exist or query failed
+      if (this.stats === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSTABLESTAT"));
+        return;
+      }
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
     }
-  } 
+  }
 
   /**
    * Fetch dependent objects using SYSTOOLS.RELATED_OBJECTS
@@ -366,15 +380,9 @@ export default class File extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if RELATED_OBJECTS function exists
-      const functionExists = await checkTableFunctionExists(connection, 'SYSTOOLS', 'RELATED_OBJECTS');
-      if (!functionExists) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "SYSTOOLS", "RELATED_OBJECTS"));
-        return;
-      }
-
       this.depobjs.length=0;
-      const entryRows = await connection.runSQL(
+      const entryRows = await executeSqlIfExists(
+        connection,
         `SELECT SQL_OBJECT_TYPE,
           SCHEMA_NAME,
           SQL_NAME,
@@ -383,7 +391,17 @@ export default class File extends Base {
           TO_CHAR(LAST_ALTERED, 'yyyy-mm-dd HH24:mi') AS LAST_ALTERED
         FROM TABLE (
           SYSTOOLS.RELATED_OBJECTS(LIBRARY_NAME => '${this.library}', FILE_NAME => '${this.name}')
-          )`)
+          )`,
+        'SYSTOOLS',
+        'RELATED_OBJECTS',
+        'FUNCTION'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "SYSTOOLS", "RELATED_OBJECTS"));
+        return;
+      }
+
       this.depobjs.push(...entryRows.map(this.toDepObj));
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
@@ -399,14 +417,9 @@ export default class File extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if SYSMEMBERSTAT view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'SYSMEMBERSTAT')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSMEMBERSTAT"));
-        return;
-      }
-
       this.members.length=0;
-      const entryRows = await connection.runSQL(
+      const entryRows = await executeSqlIfExists(
+        connection,
         `SELECT SYSTEM_TABLE_MEMBER,
           TO_CHAR(LAST_CHANGE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS LAST_CHANGE_TIMESTAMP,
           NUMBER_ROWS,
@@ -415,7 +428,17 @@ export default class File extends Base {
           TEXT_DESCRIPTION
         FROM QSYS2.SYSMEMBERSTAT
         WHERE TABLE_SCHEMA = '${this.library}'
-              AND TABLE_NAME = '${this.name}'`)
+              AND TABLE_NAME = '${this.name}'`,
+        'QSYS2',
+        'SYSMEMBERSTAT',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSMEMBERSTAT"));
+        return;
+      }
+
       this.members.push(...entryRows.map(this.toMember));
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
@@ -431,16 +454,6 @@ export default class File extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if required SQL objects exist
-      if (!await checkTableFunctionExists(connection, 'QSYS2', 'OBJECT_STATISTICS')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OBJECT_STATISTICS"));
-        return;
-      }
-      if (!await checkViewExists(connection, 'QSYS2', 'SYSINDEXES')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSINDEXES"));
-        return;
-      }
-
       this.columns =new Map<string, string>([
         ['INDEX_SCHEMA', t('SQL schema name')],
         ['INDEX_NAME', t('SQL index name')],
@@ -458,7 +471,8 @@ export default class File extends Base {
         ['JOURNAL_NAME', t('Current or last journal')]
       ]);
 
-      this.file = await connection.runSQL(
+      this.file = await executeSqlIfExists(
+        connection,
         `SELECT INDEX_SCHEMA,
             INDEX_NAME,
             X.SQL_OBJECT_TYPE,
@@ -479,7 +493,16 @@ export default class File extends Base {
             ) X
           WHERE SYSTEM_INDEX_SCHEMA = '${this.library}'
                 AND SYSTEM_INDEX_NAME = '${this.name}'
-          Fetch first row only`)
+          Fetch first row only`,
+        'QSYS2',
+        'SYSINDEXES',
+        'VIEW'
+      );
+
+      if (this.file === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSINDEXES"));
+        return;
+      }
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
@@ -494,15 +517,10 @@ export default class File extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if SYSINDEXSTAT view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'SYSINDEXSTAT')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSINDEXSTAT"));
-        return;
-      }
-
       this.columnsstats = await getColumns(connection, 'SYSINDEXSTAT');
       
-      this.stats = await connection.runSQL(
+      this.stats = await executeSqlIfExists(
+        connection,
         `SELECT INDEX_VALID,
             to_char(INDEX_CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS INDEX_CREATE_TIMESTAMP,
             to_char(LAST_BUILD_TIMESTAMP, 'yyyy-mm-dd HH24:mi') LAST_BUILD_TIMESTAMP,
@@ -538,7 +556,16 @@ export default class File extends Base {
           FROM QSYS2.SYSINDEXSTAT
           WHERE SYSTEM_INDEX_SCHEMA = '${this.library}'
                 AND SYSTEM_INDEX_NAME = '${this.name}'
-          Fetch first row only`)
+          Fetch first row only`,
+        'QSYS2',
+        'SYSINDEXSTAT',
+        'VIEW'
+      );
+
+      if (this.stats === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSINDEXSTAT"));
+        return;
+      }
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;

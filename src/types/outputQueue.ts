@@ -20,7 +20,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable, generateFastTable, FastTableColumn, getProtected, checkTableFunctionExists, checkViewExists, checkProcedureExists } from "../tools";
+import { getColumns, generateDetailTable, generateFastTable, FastTableColumn, getProtected, checkTableFunctionExists, checkViewExists, checkProcedureExists, executeSqlIfExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -267,18 +267,23 @@ export namespace OutputQueueActions {
         return false;
       }
 
-      // Check if OUTPUT_QUEUE_INFO view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'OUTPUT_QUEUE_INFO')) {
+      // Query output queue to get writer information
+      let outq = await executeSqlIfExists(
+        connection,
+        `SELECT NETWORK_CONNECTION_TYPE, NUMBER_OF_WRITERS
+          FROM QSYS2.OUTPUT_QUEUE_INFO
+          WHERE OUTPUT_QUEUE_NAME = '${name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${library}'
+          FETCH FIRST ROW ONLY`,
+        'QSYS2',
+        'OUTPUT_QUEUE_INFO',
+        'VIEW'
+      );
+
+      if (outq === null) {
         vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_INFO"));
         return false;
       }
 
-      // Query output queue to get writer information
-      let outq = await connection.runSQL(
-        `SELECT NETWORK_CONNECTION_TYPE, NUMBER_OF_WRITERS
-          FROM QSYS2.OUTPUT_QUEUE_INFO
-          WHERE OUTPUT_QUEUE_NAME = '${name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${library}'
-          FETCH FIRST ROW ONLY`);
       // Get network connection type (null for local printers)
       let nettype = outq[0].NETWORK_CONNECTION_TYPE ? String(outq[0].NETWORK_CONNECTION_TYPE) : null;
       // Get current number of active writers
@@ -411,17 +416,23 @@ export namespace OutputQueueActions {
       });
 
       if (await vscode.window.showWarningMessage(t("Are you sure you want to delete spools that are older than {0} days from Output Queue {1}/{2}?", String(days), library, name), { modal: true }, t("Delete old spools"))) {
-        // Check if DELETE_OLD_SPOOLED_FILES procedure exists
-        if (!await checkProcedureExists(connection, 'SYSTOOLS', 'DELETE_OLD_SPOOLED_FILES')) {
-          vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "PROCEDURE", "SYSTOOLS", "DELETE_OLD_SPOOLED_FILES"));
-          return false;
-        }
-
         try {
-          await connection.runSQL(`CALL SYSTOOLS.DELETE_OLD_SPOOLED_FILES(DELETE_OLDER_THAN => CURRENT DATE - ${days} DAYS,
+          const result = await executeSqlIfExists(
+            connection,
+            `CALL SYSTOOLS.DELETE_OLD_SPOOLED_FILES(DELETE_OLDER_THAN => CURRENT DATE - ${days} DAYS,
                                         P_OUTPUT_QUEUE_NAME => '${name}',
                                         P_OUTPUT_QUEUE_LIBRARY_NAME => '${library}',
-                                        PREVIEW => 'NO')`);
+                                        PREVIEW => 'NO')`,
+            'SYSTOOLS',
+            'DELETE_OLD_SPOOLED_FILES',
+            'PROCEDURE'
+          );
+
+          if (result === null) {
+            vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "PROCEDURE", "SYSTOOLS", "DELETE_OLD_SPOOLED_FILES"));
+            return false;
+          }
+
           vscode.window.showInformationMessage(t("Old spools from {0}/{1} deleted.", library, name));
           return true;
         } catch (error) {
@@ -616,7 +627,8 @@ export default class Outq extends Base {
     if (connection) {
       this.columns = await getColumns(connection, 'OUTPUT_QUEUE_INFO');
 
-      this.outq = await connection.runSQL(
+      this.outq = await executeSqlIfExists(
+        connection,
         `select NUMBER_OF_FILES,
             NUMBER_OF_WRITERS,
             WRITERS_TO_AUTOSTART,
@@ -638,7 +650,16 @@ export default class Outq extends Base {
             DESTINATION_OPTIONS
             from QSYS2.OUTPUT_QUEUE_INFO
             WHERE OUTPUT_QUEUE_NAME = '${this.name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${this.library}'
-            Fetch first row only`)
+            Fetch first row only`,
+        'QSYS2',
+        'OUTPUT_QUEUE_INFO',
+        'VIEW'
+      );
+
+      if (this.outq === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_INFO"));
+        return;
+      }
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
@@ -653,14 +674,8 @@ export default class Outq extends Base {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-      // Check if OUTPUT_QUEUE_ENTRIES_BASIC view exists
-      const viewExists = await checkTableFunctionExists(connection, 'QSYS2', 'OUTPUT_QUEUE_ENTRIES_BASIC');
-      if (!viewExists) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_ENTRIES_BASIC"));
-        return;
-      }
-
-      const entryRows = await connection.runSQL(
+      const entryRows = await executeSqlIfExists(
+        connection,
         `select to_char(CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') as CREATE_TIMESTAMP,
             SPOOLED_FILE_NAME,
             USER_NAME,
@@ -670,7 +685,17 @@ export default class Outq extends Base {
             TOTAL_PAGES,
             JOB_NAME,
             FILE_NUMBER from QSYS2.OUTPUT_QUEUE_ENTRIES_BASIC
-            WHERE OUTPUT_QUEUE_NAME = '${this.name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${this.library}'`)
+            WHERE OUTPUT_QUEUE_NAME = '${this.name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${this.library}'`,
+        'QSYS2',
+        'OUTPUT_QUEUE_ENTRIES_BASIC',
+        'FUNCTION'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OUTPUT_QUEUE_ENTRIES_BASIC"));
+        return;
+      }
+
       this._entries = [];
 
       this._entries.push(...entryRows.map(this.toEntry));

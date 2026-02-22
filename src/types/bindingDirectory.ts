@@ -22,7 +22,7 @@ import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected, checkViewExists } from "../tools";
+import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected, checkViewExists, executeSqlIfExists } from "../tools";
 import ObjectProvider from '../objectProvider';
 import { t } from '../l10n';
 
@@ -239,21 +239,25 @@ export class Binddir extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if BINDING_DIRECTORY_INFO view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'BINDING_DIRECTORY_INFO')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BINDING_DIRECTORY_INFO"));
-        return;
-      }
-
       this.entries.length = 0;
-      const entryRows = await connection.runSQL(`
-        SELECT ENTRY_LIBRARY CONCAT '/' CONCAT ENTRY AS ENTRY,
+      const entryRows = await executeSqlIfExists(
+        connection,
+        `SELECT ENTRY_LIBRARY CONCAT '/' CONCAT ENTRY AS ENTRY,
           ENTRY_TYPE,
           ENTRY_ACTIVATION,
           to_char(ENTRY_CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') as ENTRY_CREATE_TIMESTAMP
         FROM QSYS2.BINDING_DIRECTORY_INFO
         WHERE BINDING_DIRECTORY_LIBRARY = '${this.library}'
-              AND BINDING_DIRECTORY = '${this.name}'`);
+              AND BINDING_DIRECTORY = '${this.name}'`,
+        'QSYS2',
+        'BINDING_DIRECTORY_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BINDING_DIRECTORY_INFO"));
+        return;
+      }
 
       this.entries.push(...entryRows.map(toEntry));
     } else {
@@ -270,19 +274,10 @@ export class Binddir extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if required SQL objects exist
-      if (!await checkViewExists(connection, 'QSYS2', 'BINDING_DIRECTORY_INFO')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BINDING_DIRECTORY_INFO"));
-        return;
-      }
-      if (!await checkViewExists(connection, 'QSYS2', 'PROGRAM_EXPORT_IMPORT_INFO')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "PROGRAM_EXPORT_IMPORT_INFO"));
-        return;
-      }
-
       this.exports.length = 0;
-      const entryRows = await connection.runSQL(`
-        SELECT ENTRY_LIBRARY CONCAT '/' CONCAT ENTRY as ENTRY,
+      const entryRows = await executeSqlIfExists(
+        connection,
+        `SELECT ENTRY_LIBRARY CONCAT '/' CONCAT ENTRY as ENTRY,
           y.SYMBOL_NAME,
           y.SYMBOL_USAGE
         FROM QSYS2.BINDING_DIRECTORY_INFO x
@@ -290,7 +285,16 @@ export class Binddir extends Base {
                 ON x.ENTRY_LIBRARY = y.PROGRAM_LIBRARY
                     AND x.ENTRY = y.PROGRAM_NAME
         WHERE BINDING_DIRECTORY_LIBRARY = '${this.library}'
-          AND BINDING_DIRECTORY = '${this.name}'`);
+          AND BINDING_DIRECTORY = '${this.name}'`,
+        'QSYS2',
+        'BINDING_DIRECTORY_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BINDING_DIRECTORY_INFO"));
+        return;
+      }
 
       this.exports.push(...entryRows.map(toExport));
     } else {

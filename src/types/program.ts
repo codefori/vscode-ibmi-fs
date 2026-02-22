@@ -23,7 +23,7 @@ import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, checkViewExists } from "../tools";
+import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, checkViewExists, executeSqlIfExists } from "../tools";
 import { t } from '../l10n';
 
 /**
@@ -115,16 +115,11 @@ export class Pgm extends Base {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-      // Check if PROGRAM_INFO view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'PROGRAM_INFO')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "PROGRAM_INFO"));
-        return;
-      }
-
       this.columns = await getColumns(connection, 'PROGRAM_INFO');
 
       // Query to get program information
-      this.pgm = await connection.runSQL(
+      this.pgm = await executeSqlIfExists(
+        connection,
         `SELECT PROGRAM_TYPE,
           OBJECT_TYPE,
           to_char(CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS CREATE_TIMESTAMP,
@@ -218,7 +213,16 @@ export class Pgm extends Base {
           SQL_RDB_CONNECTION_METHOD
         FROM QSYS2.PROGRAM_INFO
         WHERE PROGRAM_LIBRARY = '${this.library}' AND PROGRAM_NAME='${this.name}'
-        Fetch first row only`);
+        Fetch first row only`,
+        'QSYS2',
+        'PROGRAM_INFO',
+        'VIEW'
+      );
+
+      if (this.pgm === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "PROGRAM_INFO"));
+        return;
+      }
 
       this.isSrvpgm = this.pgm[0].OBJECT_TYPE === '*SRVPGM';
     } else {
@@ -235,15 +239,10 @@ export class Pgm extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if BOUND_MODULE_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'BOUND_MODULE_INFO');
-      if (!viewExists) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BOUND_MODULE_INFO"));
-        return;
-      }
-
       this.modules.length = 0;
-      const entryRows = await connection.runSQL(`
+      const entryRows = await executeSqlIfExists(
+        connection,
+        `
         SELECT BOUND_MODULE_LIBRARY CONCAT '/' CONCAT BOUND_MODULE AS module,
           MODULE_ATTRIBUTE,
           to_char(MODULE_CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS MODULE_CREATE_TIMESTAMP,
@@ -259,7 +258,16 @@ export class Pgm extends Base {
           TARGET_RELEASE,
           ALLOW_RTVCLSRC
         FROM QSYS2.BOUND_MODULE_INFO
-        WHERE PROGRAM_LIBRARY = '${this.library}' AND PROGRAM_NAME='${this.name}'`);
+        WHERE PROGRAM_LIBRARY = '${this.library}' AND PROGRAM_NAME='${this.name}'`,
+        'QSYS2',
+        'BOUND_MODULE_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BOUND_MODULE_INFO"));
+        return;
+      }
 
       this.modules.push(...entryRows.map(toModules));
     }
@@ -273,20 +281,24 @@ export class Pgm extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if BOUND_SRVPGM_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'BOUND_SRVPGM_INFO');
-      if (!viewExists) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BOUND_SRVPGM_INFO"));
-        return;
-      }
-
       this.srvpgms.length = 0;
-      const entryRows = await connection.runSQL(`
+      const entryRows = await executeSqlIfExists(
+        connection,
+        `
         SELECT BOUND_SERVICE_PROGRAM_LIBRARY CONCAT '/' CONCAT BOUND_SERVICE_PROGRAM as srvpgm,
           BOUND_SERVICE_PROGRAM_SIGNATURE,
           BOUND_SERVICE_PROGRAM_ACTIVATION
         FROM QSYS2.BOUND_SRVPGM_INFO
-        WHERE PROGRAM_LIBRARY = '${this.library}' AND PROGRAM_NAME='${this.name}'`);
+        WHERE PROGRAM_LIBRARY = '${this.library}' AND PROGRAM_NAME='${this.name}'`,
+        'QSYS2',
+        'BOUND_SRVPGM_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BOUND_SRVPGM_INFO"));
+        return;
+      }
 
       this.srvpgms.push(...entryRows.map(toSrvpgm));
     } else {
@@ -303,18 +315,22 @@ export class Pgm extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if PROGRAM_EXPORT_IMPORT_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'PROGRAM_EXPORT_IMPORT_INFO');
-      if (!viewExists) {
+      this.exports.length = 0;
+      const entryRows = await executeSqlIfExists(
+        connection,
+        `
+        select SYMBOL_NAME, SYMBOL_USAGE 
+        from QSYS2.PROGRAM_EXPORT_IMPORT_INFO
+        WHERE PROGRAM_LIBRARY = '${this.library}' AND PROGRAM_NAME='${this.name}'`,
+        'QSYS2',
+        'PROGRAM_EXPORT_IMPORT_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
         vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "PROGRAM_EXPORT_IMPORT_INFO"));
         return;
       }
-
-      this.exports.length = 0;
-      const entryRows = await connection.runSQL(`
-        select SYMBOL_NAME, SYMBOL_USAGE 
-        from QSYS2.PROGRAM_EXPORT_IMPORT_INFO
-        WHERE PROGRAM_LIBRARY = '${this.library}' AND PROGRAM_NAME='${this.name}'`);
 
       this.exports.push(...entryRows.map(toExport));
     } else {

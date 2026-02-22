@@ -20,7 +20,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
-import { generateFastTable, FastTableColumn, getProtected, checkViewExists } from "../tools";
+import { generateFastTable, FastTableColumn, getProtected, checkViewExists, executeSqlIfExists } from "../tools";
 import * as vscode from 'vscode';
 import ObjectProvider from "../objectProvider";
 import { t } from '../l10n';
@@ -148,13 +148,8 @@ export default class Msgq extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if MESSAGE_QUEUE_INFO view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'MESSAGE_QUEUE_INFO')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_QUEUE_INFO"));
-        return;
-      }
-
-      const entryRows = await connection.runSQL(
+      const entryRows = await executeSqlIfExists(
+        connection,
         `SELECT MESSAGE_ID,
           MESSAGE_TEXT,
           SEVERITY,
@@ -165,7 +160,17 @@ export default class Msgq extends Base {
         FROM QSYS2.MESSAGE_QUEUE_INFO
         WHERE MESSAGE_QUEUE_LIBRARY = '${this.library}'
               AND MESSAGE_QUEUE_NAME = '${this.name}'
-        ORDER BY MESSAGE_TIMESTAMP DESC`)
+        ORDER BY MESSAGE_TIMESTAMP DESC`,
+        'QSYS2',
+        'MESSAGE_QUEUE_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_QUEUE_INFO"));
+        return;
+      }
+
       this._entries = [];
       this._entries.push(...entryRows.map(this.toEntry));
     } else {

@@ -20,7 +20,7 @@
 
 import Base from "./base";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable, checkViewExists } from "../tools";
+import { getColumns, generateDetailTable, checkViewExists, executeSqlIfExists } from "../tools";
 import * as vscode from 'vscode';
 import { t } from '../l10n';
 
@@ -43,15 +43,11 @@ export default class Cmd extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if COMMAND_INFO view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'COMMAND_INFO')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "COMMAND_INFO"));
-        return;
-      }
-
       this.columns = await getColumns(connection, 'COMMAND_INFO');
 
-      this.cmd = await connection.runSQL(`SELECT PROXY_COMMAND,
+      this.cmd = await executeSqlIfExists(
+        connection,
+        `SELECT PROXY_COMMAND,
           PROXY_TARGET_COMMAND_LIBRARY,
           PROXY_TARGET_COMMAND,
           TEXT_DESCRIPTION,
@@ -101,7 +97,16 @@ export default class Cmd extends Base {
         FROM QSYS2.COMMAND_INFO
         WHERE COMMAND_LIBRARY = '${this.library}'
         AND COMMAND_NAME = '${this.name}'
-        Fetch first row only`)
+        Fetch first row only`,
+        'QSYS2',
+        'COMMAND_INFO',
+        'VIEW'
+      );
+
+      if (this.cmd === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "COMMAND_INFO"));
+        return;
+      }
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;

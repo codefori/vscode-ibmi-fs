@@ -17,7 +17,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable, getProtected, checkViewExists } from "../tools";
+import { getColumns, generateDetailTable, getProtected, checkViewExists, executeSqlIfExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -99,21 +99,20 @@ export namespace DataAreaActions {
         return false;
       }
 
-      // Check if DATA_AREA_INFO view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'DATA_AREA_INFO')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_AREA_INFO"));
-        return false;
-      }
-
       // Fetch dta
-      const dtaSql = `SELECT DATA_AREA_TYPE, LENGTH, DECIMAL_POSITIONS, DATA_AREA_VALUE
+      let dta = await executeSqlIfExists(
+        connection,
+        `SELECT DATA_AREA_TYPE, LENGTH, DECIMAL_POSITIONS, DATA_AREA_VALUE
           FROM QSYS2.DATA_AREA_INFO
           WHERE DATA_AREA_NAME = '${name}' AND DATA_AREA_LIBRARY = '${library}'
-          FETCH FIRST ROW ONLY`;
-      let dta = await connection.runSQL(dtaSql);
+          FETCH FIRST ROW ONLY`,
+        'QSYS2',
+        'DATA_AREA_INFO',
+        'VIEW'
+      );
 
       // Ensure dta is available
-      if (!dta || dta.length === 0) {
+      if (dta === null || dta.length === 0) {
         vscode.window.showErrorMessage(t("Unable to retrieve Data Area information for {0}/{1}", library, name));
         return false;
       }
@@ -274,31 +273,44 @@ export class Dtaara extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if DATA_AREA_INFO view exists
-      if (!await checkViewExists(connection, 'QSYS2', 'DATA_AREA_INFO')) {
+      this.columns = await getColumns(connection, 'DATA_AREA_INFO');
+
+      // First query to get data area type
+      this.dta = await executeSqlIfExists(
+        connection,
+        `SELECT DATA_AREA_TYPE
+         from QSYS2.DATA_AREA_INFO
+         WHERE DATA_AREA_NAME = '${this.name}' AND DATA_AREA_LIBRARY = '${this.library}'
+         Fetch first row only`,
+        'QSYS2',
+        'DATA_AREA_INFO',
+        'VIEW'
+      );
+
+      if (this.dta === null) {
         vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_AREA_INFO"));
         return;
       }
 
-      this.columns = await getColumns(connection, 'DATA_AREA_INFO');
-
-      // First query to get data area type
-      this.dta = await connection.runSQL(
-        `SELECT DATA_AREA_TYPE
-         from QSYS2.DATA_AREA_INFO
-         WHERE DATA_AREA_NAME = '${this.name}' AND DATA_AREA_LIBRARY = '${this.library}'
-         Fetch first row only`)
-
       // Build SQL based on data area type (decimal areas have DECIMAL_POSITIONS)
-      let sql = `select DATA_AREA_VALUE,
+      this.dta = await executeSqlIfExists(
+        connection,
+        `select DATA_AREA_VALUE,
           DATA_AREA_TYPE,
           LENGTH,
           TEXT_DESCRIPTION ${this.dta[0].DATA_AREA_TYPE === '*DEC' ? ', DECIMAL_POSITIONS' : ''}
           from QSYS2.DATA_AREA_INFO
           WHERE DATA_AREA_NAME = '${this.name}' AND DATA_AREA_LIBRARY = '${this.library}'
-          Fetch first row only`;
+          Fetch first row only`,
+        'QSYS2',
+        'DATA_AREA_INFO',
+        'VIEW'
+      );
 
-      this.dta = await connection.runSQL(sql)
+      if (this.dta === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_AREA_INFO"));
+        return;
+      }
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;

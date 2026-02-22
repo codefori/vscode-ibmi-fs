@@ -17,23 +17,10 @@
  * @module savefile
  */
 
-import {
-  CommandResult,
-  FilteredItem,
-  IBMiObject,
-} from "@halcyontech/vscode-ibmi-types";
+import {CommandResult, FilteredItem, IBMiObject} from "@halcyontech/vscode-ibmi-types";
 import { basename } from "path";
 import * as vscode from "vscode";
-import {
-  FastTableColumn,
-  IBMI_OBJECT_NAME,
-  generateDetailTable,
-  generateFastTable,
-  getProtected,
-  getQSYSObjectPath,
-  checkViewExists,
-  checkTableFunctionExists,
-} from "../tools";
+import { FastTableColumn, IBMI_OBJECT_NAME, generateDetailTable, generateFastTable, getProtected, getQSYSObjectPath, checkViewExists, checkTableFunctionExists, executeSqlIfExists } from "../tools";
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance, getVSCodeTools } from "../ibmi";
@@ -150,19 +137,21 @@ export namespace SaveFileActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if SAVE_FILE_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'SAVE_FILE_INFO');
-      if (!viewExists) {
+      const savfInfo = await executeSqlIfExists(
+        connection,
+        `SELECT SAVE_COMMAND
+          FROM QSYS2.SAVE_FILE_INFO
+          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
+          FETCH FIRST ROW ONLY`,
+        'QSYS2',
+        'SAVE_FILE_INFO',
+        'VIEW'
+      );
+
+      if (savfInfo === null) {
         vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
         return false;
       }
-
-      const savfInfo = await connection.runSQL(
-        `SELECT SAVE_COMMAND
-        FROM QSYS2.SAVE_FILE_INFO
-        WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
-        FETCH FIRST ROW ONLY`
-      );
 
       if (!savfInfo || !savfInfo[0].SAVE_COMMAND) {
         vscode.window.showErrorMessage(t("Save file {0}/{1} is empty", target.library, target.name));
@@ -272,19 +261,21 @@ export namespace SaveFileActions {
         return false;
       }
 
-      // Check if SAVE_FILE_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'SAVE_FILE_INFO');
-      if (!viewExists) {
+      const savfInfo = await executeSqlIfExists(
+        connection,
+        `SELECT SAVE_COMMAND
+          FROM QSYS2.SAVE_FILE_INFO
+          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
+          FETCH FIRST ROW ONLY`,
+        'QSYS2',
+        'SAVE_FILE_INFO',
+        'VIEW'
+      );
+
+      if (savfInfo === null) {
         vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
         return false;
       }
-
-      const savfInfo = await connection.runSQL(
-        `SELECT SAVE_COMMAND
-        FROM QSYS2.SAVE_FILE_INFO
-        WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
-        FETCH FIRST ROW ONLY`
-      );
 
       if (savfInfo && savfInfo[0].SAVE_COMMAND) {
         vscode.window.showErrorMessage(t("Save file {0}/{1} is not empty", target.library, target.name));
@@ -404,18 +395,6 @@ export namespace SaveFileActions {
       }
 
       if (await vscode.window.showWarningMessage(t("Are you sure you want to clear Save File {0}/{1}?", target.library, target.name), { modal: true }, t("Clear SAVF"))) {
-        const savfInfo = await connection.runSQL(
-          `SELECT SAVE_COMMAND
-          FROM QSYS2.SAVE_FILE_INFO
-          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
-          FETCH FIRST ROW ONLY`
-        );
-
-        if (!savfInfo || !savfInfo[0].SAVE_COMMAND) {
-          vscode.window.showErrorMessage(t("Save file {0}/{1} is empty", target.library, target.name));
-          return false;
-        }
-
         const clrsavf = await connection.runCommand({
           command: `CLRSAVF FILE(${target.library}/${target.name})`,
         });
@@ -453,23 +432,25 @@ export namespace SaveFileActions {
         return false;
       }
 
-      // Check if SAVE_FILE_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'SAVE_FILE_INFO');
-      if (!viewExists) {
+      let saveCmd;
+
+      const savfInfo = await executeSqlIfExists(
+        connection,
+        `SELECT SAVE_COMMAND
+          FROM QSYS2.SAVE_FILE_INFO
+          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
+          FETCH FIRST ROW ONLY`,
+        'QSYS2',
+        'SAVE_FILE_INFO',
+        'VIEW'
+      );
+
+      if (savfInfo === null) {
         vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
         return false;
       }
 
-      let saveCmd;
-
-      const savfInfo = await connection.runSQL(
-        `SELECT SAVE_COMMAND
-        FROM QSYS2.SAVE_FILE_INFO
-        WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
-        FETCH FIRST ROW ONLY`
-      );
-
-      if (savfInfo && savfInfo.length > 0 && savfInfo[0].SAVE_COMMAND) {
+      if (savfInfo.length > 0 && savfInfo[0].SAVE_COMMAND) {
         saveCmd = String(savfInfo[0].SAVE_COMMAND);
       } else {
         vscode.window.showErrorMessage(t("Save file {0}/{1} is empty", target.library, target.name));
@@ -863,19 +844,21 @@ export namespace SaveFileActions {
         return false;
       }
 
-      // Check if SAVE_FILE_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'SAVE_FILE_INFO');
-      if (!viewExists) {
+      const savfInfo = await executeSqlIfExists(
+        connection,
+        `SELECT SAVE_COMMAND
+          FROM QSYS2.SAVE_FILE_INFO
+          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
+          FETCH FIRST ROW ONLY`,
+        'QSYS2',
+        'SAVE_FILE_INFO',
+        'VIEW'
+      );
+
+      if (savfInfo === null) {
         vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
         return false;
       }
-
-      const savfInfo = await connection.runSQL(
-        `SELECT SAVE_COMMAND
-        FROM QSYS2.SAVE_FILE_INFO
-        WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
-        FETCH FIRST ROW ONLY`
-      );
 
       if (savfInfo && savfInfo[0].SAVE_COMMAND) {
         vscode.window.showErrorMessage(t("Save file {0}/{1} is not empty", target.library, target.name));
@@ -1270,22 +1253,24 @@ export class SaveFile extends Base {
     let isIfs: boolean = false;
 
     if (connection) {
-      // Check if SAVE_FILE_INFO view exists
-      const viewExists = await checkViewExists(connection, 'QSYS2', 'SAVE_FILE_INFO');
-      if (!viewExists) {
+      // Get save file information from system catalog
+      this.savf = await executeSqlIfExists(
+        connection,
+        `SELECT SAVE_FILE_LIBRARY,
+          SAVE_FILE,
+          SAVE_COMMAND
+          FROM QSYS2.SAVE_FILE_INFO WHERE
+          SAVE_FILE_LIBRARY = '${this.library}' AND SAVE_FILE = '${this.name}'
+          Fetch first row only`,
+        'QSYS2',
+        'SAVE_FILE_INFO',
+        'VIEW'
+      );
+
+      if (this.savf === null) {
         vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
         return;
       }
-
-      // Get save file information from system catalog
-      this.savf = await connection.runSQL(
-        `SELECT SAVE_FILE_LIBRARY,
-        SAVE_FILE,
-        SAVE_COMMAND
-        FROM QSYS2.SAVE_FILE_INFO WHERE
-        SAVE_FILE_LIBRARY = '${this.library}' AND SAVE_FILE = '${this.name}'
-        Fetch first row only`,
-      );
 
       isIfs = this.savf[0].SAVE_COMMAND === "SAV";
 
@@ -1342,29 +1327,32 @@ export class SaveFile extends Base {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-      // Check if SAVE_FILE_OBJECTS function exists
-      const functionExists = await checkTableFunctionExists(connection, 'QSYS2', 'SAVE_FILE_OBJECTS');
-      if (!functionExists) {
+      // Fetch all objects
+      this.objects.length = 0;
+      const objectsRows = await executeSqlIfExists(
+        connection,
+        `SELECT OBJECT_NAME,
+          OBJECT_TYPE,
+          OBJECT_ATTRIBUTE,
+          TEXT_DESCRIPTION,
+          to_char(SAVE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS SAVE_TIMESTAMP,
+          OBJECT_SIZE,
+          DATA_SAVED,
+          OBJECT_OWNER,
+          IASP_NAME
+          FROM TABLE (
+            QSYS2.SAVE_FILE_OBJECTS(
+              SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
+          )`,
+        'QSYS2',
+        'SAVE_FILE_OBJECTS',
+        'FUNCTION'
+      );
+
+      if (objectsRows === null) {
         vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
         return;
       }
-
-      // Fetch all objects
-      this.objects.length = 0;
-      const objectsRows = await connection.runSQL(`
-          SELECT OBJECT_NAME,
-        OBJECT_TYPE,
-        OBJECT_ATTRIBUTE,
-        TEXT_DESCRIPTION,
-        to_char(SAVE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS SAVE_TIMESTAMP,
-        OBJECT_SIZE,
-        DATA_SAVED,
-        OBJECT_OWNER,
-        IASP_NAME
-        FROM TABLE (
-            QSYS2.SAVE_FILE_OBJECTS(
-        SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
-        )`);
       this.objects.push(...objectsRows.map(this.toEntryObject));
 
       // Fetch file members

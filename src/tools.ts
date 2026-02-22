@@ -895,6 +895,54 @@ export async function checkTableExists(ibmi: IBMi, schema: string, tableName: st
 }
 
 /**
+ * Execute SQL statement with automatic object existence check
+ * Verifies that the specified SQL object exists before executing the query
+ * Returns null if the object doesn't exist or if execution fails
+ *
+ * @param ibmi - IBM i connection instance
+ * @param sqlStatement - SQL statement to execute
+ * @param schema - Schema/library name of the object to check
+ * @param objectName - Name of the object to check
+ * @param objectType - Type of object: 'VIEW', 'TABLE', 'FUNCTION', 'PROCEDURE', 'ALIAS'
+ * @returns Promise<any[] | null> - Query results or null if object doesn't exist or error occurs
+ *
+ * @example
+ * ```typescript
+ * const result = await executeSqlIfExists(ibmi, 'SELECT * FROM MYLIB.MYVIEW', 'MYLIB', 'MYVIEW', 'VIEW');
+ * if (result === null) {
+ *   console.log('View does not exist or query failed');
+ * } else {
+ *   console.log('Query successful:', result);
+ * }
+ * ```
+ */
+export async function executeSqlIfExists(
+  ibmi: IBMi,
+  sqlStatement: string,
+  schema: string,
+  objectName: string,
+  objectType: 'VIEW' | 'TABLE' | 'FUNCTION' | 'PROCEDURE' | 'ALIAS'
+): Promise<any[] | null> {
+  try {
+    // Check if the object exists
+    const exists = await checkSqlObjectExists(ibmi, schema, objectName, objectType);
+    
+    if (!exists) {
+      console.log(`SQL object ${schema}.${objectName} (${objectType}) does not exist`);
+      return null;
+    }
+    
+    // Object exists, execute the SQL
+    const result = await ibmi.runSQL(sqlStatement);
+    return result;
+    
+  } catch (error) {
+    console.error(`Error executing SQL for ${schema}.${objectName}: ${error}`);
+    return null;
+  }
+}
+
+/**
  * Validate and execute SQL with object existence check
  * This function checks if the required SQL objects exist before executing the query
  * @param ibmi - IBM i connection instance

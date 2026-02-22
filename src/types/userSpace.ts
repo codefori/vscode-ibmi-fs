@@ -19,7 +19,7 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable, getProtected, checkTableFunctionExists, checkProcedureExists, checkViewExists } from "../tools";
+import { getColumns, generateDetailTable, getProtected, checkTableFunctionExists, checkProcedureExists, checkViewExists, executeSqlIfExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -87,15 +87,20 @@ export namespace UserSpaceActions {
         return false;
       }
 
-      // Check if USER_SPACE function exists
-      if (!await checkTableFunctionExists(connection, 'QSYS2', 'USER_SPACE')) {
+      let usrspc = await executeSqlIfExists(
+        connection,
+        `SELECT DATA FROM TABLE(QSYS2.USER_SPACE(
+                    USER_SPACE => '${item.name}', USER_SPACE_LIBRARY => '${item.library}'))`,
+        'QSYS2',
+        'USER_SPACE',
+        'FUNCTION'
+      );
+
+      if (usrspc === null) {
         vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "USER_SPACE"));
         return false;
       }
 
-      let sql = `SELECT DATA FROM TABLE(QSYS2.USER_SPACE(
-                    USER_SPACE => '${item.name}', USER_SPACE_LIBRARY => '${item.library}'))`
-      let usrspc = await connection.runSQL(sql)
       let curvalue = usrspc[0]?.DATA ? String(usrspc[0].DATA) : ''
 
       // Get the start position for the change
@@ -121,17 +126,23 @@ export namespace UserSpaceActions {
       });
 
       if (newvalue && start) {
-        // Check if CHANGE_USER_SPACE procedure exists
-        if (!await checkProcedureExists(connection, 'QSYS2', 'CHANGE_USER_SPACE')) {
-          vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "PROCEDURE", "QSYS2", "CHANGE_USER_SPACE"));
-          return false;
-        }
-
         try {
-          await connection.runSQL(`CALL QSYS2.CHANGE_USER_SPACE(USER_SPACE => '${name}',
+          const result = await executeSqlIfExists(
+            connection,
+            `CALL QSYS2.CHANGE_USER_SPACE(USER_SPACE => '${name}',
                             USER_SPACE_LIBRARY => '${library}',
                             DATA => '${newvalue}',
-                            START_POSITION => ${start})`);
+                            START_POSITION => ${start})`,
+            'QSYS2',
+            'CHANGE_USER_SPACE',
+            'PROCEDURE'
+          );
+
+          if (result === null) {
+            vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "PROCEDURE", "QSYS2", "CHANGE_USER_SPACE"));
+            return false;
+          }
+
           vscode.window.showInformationMessage(t("User Space {0}/{1} updated.", library, name));
           return true;
         } catch (error) {
@@ -165,26 +176,26 @@ export class Usrspc extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if required SQL objects exist
-      if (!await checkViewExists(connection, 'QSYS2', 'USER_SPACE_INFO')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "USER_SPACE_INFO"));
-        return;
-      }
-      if (!await checkTableFunctionExists(connection, 'QSYS2', 'USER_SPACE')) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "USER_SPACE"));
-        return;
-      }
-
       this.columns = await getColumns(connection, 'USER_SPACE_INFO');
       // Add custom columns for data display
       this.columns.set('DATA', t("Data"));
       this.columns.set('DATA_BINARY', t("Binary Data"));
 
-      let sql = `SELECT SIZE, EXTENDABLE, INITIAL_VALUE, OBJECT_DOMAIN, TEXT_DESCRIPTION, y.data, y.data_binary
+      this.usrspc = await executeSqlIfExists(
+        connection,
+        `SELECT SIZE, EXTENDABLE, INITIAL_VALUE, OBJECT_DOMAIN, TEXT_DESCRIPTION, y.data, y.data_binary
                   FROM QSYS2.USER_SPACE_INFO x, TABLE(QSYS2.USER_SPACE(
                     USER_SPACE => '${this.name}', USER_SPACE_LIBRARY => '${this.library}')) y
-                  WHERE x.USER_SPACE = '${this.name}' AND x.user_space_library='${this.library}'`
-      this.usrspc = await connection.runSQL(sql)
+                  WHERE x.USER_SPACE = '${this.name}' AND x.user_space_library='${this.library}'`,
+        'QSYS2',
+        'USER_SPACE_INFO',
+        'VIEW'
+      );
+
+      if (this.usrspc === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "USER_SPACE_INFO"));
+        return;
+      }
     } else {
       vscode.window.showErrorMessage(t("Not connected to IBM i"));
       return;
