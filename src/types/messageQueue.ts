@@ -143,11 +143,47 @@ export default class Msgq extends Base {
   /**
    * Fetch all messages from the message queue
    * Uses QSYS2.MESSAGE_QUEUE_INFO service to retrieve message details
+   * Supports server-side search and pagination
    */
   async fetchMessages(): Promise<void> {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      // Build WHERE clause with base conditions
+      let whereClause = `MESSAGE_QUEUE_LIBRARY = '${this.library}' AND MESSAGE_QUEUE_NAME = '${this.name}'`;
+
+      // Add search filter if present
+      if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
+        const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
+        whereClause += ` AND (
+          UPPER(MESSAGE_ID) LIKE '${searchPattern}' OR
+          UPPER(MESSAGE_TEXT) LIKE '${searchPattern}' OR
+          UPPER(MESSAGE_SECOND_LEVEL_TEXT) LIKE '${searchPattern}' OR
+          UPPER(FROM_USER) LIKE '${searchPattern}' OR
+          UPPER(FROM_JOB) LIKE '${searchPattern}'
+        )`;
+      }
+
+      // Get total count for pagination
+      const countRows = await executeSqlIfExists(
+        connection,
+        `SELECT COUNT(*) as TOTAL FROM QSYS2.MESSAGE_QUEUE_INFO WHERE ${whereClause}`,
+        'QSYS2',
+        'MESSAGE_QUEUE_INFO',
+        'VIEW'
+      );
+
+      if (countRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_QUEUE_INFO"));
+        return;
+      }
+
+      this.totalItems = countRows.length > 0 ? Number(countRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for pagination
+      const offset = (this.currentPage - 1) * this.itemsPerPage;
+
+      // Fetch paginated data
       const entryRows = await executeSqlIfExists(
         connection,
         `SELECT MESSAGE_ID,
@@ -158,9 +194,9 @@ export default class Msgq extends Base {
           FROM_JOB,
           MESSAGE_SECOND_LEVEL_TEXT
         FROM QSYS2.MESSAGE_QUEUE_INFO
-        WHERE MESSAGE_QUEUE_LIBRARY = '${this.library}'
-              AND MESSAGE_QUEUE_NAME = '${this.name}'
-        ORDER BY MESSAGE_TIMESTAMP DESC`,
+        WHERE ${whereClause}
+        ORDER BY MESSAGE_TIMESTAMP DESC
+        LIMIT ${this.itemsPerPage} OFFSET ${offset}`,
         'QSYS2',
         'MESSAGE_QUEUE_INFO',
         'VIEW'
@@ -182,6 +218,7 @@ export default class Msgq extends Base {
   /**
    * Generate HTML for the message queue view
    * Uses a fast table component for better performance with many messages
+   * Includes search bar and pagination controls
    * @returns HTML string
    */
   generateHTML(): string {
@@ -198,12 +235,19 @@ export default class Msgq extends Base {
 
     return generateFastTable({
       title: t("Message Queue: {0}/{1}", this.library, this.name),
-      subtitle: t("Total Messages: {0}", String(this._entries.length)),
+      subtitle: t("Total Messages: {0}", String(this.totalItems)),
       columns: columns,
       data: this._entries,
       stickyHeader: true,
       emptyMessage: t("No messages found in this message queue."),
       customStyles: '',
+      enableSearch: true,
+      searchPlaceholder: t("Search messages..."),
+      enablePagination: true,
+      itemsPerPage: this.itemsPerPage,
+      totalItems: this.totalItems,
+      currentPage: this.currentPage,
+      searchTerm: this.searchTerm
     });
   }
 

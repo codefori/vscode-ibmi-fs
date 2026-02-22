@@ -41,6 +41,22 @@ export interface FastTableOptions<T> {
   customStyles?: string;
   /** Custom JavaScript (optional) */
   customScript?: string;
+  /** Enable search bar (default: false) */
+  enableSearch?: boolean;
+  /** Search placeholder text (optional) */
+  searchPlaceholder?: string;
+  /** Enable pagination (default: false) */
+  enablePagination?: boolean;
+  /** Items per page (default: 50) */
+  itemsPerPage?: number;
+  /** Total items count (for server-side pagination) */
+  totalItems?: number;
+  /** Current page (for server-side pagination, default: 1) */
+  currentPage?: number;
+  /** Current search term (for server-side search) */
+  searchTerm?: string;
+  /** Table identifier for multi-table documents (e.g., SaveFile with objects/members/spools) */
+  tableId?: string;
 }
 
 /** Regular expression for validating IBM i object names */
@@ -486,7 +502,15 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     stickyHeader = true,
     emptyMessage = 'No data available.',
     customStyles = '',
-    customScript = ''
+    customScript = '',
+    enableSearch = false,
+    searchPlaceholder = 'Search...',
+    enablePagination = false,
+    itemsPerPage = 50,
+    totalItems = data.length,
+    currentPage = 1,
+    searchTerm = '',
+    tableId = undefined
   } = options;
 
   // Escape HTML for security and handle null/undefined
@@ -557,7 +581,7 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
   });
 
   // Generate table rows
-  const rows = data.map(row => {
+  const rows = data.map((row, rowIndex) => {
     const cells = columns.map((col, index) => {
       const value = col.getValue(row);
       const cellClass = col.cellClass ? ` class="${col.cellClass}"` : '';
@@ -575,12 +599,6 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
   }).join('\n        ');
 
   return /*html*/`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(title)}</title>
   <style>
     body {
       padding: 0;
@@ -616,6 +634,59 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
       color: var(--vscode-descriptionForeground);
       font-size: 0.95em;
       margin-top: 4px;
+    }
+
+    .search-bar {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.03);
+      border-radius: 6px;
+      border: 1px solid rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.1);
+    }
+
+    .search-bar-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      font-size: 0.9em;
+      color: var(--vscode-foreground);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .search-bar vscode-text-field {
+      width: 100%;
+    }
+
+    .pagination-controls {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.03);
+      border-radius: 4px;
+    }
+
+    .pagination-info {
+      color: var(--vscode-descriptionForeground);
+      font-size: 0.9em;
+    }
+
+    .pagination-buttons {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .page-input-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .page-input-container vscode-text-field {
+      width: 80px;
     }
     
     vscode-table {
@@ -676,31 +747,82 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
       padding: 40px;
       color: var(--vscode-descriptionForeground);
     }
+
+    .hidden {
+      display: none !important;
+    }
     
     ${customStyles}
   </style>
-</head>
-<body>
   <div class="container">
     ${title || subtitle ? `
     <div class="header">
       ${title ? `<h1>${escapeHtml(title)}</h1>` : ''}
-      ${subtitle ? `<div class="info">${escapeHtml(subtitle)}</div>` : ''}
+      ${subtitle ? `<div class="info" id="subtitle-info">${escapeHtml(subtitle)}</div>` : ''}
+    </div>
+    ` : ''}
+    
+    ${enableSearch ? `
+    <div class="search-bar">
+      <label class="search-bar-label" for="search-input">
+        <span class="codicon codicon-search"></span> ${t('Search')}
+      </label>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); border-radius: 4px;">
+        <span class="codicon codicon-search" style="color: var(--vscode-input-placeholderForeground);"></span>
+        <input
+          type="text"
+          id="search-input"
+          placeholder="${escapeHtml(searchPlaceholder)}"
+          value="${searchTerm && searchTerm !== '-' ? escapeHtml(searchTerm) : ''}"
+          style="flex: 1; background: transparent; border: none; outline: none; color: var(--vscode-input-foreground); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); padding: 4px 0;">
+      </div>
     </div>
     ` : ''}
     
     ${data.length > 0 ? `
       <vscode-table
+        id="data-table"
         bordered-rows
         columns='${JSON.stringify(columnsArray)}'
         aria-label="${escapeHtml(title)}">
         <vscode-table-header>
           ${headerCells}
         </vscode-table-header>
-        <vscode-table-body>
+        <vscode-table-body id="table-body">
           ${rows}
         </vscode-table-body>
       </vscode-table>
+
+      ${enablePagination ? `
+      <div class="pagination-controls">
+        <div class="pagination-info" id="pagination-info${tableId ? `-${tableId}` : ''}"></div>
+        <div class="pagination-buttons">
+          <vscode-button id="first-page${tableId ? `-${tableId}` : ''}" appearance="icon" aria-label="First page">
+            <span class="codicon codicon-chevron-left"></span>
+            <span class="codicon codicon-chevron-left"></span>
+          </vscode-button>
+          <vscode-button id="prev-page${tableId ? `-${tableId}` : ''}" appearance="icon" aria-label="Previous page">
+            <span class="codicon codicon-chevron-left"></span>
+          </vscode-button>
+          <div class="page-input-container">
+            <span>Page</span>
+            <input
+              type="number"
+              id="page-input${tableId ? `-${tableId}` : ''}"
+              min="1"
+              style="width: 60px; padding: 4px 8px; background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); border-radius: 3px; color: var(--vscode-input-foreground); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); text-align: center;">
+            <span id="total-pages-label${tableId ? `-${tableId}` : ''}"></span>
+          </div>
+          <vscode-button id="next-page${tableId ? `-${tableId}` : ''}" appearance="icon" aria-label="Next page">
+            <span class="codicon codicon-chevron-right"></span>
+          </vscode-button>
+          <vscode-button id="last-page${tableId ? `-${tableId}` : ''}" appearance="icon" aria-label="Last page">
+            <span class="codicon codicon-chevron-right"></span>
+            <span class="codicon codicon-chevron-right"></span>
+          </vscode-button>
+        </div>
+      </div>
+      ` : ''}
     ` : `
       <div class="empty-state">
         <p>${escapeHtml(emptyMessage)}</p>
@@ -708,12 +830,144 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     `}
   </div>
   
-  <script type="module">
-    // Components are automatically registered by @vscode-elements/elements bundle
+  <script defer>
+    ${tableId ? `(function() {` : ''}
+    // Use the global vscode API acquired by webviewToolkit
+    // Note: This script runs after the footer script from webviewToolkit.ts
+    
+    // State management${tableId ? ` for table: ${tableId}` : ''}
+    let currentPage = ${currentPage};
+    let currentSearchTerm = '${escapeHtml(searchTerm)}';
+    const itemsPerPage = ${itemsPerPage};
+    const totalItems = ${totalItems};
+    const enableSearch = ${enableSearch};
+    const enablePagination = ${enablePagination};
+
+    // Get DOM elements
+    const searchInput = document.getElementById('search-input${tableId ? `-${tableId}` : ''}');
+    const paginationInfo = document.getElementById('pagination-info${tableId ? `-${tableId}` : ''}');
+    const pageInput = document.getElementById('page-input${tableId ? `-${tableId}` : ''}');
+    const totalPagesLabel = document.getElementById('total-pages-label${tableId ? `-${tableId}` : ''}');
+    const firstPageBtn = document.getElementById('first-page${tableId ? `-${tableId}` : ''}');
+    const prevPageBtn = document.getElementById('prev-page${tableId ? `-${tableId}` : ''}');
+    const nextPageBtn = document.getElementById('next-page${tableId ? `-${tableId}` : ''}');
+    const lastPageBtn = document.getElementById('last-page${tableId ? `-${tableId}` : ''}');
+
+    // Calculate total pages
+    const totalPages = enablePagination ? Math.ceil(totalItems / itemsPerPage) : 1;
+
+    // Search functionality - sends message to extension
+    let searchTimeout;
+    function performSearch(searchTerm) {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        currentSearchTerm = searchTerm;
+        currentPage = 1;
+        // Set flag to indicate this is a search/pagination operation (preserve tab)
+        sessionStorage.setItem('vscode-ibmi-fs-is-search-restore', 'true');
+        const message = {
+          command: 'search',
+          searchTerm: searchTerm,
+          page: 1,
+          itemsPerPage: itemsPerPage
+        };
+        ${tableId ? `message.tableId = '${tableId}';` : ''}
+        vscode.postMessage(message);
+      }, 500); // Debounce 500ms
+    }
+
+    // Pagination functionality - sends message to extension
+    function changePage(newPage) {
+      if (newPage < 1 || newPage > totalPages) return;
+      currentPage = newPage;
+      // Set flag to indicate this is a search/pagination operation (preserve tab)
+      sessionStorage.setItem('vscode-ibmi-fs-is-search-restore', 'true');
+      const message = {
+        command: 'paginate',
+        searchTerm: currentSearchTerm,
+        page: newPage,
+        itemsPerPage: itemsPerPage
+      };
+      ${tableId ? `message.tableId = '${tableId}';` : ''}
+      vscode.postMessage(message);
+    }
+
+    // Update pagination display
+    function updatePaginationDisplay() {
+      if (enablePagination && paginationInfo) {
+        const displayStart = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+        const displayEnd = Math.min(currentPage * itemsPerPage, totalItems);
+        paginationInfo.textContent = \`Showing \${displayStart}-\${displayEnd} of \${totalItems} items\`;
+        
+        if (pageInput) {
+          pageInput.value = currentPage;
+          pageInput.max = totalPages;
+        }
+        
+        if (totalPagesLabel) {
+          totalPagesLabel.textContent = \`of \${totalPages}\`;
+        }
+
+        // Update button states
+        if (firstPageBtn) firstPageBtn.disabled = currentPage === 1;
+        if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
+        if (nextPageBtn) nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+        if (lastPageBtn) lastPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+      }
+    }
+
+    // Event listeners
+    if (enableSearch && searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        performSearch(e.target.value);
+      });
+    }
+
+    if (enablePagination) {
+      if (firstPageBtn) {
+        firstPageBtn.addEventListener('click', () => {
+          changePage(1);
+        });
+      }
+
+      if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', () => {
+          changePage(currentPage - 1);
+        });
+      }
+
+      if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', () => {
+          changePage(currentPage + 1);
+        });
+      }
+
+      if (lastPageBtn) {
+        lastPageBtn.addEventListener('click', () => {
+          changePage(totalPages);
+        });
+      }
+
+      if (pageInput) {
+        pageInput.addEventListener('change', (e) => {
+          const newPage = parseInt(e.target.value);
+          if (newPage >= 1 && newPage <= totalPages) {
+            changePage(newPage);
+          } else {
+            e.target.value = currentPage;
+          }
+        });
+      }
+    }
+
+    // Initial display update
+    updatePaginationDisplay();
+
+    // Custom script
     ${customScript}
+    ${tableId ? `})();` : ''}
   </script>
-</body>
-</html>
+  </div>
 `;
 }
 

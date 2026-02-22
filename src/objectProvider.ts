@@ -184,6 +184,44 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
     } else {
       webviewPanel.webview.html = generatePage(document.generateHTML());
       webviewPanel.webview.onDidReceiveMessage(async body => {
+        // Handle search and pagination commands
+        if (body.command === 'search' || body.command === 'paginate') {
+          // Check if this is a SaveFile with tableId (for multiple tables)
+          if (document instanceof SaveFile && body.tableId) {
+            // SaveFile has separate properties for each table type (pagination only, no search)
+            const prefix = body.tableId; // 'objects', 'members', or 'spools'
+            
+            // Set the current table ID so fetchSearchData knows which table to update
+            (document as any).currentTableId = body.tableId;
+            
+            if (body.page !== undefined) {
+              (document as any)[`${prefix}CurrentPage`] = body.page;
+            }
+            if (body.itemsPerPage !== undefined) {
+              (document as any)[`${prefix}ItemsPerPage`] = body.itemsPerPage;
+            }
+          } else {
+            // Standard handling for single-table documents
+            if (body.searchTerm !== undefined) {
+              (document as any).searchTerm = body.searchTerm;
+            }
+            if (body.page !== undefined) {
+              (document as any).currentPage = body.page;
+            }
+            if (body.itemsPerPage !== undefined) {
+              (document as any).itemsPerPage = body.itemsPerPage;
+            }
+          }
+          
+          // Re-fetch only searchable data (avoids reloading all tabs in multi-tab documents)
+          await document.fetchSearchData();
+          
+          // Re-render the view
+          webviewPanel.webview.html = generatePage(document.generateHTML());
+          return;
+        }
+        
+        // Handle other actions
         const actionResult = await document.handleAction(body);
 
         if (actionResult.dirty) {

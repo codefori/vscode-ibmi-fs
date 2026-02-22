@@ -67,11 +67,53 @@ export default class Msgf extends Base {
   /**
    * Fetch all messages from the message file
    * Uses QSYS2.MESSAGE_FILE_DATA service to retrieve message definitions
+   * Supports server-side search and pagination
    */
   async fetchMessages(): Promise<void> {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
+      console.log('fetchMessages - searchTerm:', this.searchTerm, 'currentPage:', this.currentPage, 'itemsPerPage:', this.itemsPerPage);
+      
+      // Build WHERE clause with search filter
+      let whereClause = `message_file = '${this.name}' AND message_file_library = '${this.library}'`;
+      
+      if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
+        const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
+        console.log('Adding search filter:', searchPattern);
+        whereClause += ` AND (
+          UPPER(MESSAGE_ID) LIKE '${searchPattern}' OR
+          UPPER(MESSAGE_TEXT) LIKE '${searchPattern}' OR
+          UPPER(MESSAGE_SECOND_LEVEL_TEXT) LIKE '${searchPattern}' OR
+          UPPER(REPLY_TYPE) LIKE '${searchPattern}' OR
+          UPPER(DEFAULT_REPLY) LIKE '${searchPattern}'
+        )`;
+      }
+      
+      console.log('WHERE clause:', whereClause);
+
+      // First, get total count for pagination
+      const countRows = await executeSqlIfExists(
+        connection,
+        `SELECT COUNT(*) as TOTAL
+            FROM qsys2.message_file_data
+            WHERE ${whereClause}`,
+        'QSYS2',
+        'MESSAGE_FILE_DATA',
+        'VIEW'
+      );
+
+      if (countRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_FILE_DATA"));
+        return;
+      }
+
+      this.totalItems = countRows.length > 0 ? Number(countRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for pagination
+      const offset = (this.currentPage - 1) * this.itemsPerPage;
+
+      // Fetch paginated data
       const entryRows = await executeSqlIfExists(
         connection,
         `SELECT MESSAGE_ID,
@@ -87,7 +129,9 @@ export default class Msgf extends Base {
                     ELSE null
                 END AS VALID_REPLY_VALUES
             FROM qsys2.message_file_data
-            WHERE message_file = '${this.name}' AND message_file_library = '${this.library}'`,
+            WHERE ${whereClause}
+            ORDER BY MESSAGE_ID
+            LIMIT ${this.itemsPerPage} OFFSET ${offset}`,
         'QSYS2',
         'MESSAGE_FILE_DATA',
         'VIEW'
@@ -112,6 +156,8 @@ export default class Msgf extends Base {
    * @returns HTML string
    */
   generateHTML(): string {
+    console.log('MessageFile generateHTML - enableSearch: true, totalItems:', this.totalItems, 'currentPage:', this.currentPage);
+    
     // Define table columns with widths
     const columns: FastTableColumn<Entry>[] = [
       { title: t("MSGID"), getValue: e => e.msgid, width: "0.25fr" },
@@ -132,12 +178,19 @@ export default class Msgf extends Base {
 
     return `<div class="messagefile-entries-table">` + generateFastTable({
       title: t("Message File: {0}/{1}", this.library, this.name),
-      subtitle: t("Total Messages: {0}", String(this._entries.length)),
+      subtitle: t("Total Messages: {0}", String(this.totalItems)),
       columns: columns,
       data: this._entries,
       stickyHeader: true,
       emptyMessage: t("No messages found in this message file."),
       customStyles: customStyles,
+      enableSearch: true,
+      searchPlaceholder: t("Search messages..."),
+      enablePagination: true,
+      itemsPerPage: this.itemsPerPage,
+      totalItems: this.totalItems,
+      currentPage: this.currentPage,
+      searchTerm: this.searchTerm
     }) + `</div>`;
   }
 

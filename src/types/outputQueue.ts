@@ -619,6 +619,14 @@ export default class Outq extends Base {
   }
 
   /**
+   * Fetch only searchable data (spools) without reloading queue info
+   * This avoids reloading the Detail tab when searching/paginating in the Spools tab
+   */
+  async fetchSearchData(): Promise<void> {
+    await this.fetchSpools();
+  }
+
+  /**
    * Fetch output queue metadata from IBM i
    */
   async fetchInfo(): Promise<void> {
@@ -668,12 +676,48 @@ export default class Outq extends Base {
 
   /**
    * Fetch all spooled files in the output queue
+   * Supports server-side search and pagination
    */
   async fetchSpools(): Promise<void> {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
 
     if (connection) {
+      // Build WHERE clause with base conditions
+      let whereClause = `OUTPUT_QUEUE_NAME = '${this.name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${this.library}'`;
+
+      // Add search filter if present
+      if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
+        const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
+        whereClause += ` AND (
+          UPPER(SPOOLED_FILE_NAME) LIKE '${searchPattern}' OR
+          UPPER(USER_NAME) LIKE '${searchPattern}' OR
+          UPPER(USER_DATA) LIKE '${searchPattern}' OR
+          UPPER(STATUS) LIKE '${searchPattern}' OR
+          UPPER(JOB_NAME) LIKE '${searchPattern}'
+        )`;
+      }
+
+      // Get total count for pagination
+      const countRows = await executeSqlIfExists(
+        connection,
+        `SELECT COUNT(*) as TOTAL FROM QSYS2.OUTPUT_QUEUE_ENTRIES_BASIC WHERE ${whereClause}`,
+        'QSYS2',
+        'OUTPUT_QUEUE_ENTRIES_BASIC',
+        'VIEW'
+      );
+
+      if (countRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_ENTRIES_BASIC"));
+        return;
+      }
+
+      this.totalItems = countRows.length > 0 ? Number(countRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for pagination
+      const offset = (this.currentPage - 1) * this.itemsPerPage;
+
+      // Fetch paginated data
       const entryRows = await executeSqlIfExists(
         connection,
         `select to_char(CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') as CREATE_TIMESTAMP,
@@ -685,14 +729,16 @@ export default class Outq extends Base {
             TOTAL_PAGES,
             JOB_NAME,
             FILE_NUMBER from QSYS2.OUTPUT_QUEUE_ENTRIES_BASIC
-            WHERE OUTPUT_QUEUE_NAME = '${this.name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${this.library}'`,
+            WHERE ${whereClause}
+            ORDER BY CREATE_TIMESTAMP DESC
+            LIMIT ${this.itemsPerPage} OFFSET ${offset}`,
         'QSYS2',
         'OUTPUT_QUEUE_ENTRIES_BASIC',
-        'FUNCTION'
+        'VIEW'
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OUTPUT_QUEUE_ENTRIES_BASIC"));
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_ENTRIES_BASIC"));
         return;
       }
 
@@ -794,12 +840,19 @@ export default class Outq extends Base {
     // Generate and return the complete table HTML
     return `<div class="outq-entries-table">` + generateFastTable({
       title: ``,
-      subtitle: ``,
+      subtitle: t("Total Spools: {0}", String(this.totalItems)),
       columns: columns,
       data: this._entries,
       stickyHeader: true,
       emptyMessage: t("No spools found in this outq."),
       customStyles: customStyles,
+      enableSearch: true,
+      searchPlaceholder: t("Search spools..."),
+      enablePagination: true,
+      itemsPerPage: this.itemsPerPage,
+      totalItems: this.totalItems,
+      currentPage: this.currentPage,
+      searchTerm: this.searchTerm
     }) + `</div>`;
   }
 

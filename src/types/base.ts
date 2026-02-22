@@ -12,6 +12,18 @@ export default abstract class Base implements CustomDocument {
   /** Flag indicating if the webview should auto-close (used for text editor redirects) */
   public shouldAutoClose: boolean = false;
 
+  /** Current search term for server-side filtering */
+  protected searchTerm: string = '';
+  
+  /** Current page number for server-side pagination */
+  protected currentPage: number = 1;
+  
+  /** Items per page for server-side pagination */
+  protected itemsPerPage: number = 50;
+  
+  /** Total items count for server-side pagination */
+  protected totalItems: number = 0;
+
   /**
    * Constructor for Base class
    * @param uri - The URI of the document
@@ -34,6 +46,15 @@ export default abstract class Base implements CustomDocument {
    * Data should be stored in private properties of the extended class.
    */
   abstract fetch(): Promise<void>;
+
+  /**
+   * Fetch only searchable/paginatable data (for partial refresh)
+   * By default calls fetch(), but can be overridden for multi-tab documents
+   * to avoid reloading all tabs when only search/pagination changes
+   */
+  async fetchSearchData(): Promise<void> {
+    await this.fetch();
+  }
 
   /**
    * Generate the HTML for the custom editor

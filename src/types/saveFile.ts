@@ -1242,6 +1242,24 @@ export class SaveFile extends Base {
   private readonly spooledFiles: SpooledFile[] = [];
   private readonly ifsDirectories: IFSDirectory[] = [];
 
+  // Pagination properties for objects
+  private objectsCurrentPage: number = 1;
+  private objectsItemsPerPage: number = 50;
+  private objectsTotalItems: number = 0;
+
+  // Pagination properties for members
+  private membersCurrentPage: number = 1;
+  private membersItemsPerPage: number = 50;
+  private membersTotalItems: number = 0;
+
+  // Pagination properties for spooled files
+  private spoolsCurrentPage: number = 1;
+  private spoolsItemsPerPage: number = 50;
+  private spoolsTotalItems: number = 0;
+
+  // Track which table to update for pagination
+  private currentTableId: string = '';
+
   /**
    * Fetches save file information from IBM i
    * Retrieves metadata, objects, members, and spooled files
@@ -1294,6 +1312,29 @@ export class SaveFile extends Base {
   }
 
   /**
+   * Fetch only searchable data (objects/members/spools) without reloading headers
+   * This avoids reloading the Detail tab when searching/paginating in other tabs
+   */
+  async fetchSearchData(): Promise<void> {
+    // Fetch only the specific table based on currentTableId
+    switch (this.currentTableId) {
+      case 'objects':
+        await this.fetchObjects();
+        break;
+      case 'members':
+        await this.fetchMembers();
+        break;
+      case 'spools':
+        await this.fetchSpools();
+        break;
+      default:
+        // If no specific table, fetch all (used during initial load)
+        await this.fetchSavfLib();
+        break;
+    }
+  }
+
+  /**
    * Parses the output from DSPSAVF command
    * @param output - The command output to parse
    * @param isIfs - Whether this is an IFS save file
@@ -1327,8 +1368,33 @@ export class SaveFile extends Base {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-      // Fetch all objects
+      // Fetch objects with pagination
       this.objects.length = 0;
+
+      // Get total count for objects
+      const objectsCountRows = await executeSqlIfExists(
+        connection,
+        `SELECT COUNT(*) as TOTAL
+          FROM TABLE (
+            QSYS2.SAVE_FILE_OBJECTS(
+              SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
+          )`,
+        'QSYS2',
+        'SAVE_FILE_OBJECTS',
+        'FUNCTION'
+      );
+
+      if (objectsCountRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
+        return;
+      }
+
+      this.objectsTotalItems = objectsCountRows.length > 0 ? Number(objectsCountRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for objects pagination
+      const objectsOffset = (this.objectsCurrentPage - 1) * this.objectsItemsPerPage;
+
+      // Fetch paginated objects
       const objectsRows = await executeSqlIfExists(
         connection,
         `SELECT OBJECT_NAME,
@@ -1343,7 +1409,9 @@ export class SaveFile extends Base {
           FROM TABLE (
             QSYS2.SAVE_FILE_OBJECTS(
               SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
-          )`,
+          )
+          ORDER BY OBJECT_NAME
+          LIMIT ${this.objectsItemsPerPage} OFFSET ${objectsOffset}`,
         'QSYS2',
         'SAVE_FILE_OBJECTS',
         'FUNCTION'
@@ -1355,41 +1423,228 @@ export class SaveFile extends Base {
       }
       this.objects.push(...objectsRows.map(this.toEntryObject));
 
-      // Fetch file members
+      // Fetch file members with pagination
       this.members.length = 0;
-      const memberRows = await connection.runSQL(`
-          SELECT OBJECT_NAME,
-        TEXT_DESCRIPTION,
-        MEMBER_NAME
+
+      // Get total count for members
+      const membersCountRows = await connection.runSQL(`
+        SELECT COUNT(*) as TOTAL
         FROM TABLE (
-            QSYS2.SAVE_FILE_OBJECTS(
-        SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
         )
-        where member_name is not null`);
+        WHERE MEMBER_NAME IS NOT NULL`);
+
+      this.membersTotalItems = membersCountRows.length > 0 ? Number(membersCountRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for members pagination
+      const membersOffset = (this.membersCurrentPage - 1) * this.membersItemsPerPage;
+
+      // Fetch paginated members
+      const memberRows = await connection.runSQL(`
+        SELECT OBJECT_NAME,
+          TEXT_DESCRIPTION,
+          MEMBER_NAME
+        FROM TABLE (
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
+        )
+        WHERE MEMBER_NAME IS NOT NULL
+        ORDER BY OBJECT_NAME, MEMBER_NAME
+        LIMIT ${this.membersItemsPerPage} OFFSET ${membersOffset}`);
       this.members.push(...memberRows.map(this.toEntryMember));
 
-      // Fetch spooled files
+      // Fetch spooled files with pagination
       this.spooledFiles.length = 0;
-      const spoolRows = await connection.runSQL(`
-          SELECT OBJECT_NAME,
-        TEXT_DESCRIPTION,
-        SPOOLED_FILE_NAME,
-        SPOOLED_FILE_NUMBER,
-        QUALIFIED_JOB_NAME,
-        JOB_NAME,
-        JOB_USER,
-        JOB_NUMBER,
-        SYSTEM_NAME,
-        to_char(CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS CREATE_TIMESTAMP
+
+      // Get total count for spools
+      const spoolsCountRows = await connection.runSQL(`
+        SELECT COUNT(*) as TOTAL
         FROM TABLE (
-            QSYS2.SAVE_FILE_OBJECTS(
-        SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*OUTQ', DETAILED_INFO => 'OUTQ')
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*OUTQ', DETAILED_INFO => 'OUTQ')
         )
         WHERE SPOOLED_FILE_NAME IS NOT NULL`);
+
+      this.spoolsTotalItems = spoolsCountRows.length > 0 ? Number(spoolsCountRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for spools pagination
+      const spoolsOffset = (this.spoolsCurrentPage - 1) * this.spoolsItemsPerPage;
+
+      // Fetch paginated spools
+      const spoolRows = await connection.runSQL(`
+        SELECT OBJECT_NAME,
+          TEXT_DESCRIPTION,
+          SPOOLED_FILE_NAME,
+          SPOOLED_FILE_NUMBER,
+          QUALIFIED_JOB_NAME,
+          JOB_NAME,
+          JOB_USER,
+          JOB_NUMBER,
+          SYSTEM_NAME,
+          to_char(CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS CREATE_TIMESTAMP
+        FROM TABLE (
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*OUTQ', DETAILED_INFO => 'OUTQ')
+        )
+        WHERE SPOOLED_FILE_NAME IS NOT NULL
+        ORDER BY OBJECT_NAME, SPOOLED_FILE_NAME
+        LIMIT ${this.spoolsItemsPerPage} OFFSET ${spoolsOffset}`);
       this.spooledFiles.push(...spoolRows.map(this.toEntrySpool));
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
+    }
+  }
+
+  /**
+   * Fetches only objects from the save file with pagination
+   */
+  private async fetchObjects() {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+
+    if (connection) {
+      this.objects.length = 0;
+
+      // Get total count for objects
+      const objectsCountRows = await executeSqlIfExists(
+        connection,
+        `SELECT COUNT(*) as TOTAL
+          FROM TABLE (
+            QSYS2.SAVE_FILE_OBJECTS(
+              SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
+          )`,
+        'QSYS2',
+        'SAVE_FILE_OBJECTS',
+        'FUNCTION'
+      );
+
+      if (objectsCountRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
+        return;
+      }
+
+      this.objectsTotalItems = objectsCountRows.length > 0 ? Number(objectsCountRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for objects pagination
+      const objectsOffset = (this.objectsCurrentPage - 1) * this.objectsItemsPerPage;
+
+      // Fetch paginated objects
+      const objectsRows = await executeSqlIfExists(
+        connection,
+        `SELECT OBJECT_NAME,
+          OBJECT_TYPE,
+          OBJECT_ATTRIBUTE,
+          TEXT_DESCRIPTION,
+          to_char(SAVE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS SAVE_TIMESTAMP,
+          OBJECT_SIZE,
+          DATA_SAVED,
+          OBJECT_OWNER,
+          IASP_NAME
+          FROM TABLE (
+            QSYS2.SAVE_FILE_OBJECTS(
+              SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
+          )
+          ORDER BY OBJECT_NAME
+          LIMIT ${this.objectsItemsPerPage} OFFSET ${objectsOffset}`,
+        'QSYS2',
+        'SAVE_FILE_OBJECTS',
+        'FUNCTION'
+      );
+
+      if (objectsRows === null) {
+        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
+        return;
+      }
+      this.objects.push(...objectsRows.map(this.toEntryObject));
+    }
+  }
+
+  /**
+   * Fetches only members from the save file with pagination
+   */
+  private async fetchMembers() {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+
+    if (connection) {
+      this.members.length = 0;
+
+      // Get total count for members
+      const membersCountRows = await connection.runSQL(`
+        SELECT COUNT(*) as TOTAL
+        FROM TABLE (
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
+        )
+        WHERE MEMBER_NAME IS NOT NULL`);
+
+      this.membersTotalItems = membersCountRows.length > 0 ? Number(membersCountRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for members pagination
+      const membersOffset = (this.membersCurrentPage - 1) * this.membersItemsPerPage;
+
+      // Fetch paginated members
+      const memberRows = await connection.runSQL(`
+        SELECT OBJECT_NAME,
+          TEXT_DESCRIPTION,
+          MEMBER_NAME
+        FROM TABLE (
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
+        )
+        WHERE MEMBER_NAME IS NOT NULL
+        ORDER BY OBJECT_NAME, MEMBER_NAME
+        LIMIT ${this.membersItemsPerPage} OFFSET ${membersOffset}`);
+      this.members.push(...memberRows.map(this.toEntryMember));
+    }
+  }
+
+  /**
+   * Fetches only spooled files from the save file with pagination
+   */
+  private async fetchSpools() {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+
+    if (connection) {
+      this.spooledFiles.length = 0;
+
+      // Get total count for spools
+      const spoolsCountRows = await connection.runSQL(`
+        SELECT COUNT(*) as TOTAL
+        FROM TABLE (
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*OUTQ', DETAILED_INFO => 'OUTQ')
+        )
+        WHERE SPOOLED_FILE_NAME IS NOT NULL`);
+
+      this.spoolsTotalItems = spoolsCountRows.length > 0 ? Number(spoolsCountRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for spools pagination
+      const spoolsOffset = (this.spoolsCurrentPage - 1) * this.spoolsItemsPerPage;
+
+      // Fetch paginated spools
+      const spoolRows = await connection.runSQL(`
+        SELECT OBJECT_NAME,
+          TEXT_DESCRIPTION,
+          SPOOLED_FILE_NAME,
+          SPOOLED_FILE_NUMBER,
+          QUALIFIED_JOB_NAME,
+          JOB_NAME,
+          JOB_USER,
+          JOB_NUMBER,
+          SYSTEM_NAME,
+          to_char(CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS CREATE_TIMESTAMP
+        FROM TABLE (
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*OUTQ', DETAILED_INFO => 'OUTQ')
+        )
+        WHERE SPOOLED_FILE_NAME IS NOT NULL
+        ORDER BY OBJECT_NAME, SPOOLED_FILE_NAME
+        LIMIT ${this.spoolsItemsPerPage} OFFSET ${spoolsOffset}`);
+      this.spooledFiles.push(...spoolRows.map(this.toEntrySpool));
     }
   }
 
@@ -1541,30 +1796,48 @@ export class SaveFile extends Base {
       });
     }
 
-    // Add objects panel if present
-    if (this.objects.length) {
+    // Add objects panel if present (always show panel even if empty to allow search)
+    if (this.objects.length || this.objectsTotalItems > 0) {
       panels.push({
         title: t("Objects"),
-        badge: this.objects.length,
-        content: renderObjects(this.objects),
+        badge: this.objectsTotalItems,
+        content: renderObjects(
+          this.objects,
+          this.objectsCurrentPage,
+          this.objectsItemsPerPage,
+          this.objectsTotalItems,
+          'objects'
+        ),
       });
     }
 
-    // Add members panel if present
-    if (this.members.length) {
+    // Add members panel if present (always show panel even if empty to allow search)
+    if (this.members.length || this.membersTotalItems > 0) {
       panels.push({
         title: t("Members"),
-        badge: this.members.length,
-        content: renderMembers(this.members),
+        badge: this.membersTotalItems,
+        content: renderMembers(
+          this.members,
+          this.membersCurrentPage,
+          this.membersItemsPerPage,
+          this.membersTotalItems,
+          'members'
+        ),
       });
     }
 
-    // Add spooled files panel if present
-    if (this.spooledFiles.length) {
+    // Add spooled files panel if present (always show panel even if empty to allow search)
+    if (this.spooledFiles.length || this.spoolsTotalItems > 0) {
       panels.push({
         title: t("Spooled files"),
-        badge: this.spooledFiles.length,
-        content: renderSpooledFiles(this.spooledFiles),
+        badge: this.spoolsTotalItems,
+        content: renderSpooledFiles(
+          this.spooledFiles,
+          this.spoolsCurrentPage,
+          this.spoolsItemsPerPage,
+          this.spoolsTotalItems,
+          'spools'
+        ),
       });
     }
 
@@ -1591,7 +1864,13 @@ export class SaveFile extends Base {
  * @param entries - Array of Object entries to display
  * @returns HTML string for the objects table
  */
-function renderObjects(entries: Object[]) {
+function renderObjects(
+  entries: Object[],
+  currentPage: number = 1,
+  itemsPerPage: number = 10,
+  totalItems: number = 0,
+  tableId: string = ''
+) {
   // Define table columns with their properties
   const columns: FastTableColumn<Object>[] = [
     { title: t("Name"), width: "1fr", getValue: (e) => e.name },
@@ -1618,12 +1897,17 @@ function renderObjects(entries: Object[]) {
     `<div class="savf-object-table">` +
     generateFastTable({
       title: ``,
-      subtitle: ``,
+      subtitle: t("Total Objects: {0}", String(totalItems)),
       columns: columns,
       data: entries,
       stickyHeader: true,
       emptyMessage: t("No objects found in this savf."),
       customStyles: customStyles,
+      enablePagination: true,
+      itemsPerPage: itemsPerPage,
+      totalItems: totalItems,
+      currentPage: currentPage,
+      tableId: tableId
     }) +
     `</div>`
   );
@@ -1634,7 +1918,13 @@ function renderObjects(entries: Object[]) {
  * @param entries - Array of FileMember entries to display
  * @returns HTML string for the members table
  */
-function renderMembers(entries: FileMember[]) {
+function renderMembers(
+  entries: FileMember[],
+  currentPage: number = 1,
+  itemsPerPage: number = 50,
+  totalItems: number = 0,
+  tableId: string = ''
+) {
   // Define table columns with their properties
   const columns: FastTableColumn<FileMember>[] = [
     { title: t("File Name"), width: "1fr", getValue: (e) => e.name },
@@ -1647,11 +1937,16 @@ function renderMembers(entries: FileMember[]) {
     `<div>` +
     generateFastTable({
       title: ``,
-      subtitle: ``,
+      subtitle: t("Total Members: {0}", String(totalItems)),
       columns: columns,
       data: entries,
       stickyHeader: true,
-      emptyMessage: t("No objects found in this savf."),
+      emptyMessage: t("No members found in this savf."),
+      enablePagination: true,
+      itemsPerPage: itemsPerPage,
+      totalItems: totalItems,
+      currentPage: currentPage,
+      tableId: tableId
     }) +
     `</div>`
   );
@@ -1662,7 +1957,13 @@ function renderMembers(entries: FileMember[]) {
  * @param entries - Array of SpooledFile entries to display
  * @returns HTML string for the spooled files table
  */
-function renderSpooledFiles(entries: SpooledFile[]) {
+function renderSpooledFiles(
+  entries: SpooledFile[],
+  currentPage: number = 1,
+  itemsPerPage: number = 50,
+  totalItems: number = 0,
+  tableId: string = ''
+) {
   // Define table columns with their properties
   const columns: FastTableColumn<SpooledFile>[] = [
     { title: t("Outq Name"), width: "1fr", getValue: (e) => e.name },
@@ -1679,11 +1980,16 @@ function renderSpooledFiles(entries: SpooledFile[]) {
     `<div>` +
     generateFastTable({
       title: ``,
-      subtitle: ``,
+      subtitle: t("Total Spooled Files: {0}", String(totalItems)),
       columns: columns,
       data: entries,
       stickyHeader: true,
-      emptyMessage: t("No objects found in this savf."),
+      emptyMessage: t("No spooled files found in this savf."),
+      enablePagination: true,
+      itemsPerPage: itemsPerPage,
+      totalItems: totalItems,
+      currentPage: currentPage,
+      tableId: tableId
     }) +
     `</div>`
   );
