@@ -928,7 +928,6 @@ export async function executeSqlIfExists(
     const exists = await checkSqlObjectExists(ibmi, schema, objectName, objectType);
     
     if (!exists) {
-      console.log(`SQL object ${schema}.${objectName} (${objectType}) does not exist`);
       return null;
     }
     
@@ -937,7 +936,6 @@ export async function executeSqlIfExists(
     return result;
     
   } catch (error) {
-    console.error(`Error executing SQL for ${schema}.${objectName}: ${error}`);
     return null;
   }
 }
