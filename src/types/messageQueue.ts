@@ -23,7 +23,6 @@ import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import { generateFastTable, FastTableColumn, getProtected, checkViewExists, executeSqlIfExists } from "../tools";
 import * as vscode from 'vscode';
 import ObjectProvider from "../objectProvider";
-import { t } from '../l10n';
 
 /**
  * Namespace containing actions for Message Queue objects
@@ -72,28 +71,28 @@ export namespace MessageQueueActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to clear Message Queue {0}/{1}?", library, name), { modal: true }, t("Clear MSGQ"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Message Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Clear MSGQ"))) {
         const cmdrun: CommandResult = await connection.runCommand({
           command: `CLRMSGQ ${library}/${name}`,
           environment: `ile`
         });
 
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Message Queue {0}/{1} cleared.", library, name));
+          vscode.window.showInformationMessage(vscode.l10n.t("Message Queue {0}/{1} cleared.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to clear Message Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to clear Message Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -174,7 +173,7 @@ export default class Msgq extends Base {
       );
 
       if (countRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_QUEUE_INFO"));
         return;
       }
 
@@ -203,14 +202,14 @@ export default class Msgq extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_QUEUE_INFO"));
         return;
       }
 
       this._entries = [];
       this._entries.push(...entryRows.map(this.toEntry));
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -224,25 +223,25 @@ export default class Msgq extends Base {
   generateHTML(): string {
     // Define table columns with widths
     const columns: FastTableColumn<Entry>[] = [
-      { title: t("MSGID"), getValue: e => e.msgid, width: "0.5fr" },
-      { title: t("First Level"), getValue: e => e.msgtxt1, width: "1fr" },
-      { title: t("Second Level"), getValue: e => e.msgtxt2, width: "2fr" },
-      { title: t("Sev."), getValue: e => String(e.severity), width: "0.2fr" },
-      { title: t("Timestamp"), getValue: e => e.timestamp, width: "0.7fr" },
-      { title: t("Job"), getValue: e => e.job, width: "1fr" },
-      { title: t("User"), getValue: e => e.user, width: "0.5fr" }
+      { title: vscode.l10n.t("MSGID"), getValue: e => e.msgid, width: "0.5fr" },
+      { title: vscode.l10n.t("First Level"), getValue: e => e.msgtxt1, width: "1fr" },
+      { title: vscode.l10n.t("Second Level"), getValue: e => e.msgtxt2, width: "2fr" },
+      { title: vscode.l10n.t("Sev."), getValue: e => String(e.severity), width: "0.2fr" },
+      { title: vscode.l10n.t("Timestamp"), getValue: e => e.timestamp, width: "0.7fr" },
+      { title: vscode.l10n.t("Job"), getValue: e => e.job, width: "1fr" },
+      { title: vscode.l10n.t("User"), getValue: e => e.user, width: "0.5fr" }
     ];
 
     return generateFastTable({
-      title: t("Message Queue: {0}/{1}", this.library, this.name),
-      subtitle: t("Total Messages: {0}", String(this.totalItems)),
+      title: vscode.l10n.t("Message Queue: {0}/{1}", this.library, this.name),
+      subtitle: vscode.l10n.t("Total Messages: {0}", String(this.totalItems)),
       columns: columns,
       data: this._entries,
       stickyHeader: true,
-      emptyMessage: t("No messages found in this message queue."),
+      emptyMessage: vscode.l10n.t("No messages found in this message queue."),
       customStyles: '',
       enableSearch: true,
-      searchPlaceholder: t("Search messages..."),
+      searchPlaceholder: vscode.l10n.t("Search messages..."),
       enablePagination: true,
       itemsPerPage: this.itemsPerPage,
       totalItems: this.totalItems,

@@ -21,7 +21,6 @@ import { getInstance } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import { generateFastTable, FastTableColumn, checkViewExists, executeSqlIfExists } from "../tools";
 import * as vscode from 'vscode';
-import { t } from '../l10n';
 
 /**
  * Interface representing a message file entry
@@ -104,7 +103,7 @@ export default class Msgf extends Base {
       );
 
       if (countRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_FILE_DATA"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_FILE_DATA"));
         return;
       }
 
@@ -138,14 +137,14 @@ export default class Msgf extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_FILE_DATA"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_FILE_DATA"));
         return;
       }
 
       this._entries = [];
       this._entries.push(...entryRows.map(this.toEntry));
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -160,13 +159,13 @@ export default class Msgf extends Base {
     
     // Define table columns with widths
     const columns: FastTableColumn<Entry>[] = [
-      { title: t("MSGID"), getValue: e => e.msgid, width: "0.25fr" },
-      { title: t("First Level"), getValue: e => e.msgtxt1, width: "1fr" },
-      { title: t("Second Level"), getValue: e => e.msgtxt2, width: "2fr" },
-      { title: t("Sev."), getValue: e => String(e.severity), width: "0.2fr" },
-      { title: t("Reply Type"), getValue: e => e.replytype, width: "0.2fr" },
-      { title: t("Reply Dft"), getValue: e => e.replydft, width: "0.2fr" },
-      { title: t("Reply Valid"), getValue: e => e.replyvalid, width: "0.2fr" }
+      { title: vscode.l10n.t("MSGID"), getValue: e => e.msgid, width: "0.25fr" },
+      { title: vscode.l10n.t("First Level"), getValue: e => e.msgtxt1, width: "1fr" },
+      { title: vscode.l10n.t("Second Level"), getValue: e => e.msgtxt2, width: "2fr" },
+      { title: vscode.l10n.t("Sev."), getValue: e => String(e.severity), width: "0.2fr" },
+      { title: vscode.l10n.t("Reply Type"), getValue: e => e.replytype, width: "0.2fr" },
+      { title: vscode.l10n.t("Reply Dft"), getValue: e => e.replydft, width: "0.2fr" },
+      { title: vscode.l10n.t("Reply Valid"), getValue: e => e.replyvalid, width: "0.2fr" }
     ];
 
     const customStyles = `
@@ -177,15 +176,15 @@ export default class Msgf extends Base {
     `;
 
     return `<div class="messagefile-entries-table">` + generateFastTable({
-      title: t("Message File: {0}/{1}", this.library, this.name),
-      subtitle: t("Total Messages: {0}", String(this.totalItems)),
+      title: vscode.l10n.t("Message File: {0}/{1}", this.library, this.name),
+      subtitle: vscode.l10n.t("Total Messages: {0}", String(this.totalItems)),
       columns: columns,
       data: this._entries,
       stickyHeader: true,
-      emptyMessage: t("No messages found in this message file."),
+      emptyMessage: vscode.l10n.t("No messages found in this message file."),
       customStyles: customStyles,
       enableSearch: true,
-      searchPlaceholder: t("Search messages..."),
+      searchPlaceholder: vscode.l10n.t("Search messages..."),
       enablePagination: true,
       itemsPerPage: this.itemsPerPage,
       totalItems: this.totalItems,

@@ -3,7 +3,6 @@ import { getInstance } from "./ibmi";
 import { Components } from "./webviewToolkit";
 import { ObjectFilters } from '@halcyontech/vscode-ibmi-types';
 import * as vscode from 'vscode';
-import { t } from './l10n';
 
 /**
  * Column definition for FastTable
@@ -139,7 +138,7 @@ export async function getColumns(ibmi: IBMi, table: String, schema = 'QSYS2') {
     const length = Number(column.LENGTH);
     // Translate using the column name as key (more stable than heading)
     // Falls back to heading if no translation exists for column name
-    const translatedLabel = t(name, heading);
+    const translatedLabel = vscode.l10n.t(name, heading);
     columns.set(name, translatedLabel);
   });
 
@@ -765,7 +764,7 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     ${enableSearch ? `
     <div class="search-bar">
       <label class="search-bar-label" for="search-input">
-        <span class="codicon codicon-search"></span> ${t('Search')}
+        <span class="codicon codicon-search"></span> ${vscode.l10n.t('Search')}
       </label>
       <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); border-radius: 4px;">
         <span class="codicon codicon-search" style="color: var(--vscode-input-placeholderForeground);"></span>

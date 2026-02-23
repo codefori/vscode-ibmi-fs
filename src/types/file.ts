@@ -24,7 +24,6 @@ import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, ge
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
-import { t } from '../l10n';
 
 /**
  * Namespace containing actions for FILE objects
@@ -159,7 +158,7 @@ export default class File extends Base {
       );
 
       if (objTypeResult === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OBJECT_STATISTICS"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OBJECT_STATISTICS"));
         return;
       }
       
@@ -185,7 +184,7 @@ export default class File extends Base {
         await this.fetchStatsIndex();
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -199,28 +198,28 @@ export default class File extends Base {
     const connection = ibmi?.getConnection();
     if (connection) {
       this.columns =new Map<string, string>([
-        ['TABLE_SCHEMA', t('SQL schema name')],
-        ['TABLE_NAME', t('SQL table name')],
-        ['SQL_OBJECT_TYPE', t('SQL object type')],
-        ['COLUMN_COUNT', t('Column count')],
-        ['IS_INSERTABLE_INTO', t('Is insertable into')],
-        ['TABLE_TEXT', t('Text')],
-        ['TABLE_OWNER', t('Owner')],
-        ['TABLE_DEFINER', t('Created by user')],
-        ['OBJCREATED', t('Creation date/time')],
-        ['LAST_ALTERED_TIMESTAMP', t('Last altered date/time')],
-        ['LAST_USED_TIMESTAMP', t('Last used date')],
-        ['DAYS_USED_COUNT', t('Days used count')],
-        ['OBJSIZE', t('Object size')],
-        ['IASP_NAME', t('iASP')],
-        ['JOURNALED', t('Currently journaled')],
-        ['JOURNAL_NAME', t('Current or last journal')],
-        ['ENABLED', t('Enabled')],
-        ['MAINTENANCE', t('Maintained by')],
-        ['REFRESH', t('Refresh type')],
-        ['REFRESH_TIME', t('Last refresh date/time')],
-        ['MQT_DEFINITION', t('MQT definition')],
-        ['ISOLATION', t('Isolation level')]
+        ['TABLE_SCHEMA', vscode.l10n.t('SQL schema name')],
+        ['TABLE_NAME', vscode.l10n.t('SQL table name')],
+        ['SQL_OBJECT_TYPE', vscode.l10n.t('SQL object type')],
+        ['COLUMN_COUNT', vscode.l10n.t('Column count')],
+        ['IS_INSERTABLE_INTO', vscode.l10n.t('Is insertable into')],
+        ['TABLE_TEXT', vscode.l10n.t('Text')],
+        ['TABLE_OWNER', vscode.l10n.t('Owner')],
+        ['TABLE_DEFINER', vscode.l10n.t('Created by user')],
+        ['OBJCREATED', vscode.l10n.t('Creation date/time')],
+        ['LAST_ALTERED_TIMESTAMP', vscode.l10n.t('Last altered date/time')],
+        ['LAST_USED_TIMESTAMP', vscode.l10n.t('Last used date')],
+        ['DAYS_USED_COUNT', vscode.l10n.t('Days used count')],
+        ['OBJSIZE', vscode.l10n.t('Object size')],
+        ['IASP_NAME', vscode.l10n.t('iASP')],
+        ['JOURNALED', vscode.l10n.t('Currently journaled')],
+        ['JOURNAL_NAME', vscode.l10n.t('Current or last journal')],
+        ['ENABLED', vscode.l10n.t('Enabled')],
+        ['MAINTENANCE', vscode.l10n.t('Maintained by')],
+        ['REFRESH', vscode.l10n.t('Refresh type')],
+        ['REFRESH_TIME', vscode.l10n.t('Last refresh date/time')],
+        ['MQT_DEFINITION', vscode.l10n.t('MQT definition')],
+        ['ISOLATION', vscode.l10n.t('Isolation level')]
       ]);
 
       this.file = await executeSqlIfExists(
@@ -260,11 +259,11 @@ export default class File extends Base {
       );
 
       if (this.file === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSTABLES"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSTABLES"));
         return;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -278,10 +277,10 @@ export default class File extends Base {
     const connection = ibmi?.getConnection();
     if (connection) {
       this.columnsview =new Map<string, string>([
-        ['VIEW_DEFINITION', t('View definition')],
-        ['IS_INSERTABLE_INTO', t('Is insertable into')],
-        ['IS_UPDATABLE', t('Is updatable')],
-        ['IS_DELETABLE', t('Is deletable')]
+        ['VIEW_DEFINITION', vscode.l10n.t('View definition')],
+        ['IS_INSERTABLE_INTO', vscode.l10n.t('Is insertable into')],
+        ['IS_UPDATABLE', vscode.l10n.t('Is updatable')],
+        ['IS_DELETABLE', vscode.l10n.t('Is deletable')]
       ]);
 
       this.view = await executeSqlIfExists(
@@ -306,11 +305,11 @@ export default class File extends Base {
       );
 
       if (this.view === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSVIEWS"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSVIEWS"));
         return;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -363,11 +362,11 @@ export default class File extends Base {
 
       // If stats is null, the view doesn't exist or query failed
       if (this.stats === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSTABLESTAT"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSTABLESTAT"));
         return;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -398,13 +397,13 @@ export default class File extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "SYSTOOLS", "RELATED_OBJECTS"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "SYSTOOLS", "RELATED_OBJECTS"));
         return;
       }
 
       this.depobjs.push(...entryRows.map(this.toDepObj));
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -435,13 +434,13 @@ export default class File extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSMEMBERSTAT"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSMEMBERSTAT"));
         return;
       }
 
       this.members.push(...entryRows.map(this.toMember));
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -455,20 +454,20 @@ export default class File extends Base {
     const connection = ibmi?.getConnection();
     if (connection) {
       this.columns =new Map<string, string>([
-        ['INDEX_SCHEMA', t('SQL schema name')],
-        ['INDEX_NAME', t('SQL index name')],
-        ['SQL_OBJECT_TYPE', t('SQL object type')],
-        ['COLUMN_COUNT', t('Column count')],
-        ['INDEX_TEXT', t('Text')],
-        ['INDEX_OWNER', t('Owner')],
-        ['INDEX_DEFINER', t('Created by user')],
-        ['OBJCREATED', t('Creation date/time')],
-        ['LAST_USED_TIMESTAMP', t('Last used date')],
-        ['DAYS_USED_COUNT', t('Days used count')],
-        ['OBJSIZE', t('Object size')],
-        ['IASP_NAME', t('iASP')],
-        ['JOURNALED', t('Currently journaled')],
-        ['JOURNAL_NAME', t('Current or last journal')]
+        ['INDEX_SCHEMA', vscode.l10n.t('SQL schema name')],
+        ['INDEX_NAME', vscode.l10n.t('SQL index name')],
+        ['SQL_OBJECT_TYPE', vscode.l10n.t('SQL object type')],
+        ['COLUMN_COUNT', vscode.l10n.t('Column count')],
+        ['INDEX_TEXT', vscode.l10n.t('Text')],
+        ['INDEX_OWNER', vscode.l10n.t('Owner')],
+        ['INDEX_DEFINER', vscode.l10n.t('Created by user')],
+        ['OBJCREATED', vscode.l10n.t('Creation date/time')],
+        ['LAST_USED_TIMESTAMP', vscode.l10n.t('Last used date')],
+        ['DAYS_USED_COUNT', vscode.l10n.t('Days used count')],
+        ['OBJSIZE', vscode.l10n.t('Object size')],
+        ['IASP_NAME', vscode.l10n.t('iASP')],
+        ['JOURNALED', vscode.l10n.t('Currently journaled')],
+        ['JOURNAL_NAME', vscode.l10n.t('Current or last journal')]
       ]);
 
       this.file = await executeSqlIfExists(
@@ -500,11 +499,11 @@ export default class File extends Base {
       );
 
       if (this.file === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSINDEXES"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSINDEXES"));
         return;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -563,11 +562,11 @@ export default class File extends Base {
       );
 
       if (this.stats === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSINDEXSTAT"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSINDEXSTAT"));
         return;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -580,23 +579,23 @@ export default class File extends Base {
   generateHTML(): string {
 
     const panels: Components.Panel[] = [
-      { title: t("Detail"), content: this.renderMainPanel() },
+      { title: vscode.l10n.t("Detail"), content: this.renderMainPanel() },
     ];
 
     if(this.objtype === 'VIEW') {
-      panels.push({ title: t("View info"), content: this.renderViewPanel() })
+      panels.push({ title: vscode.l10n.t("View info"), content: this.renderViewPanel() })
     }
 
     if(this.stats) {
-      panels.push({ title: t("Statistics"), content: this.renderStatsPanel() })
+      panels.push({ title: vscode.l10n.t("Statistics"), content: this.renderStatsPanel() })
     }
 
     if(this.depobjs.length>0){
-      panels.push({ title: t("Dependent objects"), content: this.renderDepObjs(), badge:this.depobjs.length });
+      panels.push({ title: vscode.l10n.t("Dependent objects"), content: this.renderDepObjs(), badge:this.depobjs.length });
     }
 
     if(this.members.length>0){
-      panels.push({ title: t("Members"), content: this.renderMembers(), badge:this.members.length });
+      panels.push({ title: vscode.l10n.t("Members"), content: this.renderMembers(), badge:this.members.length });
     }
 
     return Components.panels(panels);
@@ -611,8 +610,8 @@ export default class File extends Base {
   private renderMainPanel(): string {
     // Generate the detail table with file information
     return generateDetailTable({
-      title: t("File: {0}/{1}", this.library, this.name),
-      subtitle: t('File Information'),
+      title: vscode.l10n.t("File: {0}/{1}", this.library, this.name),
+      subtitle: vscode.l10n.t('File Information'),
       columns: this.columns,
       data: this.file,
       codeColumns:['MQT_DEFINITION'],
@@ -697,12 +696,12 @@ export default class File extends Base {
   renderDepObjs() {
     // Define table columns with their properties
     const columns: FastTableColumn<DepObj>[] = [
-      { title: t("Schema"), width: "1fr", getValue: e => e.schema },
-      { title: t("Name"), width: "1fr", getValue: e => e.name },
-      { title: t("SQL type"), width: "0.7fr", getValue: e => e.type },
-      { title: t("Owner"), width: "0.7fr", getValue: e => e.owner },
-      { title: t("Text"), width: "2fr", getValue: e => e.text },
-      { title: t("Last altered"), width: "0.7fr", getValue: e => e.altered }
+      { title: vscode.l10n.t("Schema"), width: "1fr", getValue: e => e.schema },
+      { title: vscode.l10n.t("Name"), width: "1fr", getValue: e => e.name },
+      { title: vscode.l10n.t("SQL type"), width: "0.7fr", getValue: e => e.type },
+      { title: vscode.l10n.t("Owner"), width: "0.7fr", getValue: e => e.owner },
+      { title: vscode.l10n.t("Text"), width: "2fr", getValue: e => e.text },
+      { title: vscode.l10n.t("Last altered"), width: "0.7fr", getValue: e => e.altered }
     ];
 
     // Generate and return the complete table HTML
@@ -712,7 +711,7 @@ export default class File extends Base {
       columns: columns,
       data: this.depobjs,
       stickyHeader: true,
-      emptyMessage: t('No dependent objects found'),
+      emptyMessage: vscode.l10n.t('No dependent objects found'),
     }) + ``;
   }
 
@@ -725,12 +724,12 @@ export default class File extends Base {
   renderMembers() {
     // Define table columns with their properties
     const columns: FastTableColumn<Member>[] = [
-      { title: t("Member"), width: "1fr", getValue: e => e.member  },
-      { title: t("Rows"), width: "0.7fr", getValue: e => e.rows },
-      { title: t("Deleted rows"), width: "0.7fr", getValue: e => e.delrows },
-      { title: t("Size"), width: "0.7fr", getValue: e => e.size },
-      { title: t("Last change"), width: "1fr", getValue: e => e.lastchg },
-      { title: t("Text"), width: "1fr", getValue: e => e.text }
+      { title: vscode.l10n.t("Member"), width: "1fr", getValue: e => e.member  },
+      { title: vscode.l10n.t("Rows"), width: "0.7fr", getValue: e => e.rows },
+      { title: vscode.l10n.t("Deleted rows"), width: "0.7fr", getValue: e => e.delrows },
+      { title: vscode.l10n.t("Size"), width: "0.7fr", getValue: e => e.size },
+      { title: vscode.l10n.t("Last change"), width: "1fr", getValue: e => e.lastchg },
+      { title: vscode.l10n.t("Text"), width: "1fr", getValue: e => e.text }
     ];
 
     // Generate and return the complete table HTML
@@ -740,7 +739,7 @@ export default class File extends Base {
       columns: columns,
       data: this.members,
       stickyHeader: true,
-      emptyMessage: t('No members objects found'),
+      emptyMessage: vscode.l10n.t('No members objects found'),
     }) + ``;
   }
 

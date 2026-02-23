@@ -20,7 +20,6 @@ import Base from "./base";
 import { getInstance } from "../ibmi";
 import { getColumns, generateDetailTable, checkViewExists, executeSqlIfExists } from "../tools";
 import * as vscode from 'vscode';
-import { t } from '../l10n';
 
 /**
  * Job Description (JOBD) object class
@@ -60,11 +59,11 @@ export default class Jobd extends Base {
       );
 
       if (this.jobd === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_DESCRIPTION_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_DESCRIPTION_INFO"));
         return;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -75,8 +74,8 @@ export default class Jobd extends Base {
    */
   generateHTML(): string {
     return generateDetailTable({
-      title: t("Job Description: {0}/{1}", this.library, this.name),
-      subtitle: t('Job Description Information'),
+      title: vscode.l10n.t("Job Description: {0}/{1}", this.library, this.name),
+      subtitle: vscode.l10n.t('Job Description Information'),
       columns: this.columns,
       data: this.jobd
     });

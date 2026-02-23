@@ -23,7 +23,6 @@ import { getColumns, generateDetailTable, getProtected, checkTableFunctionExists
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
-import { t } from '../l10n';
 
 /**
  * Namespace containing actions for User Space objects
@@ -83,7 +82,7 @@ export namespace UserSpaceActions {
     if (connection) {
 
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
@@ -97,7 +96,7 @@ export namespace UserSpaceActions {
       );
 
       if (usrspc === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "USER_SPACE"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "USER_SPACE"));
         return false;
       }
 
@@ -105,22 +104,22 @@ export namespace UserSpaceActions {
 
       // Get the start position for the change
       let start = await vscode.window.showInputBox({
-        title: t("Start position"),
+        title: vscode.l10n.t("Start position"),
         value: '1',
         validateInput: start => {
           if (!isStringNumber(start) || parseInt(start) <= 0) {
-            return t("The start position must be a number bigger or equal than 1");
+            return vscode.l10n.t("The start position must be a number bigger or equal than 1");
           }
         }
       });
 
       // Get the new value
       let newvalue = await vscode.window.showInputBox({
-        title: t("Change USRSPC value"),
+        title: vscode.l10n.t("Change USRSPC value"),
         value: curvalue,
         validateInput: newvalue => {
           if (newvalue.length < 1) {
-            return t("Insert a new value");
+            return vscode.l10n.t("Insert a new value");
           }
         }
       });
@@ -139,21 +138,21 @@ export namespace UserSpaceActions {
           );
 
           if (result === null) {
-            vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "PROCEDURE", "QSYS2", "CHANGE_USER_SPACE"));
+            vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "PROCEDURE", "QSYS2", "CHANGE_USER_SPACE"));
             return false;
           }
 
-          vscode.window.showInformationMessage(t("User Space {0}/{1} updated.", library, name));
+          vscode.window.showInformationMessage(vscode.l10n.t("User Space {0}/{1} updated.", library, name));
           return true;
         } catch (error) {
-          vscode.window.showErrorMessage(t("An error occurred while updating the USRSPC {0}/{1}", library, name));
+          vscode.window.showErrorMessage(vscode.l10n.t("An error occurred while updating the USRSPC {0}/{1}", library, name));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   }
@@ -178,8 +177,8 @@ export class Usrspc extends Base {
     if (connection) {
       this.columns = await getColumns(connection, 'USER_SPACE_INFO');
       // Add custom columns for data display
-      this.columns.set('DATA', t("Data"));
-      this.columns.set('DATA_BINARY', t("Binary Data"));
+      this.columns.set('DATA', vscode.l10n.t("Data"));
+      this.columns.set('DATA_BINARY', vscode.l10n.t("Binary Data"));
 
       this.usrspc = await executeSqlIfExists(
         connection,
@@ -193,11 +192,11 @@ export class Usrspc extends Base {
       );
 
       if (this.usrspc === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "USER_SPACE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "USER_SPACE_INFO"));
         return;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -209,7 +208,7 @@ export class Usrspc extends Base {
   generateHTML(): string {
     return generateDetailTable({
       title: `User Space: ${this.library}/${this.name}`,
-      subtitle: t('User Space Information'),
+      subtitle: vscode.l10n.t('User Space Information'),
       columns: this.columns,
       data: this.usrspc,
       codeColumns: ['DATA', 'DATA_BINARY']

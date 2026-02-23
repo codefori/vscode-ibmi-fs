@@ -21,7 +21,6 @@ import { getColumns, generateDetailTable, getProtected, checkViewExists, execute
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
-import { t } from '../l10n';
 
 /**
  * Namespace containing actions for Data Area objects
@@ -95,7 +94,7 @@ export namespace DataAreaActions {
     if (connection) {
 
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
@@ -113,7 +112,7 @@ export namespace DataAreaActions {
 
       // Ensure dta is available
       if (dta === null || dta.length === 0) {
-        vscode.window.showErrorMessage(t("Unable to retrieve Data Area information for {0}/{1}", library, name));
+        vscode.window.showErrorMessage(vscode.l10n.t("Unable to retrieve Data Area information for {0}/{1}", library, name));
         return false;
       }
 
@@ -122,43 +121,43 @@ export namespace DataAreaActions {
       // Handle different data area types
       if(dta[0].DATA_AREA_TYPE==='*CHAR'){
         const startend = await vscode.window.showQuickPick(
-          [t("YES"), t("NO")],
+          [vscode.l10n.t("YES"), vscode.l10n.t("NO")],
           {
-            placeHolder: t("Do you want specify start/end?"),
-            title: t("Do you want specify start/end?"),
+            placeHolder: vscode.l10n.t("Do you want specify start/end?"),
+            title: vscode.l10n.t("Do you want specify start/end?"),
             canPickMany: false,
           },
         );
 
-        if(startend&&startend===t("YES")){
+        if(startend&&startend===vscode.l10n.t("YES")){
           const start = await vscode.window.showInputBox({
-            title: t("Enter start"),
-            placeHolder: t("1 is the first char"),
+            title: vscode.l10n.t("Enter start"),
+            placeHolder: vscode.l10n.t("1 is the first char"),
             value: '1',
             validateInput: start => {
               if (isNaN(Number(start))||Number(start)<1||Number(start)>2000) {
-                return t("The value must be a valid number");
+                return vscode.l10n.t("The value must be a valid number");
               }
             }
           });
 
           const lenght = await vscode.window.showInputBox({
-            title: t("Enter substring length"),
+            title: vscode.l10n.t("Enter substring length"),
             value: String(Number(dta![0].LENGTH)-Number(start)+1),
-            placeHolder: t("Max value: {0}", String(Number(dta![0].LENGTH)-Number(start)+1)),
+            placeHolder: vscode.l10n.t("Max value: {0}", String(Number(dta![0].LENGTH)-Number(start)+1)),
             validateInput: lenght => {
               if (isNaN(Number(lenght))||Number(lenght)<1||Number(lenght)>2000||Number(lenght)+Number(start)-1>Number(dta![0].LENGTH)) {
-                return t("The substring length must be a valid number");
+                return vscode.l10n.t("The substring length must be a valid number");
               }
             }
           });
 
           newvalue = await vscode.window.showInputBox({
-            title: t("Change DTAARA value"),
+            title: vscode.l10n.t("Change DTAARA value"),
             value: String(dta[0].DATA_AREA_VALUE).substring(Number(start)-1,Number(start)-1+Number(lenght)),
             validateInput: newvalue => {
               if (newvalue.length > Number(lenght)) {
-                return t("The value length must be less or equals than {0} characters", String(lenght));
+                return vscode.l10n.t("The value length must be less or equals than {0} characters", String(lenght));
               }
             }
           });
@@ -170,11 +169,11 @@ export namespace DataAreaActions {
           }
         } else {
           newvalue = await vscode.window.showInputBox({
-            title: t("Change DTAARA value"),
+            title: vscode.l10n.t("Change DTAARA value"),
             value: String(dta[0].DATA_AREA_VALUE),
             validateInput: newvalue => {
               if (newvalue.length > Number(dta![0].LENGTH)) {
-                return t("The value length must be less or equals than {0} characters", String(dta![0].LENGTH));
+                return vscode.l10n.t("The value length must be less or equals than {0} characters", String(dta![0].LENGTH));
               }
             }
           });
@@ -190,11 +189,11 @@ export namespace DataAreaActions {
         switch (dta[0].DATA_AREA_TYPE) {
           case '*DEC':
             newvalue = await vscode.window.showInputBox({
-              title: t("Change DTAARA value"),
+              title: vscode.l10n.t("Change DTAARA value"),
               value: String(dta[0].DATA_AREA_VALUE),
               validateInput: newvalue => {
                 if (!checkDecimal(newvalue, dta!)) {
-                  return t("The value must be a valid decimal number");
+                  return vscode.l10n.t("The value must be a valid decimal number");
                 }
               }
             });
@@ -202,11 +201,11 @@ export namespace DataAreaActions {
 
           case `*LGL`:
             newvalue = await vscode.window.showInputBox({
-              title: t("Change DTAARA value"),
+              title: vscode.l10n.t("Change DTAARA value"),
               value: String(dta[0].DATA_AREA_VALUE),
               validateInput: newvalue => {
                 if (isNaN(Number(newvalue)) || (Number(newvalue) !== 0 && Number(newvalue) !== 1)) {
-                  return t("For *LGL dtaara value must be 0 or 1");
+                  return vscode.l10n.t("For *LGL dtaara value must be 0 or 1");
                 }
               }
             });
@@ -215,11 +214,11 @@ export namespace DataAreaActions {
           case `*CHAR`:
             
             newvalue = await vscode.window.showInputBox({
-              title: t("Change DTAARA value"),
+              title: vscode.l10n.t("Change DTAARA value"),
               value: String(dta[0].DATA_AREA_VALUE),
               validateInput: newvalue => {
                 if (newvalue.length > Number(dta![0].LENGTH)) {
-                  return t("The value length must be less or equals than {0} characters", String(dta![0].LENGTH));
+                  return vscode.l10n.t("The value length must be less or equals than {0} characters", String(dta![0].LENGTH));
                 }
               }
             });
@@ -240,17 +239,17 @@ export namespace DataAreaActions {
         });
 
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Data Area {0}/{1} changed.", library, name));
+          vscode.window.showInformationMessage(vscode.l10n.t("Data Area {0}/{1} changed.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable change Data Area {0}/{1}:\n{2}", library, name, cmdrun.stderr));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable change Data Area {0}/{1}:\n{2}", library, name, cmdrun.stderr));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   }
@@ -288,7 +287,7 @@ export class Dtaara extends Base {
       );
 
       if (this.dta === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_AREA_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_AREA_INFO"));
         return;
       }
 
@@ -308,11 +307,11 @@ export class Dtaara extends Base {
       );
 
       if (this.dta === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_AREA_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_AREA_INFO"));
         return;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -323,8 +322,8 @@ export class Dtaara extends Base {
    */
   generateHTML(): string {
     return generateDetailTable({
-      title: t("Data Area: {0}/{1}", this.library, this.name),
-      subtitle: t("Data Area Information"),
+      title: vscode.l10n.t("Data Area: {0}/{1}", this.library, this.name),
+      subtitle: vscode.l10n.t("Data Area Information"),
       columns: this.columns,
       data: this.dta,
       codeColumns: ['DATA_AREA_VALUE']

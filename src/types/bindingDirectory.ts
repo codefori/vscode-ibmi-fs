@@ -24,7 +24,6 @@ import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected, checkViewExists, executeSqlIfExists } from "../tools";
 import ObjectProvider from '../objectProvider';
-import { t } from '../l10n';
 
 /**
  * Namespace containing Binding Directory action commands
@@ -73,12 +72,12 @@ export namespace BindingDirectoryActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,bnddir.split('/')[0])){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
       
       // Show confirmation dialog to prevent accidental removal
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to remove {0}?", item.object), { modal: true }, t("Remove object"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to remove {0}?", item.object), { modal: true }, vscode.l10n.t("Remove object"))) {
         // Execute RMVBNDDIRE command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
           command: `RMVBNDDIRE BNDDIR(${bnddir}) OBJ(${item.object})`,
@@ -87,17 +86,17 @@ export namespace BindingDirectoryActions {
 
         // Check command execution result
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Item removed."));
+          vscode.window.showInformationMessage(vscode.l10n.t("Item removed."));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to remove selected item:\n{0}", String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to remove selected item:\n{0}", String(cmdrun.stderr)));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -114,7 +113,7 @@ export namespace BindingDirectoryActions {
     if (connection) {
 
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
     
@@ -124,11 +123,11 @@ export namespace BindingDirectoryActions {
       const ibmiPattern = /^[A-Za-z#@$][A-Za-z0-9#@$_]{0,9}\/[A-Za-z#@$][A-Za-z0-9#@$_]{0,9}$/;
 
       obj = await vscode.window.showInputBox({
-        placeHolder: t("LIBXXX/OBJXXX"),
-        title: t("Object to bind"),
+        placeHolder: vscode.l10n.t("LIBXXX/OBJXXX"),
+        title: vscode.l10n.t("Object to bind"),
         validateInput: (obj) => {
           if (obj.length < 3 || !ibmiPattern.test(obj)) {
-            return t("You need to specify a valid path");
+            return vscode.l10n.t("You need to specify a valid path");
           }
         },
       });
@@ -136,8 +135,8 @@ export namespace BindingDirectoryActions {
       objtype = await vscode.window.showQuickPick(
         ["*SRVPGM", "*MODULE"],
         {
-          placeHolder: t("Object type"),
-          title: t("Object type"),
+          placeHolder: vscode.l10n.t("Object type"),
+          title: vscode.l10n.t("Object type"),
           canPickMany: false,
         },
       );
@@ -145,8 +144,8 @@ export namespace BindingDirectoryActions {
       activation = await vscode.window.showQuickPick(
         ["*IMMED", "*DEFER"],
         {
-          placeHolder: t("Object activation"),
-          title: t("Object activation"),
+          placeHolder: vscode.l10n.t("Object activation"),
+          title: vscode.l10n.t("Object activation"),
           canPickMany: false,
         },
       );
@@ -161,10 +160,10 @@ export namespace BindingDirectoryActions {
 
         // Check command execution result
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Item added."));
+          vscode.window.showInformationMessage(vscode.l10n.t("Item added."));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to add selected item:\n{0}", String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to add selected item:\n{0}", String(cmdrun.stderr)));
           return false;
         }
       }
@@ -172,7 +171,7 @@ export namespace BindingDirectoryActions {
         return false;
       }
     } else {
-        vscode.window.showErrorMessage(t("Not connected to IBM i"));
+        vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
         return false;
       }
   };
@@ -255,13 +254,13 @@ export class Binddir extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BINDING_DIRECTORY_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BINDING_DIRECTORY_INFO"));
         return;
       }
 
       this.entries.push(...entryRows.map(toEntry));
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -292,13 +291,13 @@ export class Binddir extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BINDING_DIRECTORY_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BINDING_DIRECTORY_INFO"));
         return;
       }
 
       this.exports.push(...entryRows.map(toExport));
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -309,8 +308,8 @@ export class Binddir extends Base {
    */
   generateHTML(): string {
     return Components.panels([
-      { title: t("Entries"), content: renderEntries(this.entries, this.library + '/' + this.name), badge: this.entries.length },
-      { title: t("Exports"), content: renderExports(this.exports), badge: this.exports.length },
+      { title: vscode.l10n.t("Entries"), content: renderEntries(this.entries, this.library + '/' + this.name), badge: this.entries.length },
+      { title: vscode.l10n.t("Exports"), content: renderExports(this.exports), badge: this.exports.length },
     ]);
   }
 
@@ -391,18 +390,18 @@ function toExport(row: Tools.DB2Row): Export {
  */
 function renderEntries(entries: Entry[], name: string) {
   const columnsmod: FastTableColumn<Entry>[] = [
-    { title: t("Object"), width: "2fr", getValue: e => e.object },
-    { title: t("Type"), width: "1fr", getValue: e => e.type },
-    { title: t("Activation"), width: "1fr", getValue: e => e.activation },
-    { title: t("Creation"), width: "2fr", getValue: e => e.creation },
+    { title: vscode.l10n.t("Object"), width: "2fr", getValue: e => e.object },
+    { title: vscode.l10n.t("Type"), width: "1fr", getValue: e => e.type },
+    { title: vscode.l10n.t("Activation"), width: "1fr", getValue: e => e.activation },
+    { title: vscode.l10n.t("Creation"), width: "2fr", getValue: e => e.creation },
     {
-      title: t("Actions"),
+      title: vscode.l10n.t("Actions"),
       width: "1fr",
       getValue: e => {
         // Encode entry as URL parameter for action handlers
         const arg = encodeURIComponent(JSON.stringify(e));
         
-        return `<vscode-button appearance="secondary" href="action:remove?entry=${arg}">${t("Remove")} ❌</vscode-button>`;
+        return `<vscode-button appearance="secondary" href="action:remove?entry=${arg}">${vscode.l10n.t("Remove")} ❌</vscode-button>`;
       }
     }
   ];
@@ -415,12 +414,12 @@ function renderEntries(entries: Entry[], name: string) {
   `;
   
   return `<div class="modules-entries-table">` + generateFastTable({
-    title: t("Binding Directory: {0}", name),
-    subtitle: t("Total entries: {0}", String(entries.length)),
+    title: vscode.l10n.t("Binding Directory: {0}", name),
+    subtitle: vscode.l10n.t("Total entries: {0}", String(entries.length)),
     columns: columnsmod,
     data: entries,
     stickyHeader: true,
-    emptyMessage: t("No entries in this binding directory."),
+    emptyMessage: vscode.l10n.t("No entries in this binding directory."),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;
@@ -433,9 +432,9 @@ function renderEntries(entries: Entry[], name: string) {
  */
 function renderExports(exports: Export[]) {
   const columns: FastTableColumn<Export>[] = [
-    { title: t("Procedure"), width: "1.5fr", getValue: e => e.method },
-    { title: t("Object"), width: "1.5fr", getValue: e => e.object },
-    { title: t("Usage"), width: "0.5fr", getValue: e => e.usage },
+    { title: vscode.l10n.t("Procedure"), width: "1.5fr", getValue: e => e.method },
+    { title: vscode.l10n.t("Object"), width: "1.5fr", getValue: e => e.object },
+    { title: vscode.l10n.t("Usage"), width: "0.5fr", getValue: e => e.usage },
   ];
 
   const customStyles = `
@@ -451,7 +450,7 @@ function renderExports(exports: Export[]) {
     columns: columns,
     data: exports,
     stickyHeader: true,
-    emptyMessage: t("No exports in this binding directory."),
+    emptyMessage: vscode.l10n.t("No exports in this binding directory."),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;

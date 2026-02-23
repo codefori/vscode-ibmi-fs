@@ -28,7 +28,6 @@ import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected, checkViewExists, checkTableFunctionExists, executeSqlIfExists } from "../tools";
 import ObjectProvider from '../objectProvider';
-import { t } from '../l10n';
 
 export namespace SubsystemActions {
   /**
@@ -88,7 +87,7 @@ export namespace SubsystemActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
@@ -105,26 +104,26 @@ export namespace SubsystemActions {
       );
 
       if (sbsd === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_INFO"));
         return false;
       }
 
       if(sbsd[0].STATUS === "ACTIVE") {
-        vscode.window.showErrorMessage(t("Sbsd {0}/{1} already active", library, name));
+        vscode.window.showErrorMessage(vscode.l10n.t("Sbsd {0}/{1} already active", library, name));
         return false;
       }
 
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to start {0}/{1}?", library, name), { modal: true }, t("Start SBSD"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to start {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Start SBSD"))) {
         const cmdrun: CommandResult = await connection.runCommand({
           command: `STRSBS SBSD(${library}/${name})`,
           environment: `ile`
         });
 
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Subsystem {0}/{1} activated.", library, name));
+          vscode.window.showInformationMessage(vscode.l10n.t("Subsystem {0}/{1} activated.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to start subsystem {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to start subsystem {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
           return false;
         }
       }
@@ -132,7 +131,7 @@ export namespace SubsystemActions {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -151,7 +150,7 @@ export namespace SubsystemActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
@@ -168,40 +167,40 @@ export namespace SubsystemActions {
       );
 
       if (sbsd === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_INFO"));
         return false;
       }
 
       if(sbsd[0].STATUS === "INACTIVE") {
-        vscode.window.showErrorMessage(t("Sbsd {0}/{1} already inactive", library, name));
+        vscode.window.showErrorMessage(vscode.l10n.t("Sbsd {0}/{1} already inactive", library, name));
         return false;
       }
 
       // Ask user to choose end option
       const endOption = await vscode.window.showQuickPick(
         [
-          { label: "*IMMED", description: t("End immediately"), value: "*IMMED" },
-          { label: "*CNTRLD", description: t("Controlled end (default 30 sec delay)"), value: "*CNTRLD" }
+          { label: "*IMMED", description: vscode.l10n.t("End immediately"), value: "*IMMED" },
+          { label: "*CNTRLD", description: vscode.l10n.t("Controlled end (default 30 sec delay)"), value: "*CNTRLD" }
         ],
         {
-          placeHolder: t("Select how to end the subsystem"),
-          title: t("End Subsystem {0}/{1}", library, name),
+          placeHolder: vscode.l10n.t("Select how to end the subsystem"),
+          title: vscode.l10n.t("End Subsystem {0}/{1}", library, name),
           canPickMany: false
         }
       );
 
       if (endOption) {
-        if (await vscode.window.showWarningMessage(t("Are you sure you want to end {0}/{1} with option {2}?", library, name, endOption.label), { modal: true }, t("End SBSD"))) {
+        if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to end {0}/{1} with option {2}?", library, name, endOption.label), { modal: true }, vscode.l10n.t("End SBSD"))) {
           const cmdrun: CommandResult = await connection.runCommand({
             command: `ENDSBS SBS(${name}) OPTION(${endOption.value})`,
             environment: `ile`
           });
 
           if (cmdrun.code === 0) {
-            vscode.window.showInformationMessage(t("Subsystem {0}/{1} ended.", library, name));
+            vscode.window.showInformationMessage(vscode.l10n.t("Subsystem {0}/{1} ended.", library, name));
             return true;
           } else {
-            vscode.window.showErrorMessage(t("Unable to end subsystem {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+            vscode.window.showErrorMessage(vscode.l10n.t("Unable to end subsystem {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
             return false;
           }
         } else {
@@ -212,7 +211,7 @@ export namespace SubsystemActions {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -228,7 +227,7 @@ export namespace SubsystemActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to end job {0} ?", item.job), { modal: true }, t("End job"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to end job {0} ?", item.job), { modal: true }, vscode.l10n.t("End job"))) {
 
         // Execute ENDJOB command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
@@ -238,17 +237,17 @@ export namespace SubsystemActions {
 
         // Check command execution result
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Job ended."));
+          vscode.window.showInformationMessage(vscode.l10n.t("Job ended."));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to end selected job:\n{0}", String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to end selected job:\n{0}", String(cmdrun.stderr)));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;    
     }
   };
@@ -453,7 +452,7 @@ export class Sbsd extends Base {
       );
 
       if (this.sbs === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_INFO"));
         return;
       }
     } else {
@@ -484,7 +483,7 @@ export class Sbsd extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_POOL_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_POOL_INFO"));
         return;
       }
 
@@ -517,7 +516,7 @@ export class Sbsd extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "AUTOSTART_JOB_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "AUTOSTART_JOB_INFO"));
         return;
       }
 
@@ -553,7 +552,7 @@ export class Sbsd extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "WORKSTATION_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "WORKSTATION_INFO"));
         return;
       }
       this.wses.push(...entryRows.map(toWse));
@@ -590,7 +589,7 @@ export class Sbsd extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "ROUTING_ENTRY_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "ROUTING_ENTRY_INFO"));
         return;
       }
       this.rtges.push(...entryRows.map(toRtge));
@@ -637,7 +636,7 @@ export class Sbsd extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "PRESTART_JOB_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "PRESTART_JOB_INFO"));
         return;
       }
       this.pjes.push(...entryRows.map(toPje));
@@ -675,7 +674,7 @@ export class Sbsd extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
         return;
       }
       this.jobqes.push(...entryRows.map(toJobqe));
@@ -714,7 +713,7 @@ export class Sbsd extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "ACTIVE_JOB_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "ACTIVE_JOB_INFO"));
         return;
       }
 
@@ -731,32 +730,32 @@ export class Sbsd extends Base {
    */
   generateHTML(): string {
     const panels: Components.Panel[] = [
-      { title: t("Detail"), content: this.renderPgmPanel() },
-      { title: t("Pools"), content: renderPools(this.pools), badge: this.pools.length }
+      { title: vscode.l10n.t("Detail"), content: this.renderPgmPanel() },
+      { title: vscode.l10n.t("Pools"), content: renderPools(this.pools), badge: this.pools.length }
     ];
 
     if (this.ajes.length > 0) {
-      panels.push({ title: t("AJEs"), badge: this.ajes.length, content: renderAjes(this.ajes) })
+      panels.push({ title: vscode.l10n.t("AJEs"), badge: this.ajes.length, content: renderAjes(this.ajes) })
     }
 
     if (this.wses.length > 0) {
-      panels.push({ title: t("WSEs"), badge: this.wses.length, content: renderWses(this.wses) })
+      panels.push({ title: vscode.l10n.t("WSEs"), badge: this.wses.length, content: renderWses(this.wses) })
     }
 
     if (this.jobqes.length > 0) {
-      panels.push({ title: t("JOBQEs"), badge: this.jobqes.length, content: renderJobqes(this.jobqes) })
+      panels.push({ title: vscode.l10n.t("JOBQEs"), badge: this.jobqes.length, content: renderJobqes(this.jobqes) })
     }
 
     if (this.rtges.length > 0) {
-      panels.push({ title: t("RTGEs"), badge: this.rtges.length, content: renderRtges(this.rtges) })
+      panels.push({ title: vscode.l10n.t("RTGEs"), badge: this.rtges.length, content: renderRtges(this.rtges) })
     }
 
     if (this.pjes.length > 0) {
-      panels.push({ title: t("PJEs"), badge: this.pjes.length, content: renderPjes(this.pjes) })
+      panels.push({ title: vscode.l10n.t("PJEs"), badge: this.pjes.length, content: renderPjes(this.pjes) })
     }
 
     if (this.sbs[0].STATUS==='ACTIVE') {
-      panels.push({ title: t("JOBs"), badge: this.jobs.length, content: renderJobs(this.jobs) })
+      panels.push({ title: vscode.l10n.t("JOBs"), badge: this.jobs.length, content: renderJobs(this.jobs) })
     }
 
     return Components.panels(panels);
@@ -813,7 +812,7 @@ export class Sbsd extends Base {
   private renderPgmPanel(): string {
     return generateDetailTable({
       title: `Subsystem Description: ${this.library}/${this.name}`,
-      subtitle: t(`Subsystem Description Information`),
+      subtitle: vscode.l10n.t(`Subsystem Description Information`),
       columns: this.columns,
       data: this.sbs,
       hideNullValues: true
@@ -941,8 +940,8 @@ function toJob(row: Tools.DB2Row): Job {
  */
 function renderPools(data: GenEntry[]) {
   const columns: FastTableColumn<GenEntry>[] = [
-    { title: t("Pool ID"), width: "1fr", getValue: e => e.value1 },
-    { title: t("Pool Name"), width: "2fr", getValue: e => e.value2 },
+    { title: vscode.l10n.t("Pool ID"), width: "1fr", getValue: e => e.value1 },
+    { title: vscode.l10n.t("Pool Name"), width: "2fr", getValue: e => e.value2 },
   ];
 
   return generateFastTable({
@@ -951,7 +950,7 @@ function renderPools(data: GenEntry[]) {
     columns: columns,
     data: data,
     stickyHeader: true,
-    emptyMessage: t("No pools for this subsystem."),
+    emptyMessage: vscode.l10n.t("No pools for this subsystem."),
     customScript: ""
   })
 }
@@ -963,8 +962,8 @@ function renderPools(data: GenEntry[]) {
  */
 function renderAjes(data: GenEntry[]) {
   const columns: FastTableColumn<GenEntry>[] = [
-    { title: t("Autostart job"), width: "1fr", getValue: e => e.value2 },
-    { title: t("Job description"), width: "2fr", getValue: e => e.value1 },
+    { title: vscode.l10n.t("Autostart job"), width: "1fr", getValue: e => e.value2 },
+    { title: vscode.l10n.t("Job description"), width: "2fr", getValue: e => e.value1 },
   ];
 
   const customStyles = `
@@ -979,7 +978,7 @@ function renderAjes(data: GenEntry[]) {
     columns: columns,
     data: data,
     stickyHeader: true,
-    emptyMessage: t("No AJE for this subsystem."),
+    emptyMessage: vscode.l10n.t("No AJE for this subsystem."),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;
@@ -992,11 +991,11 @@ function renderAjes(data: GenEntry[]) {
  */
 function renderWses(data: Wse[]) {
   const columns: FastTableColumn<Wse>[] = [
-    { title: t("WS name"), width: "1fr", getValue: e => e.wsname },
-    { title: t("WS type"), width: "1fr", getValue: e => e.wstype },
-    { title: t("Jobd"), width: "2fr", getValue: e => e.jobd},
-    { title: t("Allocation"), width: "1fr", getValue: e => e.alloc},
-    { title: t("Max Active jobs"), width: "1fr", getValue: e => e.maxact},
+    { title: vscode.l10n.t("WS name"), width: "1fr", getValue: e => e.wsname },
+    { title: vscode.l10n.t("WS type"), width: "1fr", getValue: e => e.wstype },
+    { title: vscode.l10n.t("Jobd"), width: "2fr", getValue: e => e.jobd},
+    { title: vscode.l10n.t("Allocation"), width: "1fr", getValue: e => e.alloc},
+    { title: vscode.l10n.t("Max Active jobs"), width: "1fr", getValue: e => e.maxact},
   ];
   
   return generateFastTable({
@@ -1005,7 +1004,7 @@ function renderWses(data: Wse[]) {
     columns: columns,
     data: data,
     stickyHeader: true,
-    emptyMessage: t("No WSE for this subsystem."),
+    emptyMessage: vscode.l10n.t("No WSE for this subsystem."),
     customScript: ""
   });
 }
@@ -1017,14 +1016,14 @@ function renderWses(data: Wse[]) {
  */
 function renderJobqes(data: Jobqe[]) {
   const columns: FastTableColumn<Jobqe>[] = [
-    { title: t("Jobq"), width: "1.5fr", getValue: e => e.name },
-    { title: t("Status"), width: "0.7fr", getValue: e => e.status },
-    { title: t("Sequence"), width: "0.5fr", getValue: e => String(e.seq) },
-    { title: t("Max jobs"), width: "0.5fr", getValue: e => String(e.maxjobs) },
-    { title: t("ACT jobs"), width: "0.5fr", getValue: e => String(e.act) },
-    { title: t("HLD jobs"), width: "0.5fr", getValue: e => String(e.hold) },
-    { title: t("RLS jobs"), width: "0.5fr", getValue: e => String(e.rel) },
-    { title: t("SCD jobs"), width: "0.5fr", getValue: e => String(e.sched) },
+    { title: vscode.l10n.t("Jobq"), width: "1.5fr", getValue: e => e.name },
+    { title: vscode.l10n.t("Status"), width: "0.7fr", getValue: e => e.status },
+    { title: vscode.l10n.t("Sequence"), width: "0.5fr", getValue: e => String(e.seq) },
+    { title: vscode.l10n.t("Max jobs"), width: "0.5fr", getValue: e => String(e.maxjobs) },
+    { title: vscode.l10n.t("ACT jobs"), width: "0.5fr", getValue: e => String(e.act) },
+    { title: vscode.l10n.t("HLD jobs"), width: "0.5fr", getValue: e => String(e.hold) },
+    { title: vscode.l10n.t("RLS jobs"), width: "0.5fr", getValue: e => String(e.rel) },
+    { title: vscode.l10n.t("SCD jobs"), width: "0.5fr", getValue: e => String(e.sched) },
   ];
 
   const customStyles = `
@@ -1039,7 +1038,7 @@ function renderJobqes(data: Jobqe[]) {
     columns: columns,
     data: data,
     stickyHeader: true,
-    emptyMessage: t("No JOBQE for this subsystem."),
+    emptyMessage: vscode.l10n.t("No JOBQE for this subsystem."),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;
@@ -1052,13 +1051,13 @@ function renderJobqes(data: Jobqe[]) {
  */
 function renderRtges(data: Rtge[]) {
   const columns: FastTableColumn<Rtge>[] = [
-    { title: t("Sequence"), width: "0.5fr", getValue: e => String(e.seq) },
-    { title: t("Program"), width: "1.5fr", getValue: e => e.pgm },
-    { title: t("Class"), width: "1.5fr", getValue: e => e.class },
-    { title: t("Step"), width: "0.5fr", getValue: e => String(e.steps) },
-    { title: t("Pool"), width: "0.5fr", getValue: e => String(e.poolid) },
-    { title: t("Comparison start"), width: "0.5fr", getValue: e => String(e.cmpstart) },
-    { title: t("Comparison data"), width: "1fr", getValue: e => e.cmpdta },
+    { title: vscode.l10n.t("Sequence"), width: "0.5fr", getValue: e => String(e.seq) },
+    { title: vscode.l10n.t("Program"), width: "1.5fr", getValue: e => e.pgm },
+    { title: vscode.l10n.t("Class"), width: "1.5fr", getValue: e => e.class },
+    { title: vscode.l10n.t("Step"), width: "0.5fr", getValue: e => String(e.steps) },
+    { title: vscode.l10n.t("Pool"), width: "0.5fr", getValue: e => String(e.poolid) },
+    { title: vscode.l10n.t("Comparison start"), width: "0.5fr", getValue: e => String(e.cmpstart) },
+    { title: vscode.l10n.t("Comparison data"), width: "1fr", getValue: e => e.cmpdta },
   ];
 
   const customStyles = `
@@ -1073,7 +1072,7 @@ function renderRtges(data: Rtge[]) {
     columns: columns,
     data: data,
     stickyHeader: true,
-    emptyMessage: t("No RTGES for this subsystem."),
+    emptyMessage: vscode.l10n.t("No RTGES for this subsystem."),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;
@@ -1086,17 +1085,17 @@ function renderRtges(data: Rtge[]) {
  */
 function renderPjes(data: Pje[]) {
   const columns: FastTableColumn<Pje>[] = [
-    { title: t("Name"), width: "0.7fr", getValue: e => e.pjname },
-    { title: t("Program"), width: "1.5fr", getValue: e => e.pgm },
-    { title: t("Class"), width: "1.5fr", getValue: e => e.class },
-    { title: t("Jobd"), width: "1.5fr", getValue: e => e.jobd },
-    { title: t("User"), width: "0.7fr", getValue: e => e.user },
-    { title: t("Start"), width: "0.3fr", getValue: e => String(e.start) },
-    { title: t("Initial"), width: "0.3fr", getValue: e => String(e.inl) },
-    { title: t("Threshold"), width: "0.3fr", getValue: e => String(e.threshold) },
-    { title: t("Additional"), width: "0.3fr", getValue: e => String(e.add) },
-    { title: t("Max"), width: "0.3fr", getValue: e => String(e.maxjobs) },
-    { title: t("Reuse"), width: "0.3fr", getValue: e => String(e.maxuse) },
+    { title: vscode.l10n.t("Name"), width: "0.7fr", getValue: e => e.pjname },
+    { title: vscode.l10n.t("Program"), width: "1.5fr", getValue: e => e.pgm },
+    { title: vscode.l10n.t("Class"), width: "1.5fr", getValue: e => e.class },
+    { title: vscode.l10n.t("Jobd"), width: "1.5fr", getValue: e => e.jobd },
+    { title: vscode.l10n.t("User"), width: "0.7fr", getValue: e => e.user },
+    { title: vscode.l10n.t("Start"), width: "0.3fr", getValue: e => String(e.start) },
+    { title: vscode.l10n.t("Initial"), width: "0.3fr", getValue: e => String(e.inl) },
+    { title: vscode.l10n.t("Threshold"), width: "0.3fr", getValue: e => String(e.threshold) },
+    { title: vscode.l10n.t("Additional"), width: "0.3fr", getValue: e => String(e.add) },
+    { title: vscode.l10n.t("Max"), width: "0.3fr", getValue: e => String(e.maxjobs) },
+    { title: vscode.l10n.t("Reuse"), width: "0.3fr", getValue: e => String(e.maxuse) },
   ];
 
   const customStyles = `
@@ -1111,7 +1110,7 @@ function renderPjes(data: Pje[]) {
     columns: columns,
     data: data,
     stickyHeader: true,
-    emptyMessage: t("No PJES for this subsystem."),
+    emptyMessage: vscode.l10n.t("No PJES for this subsystem."),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;
@@ -1124,21 +1123,21 @@ function renderPjes(data: Pje[]) {
  */
 function renderJobs(data: Job[]) {
   const columns: FastTableColumn<Job>[] = [
-    { title: t("Job"), width: "1.5fr", getValue: e => e.job },
-    { title: t("User"), width: "0.7fr", getValue: e => e.user },
-    { title: t("Type"), width: "0.5fr", getValue: e => e.type },
-    { title: t("Function"), width: "0.7fr", getValue: e => e.function },
-    { title: t("Status"), width: "0.5fr", getValue: e => e.status },
-    { title: t("Temp. Stg."), width: "0.5fr", getValue: e => String(e.tmpstg) },
-    { title: t("CPU"), width: "0.5fr", getValue: e => String(e.cpu) },
-    { title: t("I/O"), width: "0.5fr", getValue: e => String(e.io) },
+    { title: vscode.l10n.t("Job"), width: "1.5fr", getValue: e => e.job },
+    { title: vscode.l10n.t("User"), width: "0.7fr", getValue: e => e.user },
+    { title: vscode.l10n.t("Type"), width: "0.5fr", getValue: e => e.type },
+    { title: vscode.l10n.t("Function"), width: "0.7fr", getValue: e => e.function },
+    { title: vscode.l10n.t("Status"), width: "0.5fr", getValue: e => e.status },
+    { title: vscode.l10n.t("Temp. Stg."), width: "0.5fr", getValue: e => String(e.tmpstg) },
+    { title: vscode.l10n.t("CPU"), width: "0.5fr", getValue: e => String(e.cpu) },
+    { title: vscode.l10n.t("I/O"), width: "0.5fr", getValue: e => String(e.io) },
     {
-      title: t("Actions"),
+      title: vscode.l10n.t("Actions"),
       width: "1fr",
       getValue: e => {
         // Encode job entry as URL parameter for action handlers
         const arg = encodeURIComponent(JSON.stringify(e));
-        return `<vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${t("End")} ❌</vscode-button>`;
+        return `<vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")} ❌</vscode-button>`;
       }
     }
   ];
@@ -1155,7 +1154,7 @@ function renderJobs(data: Job[]) {
     columns: columns,
     data: data,
     stickyHeader: true,
-    emptyMessage: t("No running jobs for this subsystem."),
+    emptyMessage: vscode.l10n.t("No running jobs for this subsystem."),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;

@@ -22,7 +22,6 @@ import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, ge
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
-import { t } from '../l10n';
 
 /**
  * Namespace containing actions for Job Queue objects
@@ -102,7 +101,7 @@ export namespace JobQueueActions {
     if (connection) {
 
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
@@ -119,26 +118,26 @@ export namespace JobQueueActions {
       );
 
       if (jobq === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
         return false;
       }
 
       if(jobq[0].JOB_QUEUE_STATUS === "HELD") {
-        vscode.window.showErrorMessage(t("Jobq {0}/{1} already held", library, name));
+        vscode.window.showErrorMessage(vscode.l10n.t("Jobq {0}/{1} already held", library, name));
         return false;
       }
 
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to hold Job Queue {0}/{1}?", library, name), { modal: true }, t("Hold JOBQ"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to hold Job Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Hold JOBQ"))) {
         const cmdrun: CommandResult = await connection.runCommand({
           command: `HLDJOBQ ${library}/${name}`,
           environment: `ile`
         });
 
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Job Queue {0}/{1} held.", library, name));
+          vscode.window.showInformationMessage(vscode.l10n.t("Job Queue {0}/{1} held.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to hold Job Queue {0}/{1}:\n{2}", library, name, cmdrun.stderr));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to hold Job Queue {0}/{1}:\n{2}", library, name, cmdrun.stderr));
           return false;
         }
       }
@@ -146,7 +145,7 @@ export namespace JobQueueActions {
         return false;
       }
   } else {
-    vscode.window.showErrorMessage(t("Not connected to IBM i"));
+    vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
     return false;
   }
   };
@@ -165,7 +164,7 @@ export namespace JobQueueActions {
     if (connection) {
 
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
@@ -182,32 +181,32 @@ export namespace JobQueueActions {
       );
 
       if (jobq === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
         return false;
       }
 
       if(jobq[0].JOB_QUEUE_STATUS !== "HELD") {
-        vscode.window.showErrorMessage(t("Jobq {0}/{1} not held", library, name));
+        vscode.window.showErrorMessage(vscode.l10n.t("Jobq {0}/{1} not held", library, name));
         return false;
       }
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to release Job Queue {0}/{1}?", library, name), { modal: true }, t("Release JOBQ"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to release Job Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Release JOBQ"))) {
           const cmdrun: CommandResult = await connection.runCommand({
             command: `RLSJOBQ ${library}/${name}`,
             environment: `ile`
           });
 
           if (cmdrun.code === 0) {
-            vscode.window.showInformationMessage(t("Job Queue {0}/{1} released.", library, name));
+            vscode.window.showInformationMessage(vscode.l10n.t("Job Queue {0}/{1} released.", library, name));
             return true;
           } else {
-            vscode.window.showErrorMessage(t("Unable to release Job Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+            vscode.window.showErrorMessage(vscode.l10n.t("Unable to release Job Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
             return false;
           }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -225,28 +224,28 @@ export namespace JobQueueActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to clear Job Queue {0}/{1}?", library, name), { modal: true }, t("Clear JOBQ"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Job Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Clear JOBQ"))) {
         const cmdrun: CommandResult = await connection.runCommand({
           command: `CLRJOBQ ${library}/${name}`,
           environment: `ile`
         });
 
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Job Queue {0}/{1} cleared.", library, name));
+          vscode.window.showInformationMessage(vscode.l10n.t("Job Queue {0}/{1} cleared.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to clear Job Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to clear Job Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -262,7 +261,7 @@ export namespace JobQueueActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to hold job {0} ?", item.job), { modal: true }, t("Hold job"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to hold job {0} ?", item.job), { modal: true }, vscode.l10n.t("Hold job"))) {
         // Execute HLDJOB command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
           command: `HLDJOB JOB(${item.job})`,
@@ -271,17 +270,17 @@ export namespace JobQueueActions {
 
         // Check command execution result
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Job held."));
+          vscode.window.showInformationMessage(vscode.l10n.t("Job held."));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to hold selected job:\n{0}", String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to hold selected job:\n{0}", String(cmdrun.stderr)));
           return false;
         }
       } else {
         return false;
       } 
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -297,7 +296,7 @@ export namespace JobQueueActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to release job {0} ?", item.job), { modal: true }, t("Release job"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to release job {0} ?", item.job), { modal: true }, vscode.l10n.t("Release job"))) {
 
           // Execute RLSJOB command on IBM i
           const cmdrun: CommandResult = await connection.runCommand({
@@ -307,17 +306,17 @@ export namespace JobQueueActions {
 
           // Check command execution result
           if (cmdrun.code === 0) {
-            vscode.window.showInformationMessage(t("Job released."));
+            vscode.window.showInformationMessage(vscode.l10n.t("Job released."));
             return true;
           } else {
-            vscode.window.showErrorMessage(t("Unable to release selected job:\n{0}", String(cmdrun.stderr)));
+            vscode.window.showErrorMessage(vscode.l10n.t("Unable to release selected job:\n{0}", String(cmdrun.stderr)));
             return false;
           }
         } else {
           return false;
         }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -333,7 +332,7 @@ export namespace JobQueueActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to end job {0} ?", item.job), { modal: true }, t("End job"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to end job {0} ?", item.job), { modal: true }, vscode.l10n.t("End job"))) {
 
         // Execute ENDJOB command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
@@ -343,17 +342,17 @@ export namespace JobQueueActions {
 
         // Check command execution result
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Job ended."));
+          vscode.window.showInformationMessage(vscode.l10n.t("Job ended."));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to end selected job:\n{0}", String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to end selected job:\n{0}", String(cmdrun.stderr)));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;    
     }
   };
@@ -418,11 +417,11 @@ export default class Jobq extends Base {
       );
 
       if (this.jobq === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
         return;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -448,14 +447,14 @@ export default class Jobq extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "SYSTOOLS", "JOB_QUEUE_ENTRIES"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "SYSTOOLS", "JOB_QUEUE_ENTRIES"));
         return;
       }
 
       this._entries = [];
       this._entries.push(...entryRows.map(this.toEntry));
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -466,8 +465,8 @@ export default class Jobq extends Base {
    */
   generateHTML(): string {
     return Components.panels([
-      { title: t("Detail"), content: this.renderJobQueuePanel() },
-      { title: t("Jobs"), badge: this._entries.length, content: this.renderEntries(this._entries) }
+      { title: vscode.l10n.t("Detail"), content: this.renderJobQueuePanel() },
+      { title: vscode.l10n.t("Jobs"), badge: this._entries.length, content: this.renderEntries(this._entries) }
     ]);
   }
 
@@ -481,7 +480,7 @@ export default class Jobq extends Base {
     // Generate the detail table with queue information and action buttons
     return generateDetailTable({
       title: `Job Queue: ${this.library}/${this.name}`,
-      subtitle: t('Job Queue Information'),
+      subtitle: vscode.l10n.t('Job Queue Information'),
       columns: this.columns,
       data: this.jobq
     });
@@ -516,13 +515,13 @@ export default class Jobq extends Base {
   renderEntries(entries: Entry[]) {
     // Define table columns with their properties
     const columns: FastTableColumn<Entry>[] = [
-      { title: t("Job"), width: "1fr", getValue: e => e.job },
-      { title: t("Submitter job"), width: "1fr", getValue: e => e.submitter },
-      { title: t("Job entered time"), width: "1fr", getValue: e => e.jobts },
-      { title: t("Job scheduled time"), width: "1fr", getValue: e => e.jobscd },
-      { title: t("Job status"), width: "1fr", getValue: e => e.jobsts },
+      { title: vscode.l10n.t("Job"), width: "1fr", getValue: e => e.job },
+      { title: vscode.l10n.t("Submitter job"), width: "1fr", getValue: e => e.submitter },
+      { title: vscode.l10n.t("Job entered time"), width: "1fr", getValue: e => e.jobts },
+      { title: vscode.l10n.t("Job scheduled time"), width: "1fr", getValue: e => e.jobscd },
+      { title: vscode.l10n.t("Job status"), width: "1fr", getValue: e => e.jobsts },
       {
-        title: t("Actions"),
+        title: vscode.l10n.t("Actions"),
         width: "1fr",
         getValue: e => {
           // Encode job entry as URL parameter for action handlers
