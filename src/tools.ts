@@ -428,6 +428,8 @@ export function generateDetailTable(options: DetailTableOptions): string {
         min-height: 48px;
         display: flex;
         align-items: center;
+        min-width: 0;
+        overflow-x: auto;
       }
       
       .detail-table-container code {
@@ -437,6 +439,9 @@ export function generateDetailTable(options: DetailTableOptions): string {
         padding: 4px 8px;
         border-radius: 4px;
         border: 1px solid var(--vscode-panel-border);
+        max-width: 100%;
+        overflow-x: auto;
+        white-space: pre;
       }
       
       .detail-table-actions {

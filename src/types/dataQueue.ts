@@ -43,7 +43,6 @@ export namespace DataQueueActions {
             const nameWithExt = parts[2];
             const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
             const dtaq: Dtaq = new Dtaq(item, library, name);
-            await dtaq.fetchInfo();
             const result = await sendToDataQueue(dtaq);
             // Refresh the editor after action
             if (result) {
@@ -65,7 +64,6 @@ export namespace DataQueueActions {
             const nameWithExt = parts[2];
             const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
             const dtaq: Dtaq = new Dtaq(item, library, name);
-            await dtaq.fetchInfo();
             const result = await clearDataQueue(dtaq);
             // Refresh the editor after action
             if (result) {
@@ -143,14 +141,10 @@ export namespace DataQueueActions {
         return false;
       }
 
-      if ("keyed" in item) {
-        return _sendToDataQueue(item);
-      }
-      else {
-        const dataQueue: Dtaq = new Dtaq(vscode.Uri.file(''), item.library.toUpperCase(), item.name.toUpperCase());
-        await dataQueue.fetchInfo();
-        return _sendToDataQueue(dataQueue);
-      }
+      const dataQueue: Dtaq = new Dtaq(vscode.Uri.file(''), item.library.toUpperCase(), item.name.toUpperCase());
+      await dataQueue.fetchInfo();
+
+      return _sendToDataQueue(dataQueue);
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
@@ -164,7 +158,7 @@ export namespace DataQueueActions {
    */
   export const _sendToDataQueue = async (dataQueue: Dtaq): Promise<boolean> => {
     // Get key data if this is a keyed data queue
-    const key = dataQueue.keyed ? await vscode.window.showInputBox({
+    const key = dataQueue.info[0].SEQUENCE==='KEYED' ? await vscode.window.showInputBox({
       placeHolder: vscode.l10n.t("key data"),
       title: vscode.l10n.t("Enter key data"),
       validateInput: data => {
@@ -281,6 +275,11 @@ export class Dtaq extends Base {
   /** Maximum message length */
   get maximumMessageLength() {
     return this._info.maximumMessageLength;
+  }
+
+  /** Data queue information */
+  get info() {
+    return this.dtaq;
   }
 
   /**
