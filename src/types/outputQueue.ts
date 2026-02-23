@@ -754,7 +754,7 @@ export default class Outq extends Base {
   generateHTML(): string {
     return Components.panels([
       { title: vscode.l10n.t("Detail"), content: this.renderJobQueuePanel() },
-      { title: vscode.l10n.t("Spools"), badge: this._entries.length, content: this.renderEntries(this._entries) }
+      { title: vscode.l10n.t("Spools"), badge: this.totalItems, content: this.renderEntries(this._entries) }
     ]);
   }
 
