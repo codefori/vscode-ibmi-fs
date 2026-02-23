@@ -20,10 +20,9 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
-import { generateFastTable, FastTableColumn, getProtected } from "../tools";
+import { generateFastTable, FastTableColumn, getProtected, checkViewExists, executeSqlIfExists } from "../tools";
 import * as vscode from 'vscode';
 import ObjectProvider from "../objectProvider";
-import { t } from '../l10n';
 
 /**
  * Namespace containing actions for Message Queue objects
@@ -72,28 +71,28 @@ export namespace MessageQueueActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to clear Message Queue {0}/{1}?", library, name), { modal: true }, t("Clear MSGQ"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Message Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Clear MSGQ"))) {
         const cmdrun: CommandResult = await connection.runCommand({
           command: `CLRMSGQ ${library}/${name}`,
           environment: `ile`
         });
 
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Message Queue {0}/{1} cleared.", library, name));
+          vscode.window.showInformationMessage(vscode.l10n.t("Message Queue {0}/{1} cleared.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to clear Message Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to clear Message Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -143,12 +142,49 @@ export default class Msgq extends Base {
   /**
    * Fetch all messages from the message queue
    * Uses QSYS2.MESSAGE_QUEUE_INFO service to retrieve message details
+   * Supports server-side search and pagination
    */
   async fetchMessages(): Promise<void> {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      const entryRows = await connection.runSQL(
+      // Build WHERE clause with base conditions
+      let whereClause = `MESSAGE_QUEUE_LIBRARY = '${this.library}' AND MESSAGE_QUEUE_NAME = '${this.name}'`;
+
+      // Add search filter if present
+      if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
+        const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
+        whereClause += ` AND (
+          UPPER(MESSAGE_ID) LIKE '${searchPattern}' OR
+          UPPER(MESSAGE_TEXT) LIKE '${searchPattern}' OR
+          UPPER(MESSAGE_SECOND_LEVEL_TEXT) LIKE '${searchPattern}' OR
+          UPPER(FROM_USER) LIKE '${searchPattern}' OR
+          UPPER(FROM_JOB) LIKE '${searchPattern}'
+        )`;
+      }
+
+      // Get total count for pagination
+      const countRows = await executeSqlIfExists(
+        connection,
+        `SELECT COUNT(*) as TOTAL FROM QSYS2.MESSAGE_QUEUE_INFO WHERE ${whereClause}`,
+        'QSYS2',
+        'MESSAGE_QUEUE_INFO',
+        'VIEW'
+      );
+
+      if (countRows === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_QUEUE_INFO"));
+        return;
+      }
+
+      this.totalItems = countRows.length > 0 ? Number(countRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for pagination
+      const offset = (this.currentPage - 1) * this.itemsPerPage;
+
+      // Fetch paginated data
+      const entryRows = await executeSqlIfExists(
+        connection,
         `SELECT MESSAGE_ID,
           MESSAGE_TEXT,
           SEVERITY,
@@ -157,13 +193,23 @@ export default class Msgq extends Base {
           FROM_JOB,
           MESSAGE_SECOND_LEVEL_TEXT
         FROM QSYS2.MESSAGE_QUEUE_INFO
-        WHERE MESSAGE_QUEUE_LIBRARY = '${this.library}'
-              AND MESSAGE_QUEUE_NAME = '${this.name}'
-        ORDER BY MESSAGE_TIMESTAMP DESC`)
+        WHERE ${whereClause}
+        ORDER BY MESSAGE_TIMESTAMP DESC
+        LIMIT ${this.itemsPerPage} OFFSET ${offset}`,
+        'QSYS2',
+        'MESSAGE_QUEUE_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_QUEUE_INFO"));
+        return;
+      }
+
       this._entries = [];
       this._entries.push(...entryRows.map(this.toEntry));
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -171,28 +217,36 @@ export default class Msgq extends Base {
   /**
    * Generate HTML for the message queue view
    * Uses a fast table component for better performance with many messages
+   * Includes search bar and pagination controls
    * @returns HTML string
    */
   generateHTML(): string {
     // Define table columns with widths
     const columns: FastTableColumn<Entry>[] = [
-      { title: t("MSGID"), getValue: e => e.msgid, width: "0.5fr" },
-      { title: t("First Level"), getValue: e => e.msgtxt1, width: "1fr" },
-      { title: t("Second Level"), getValue: e => e.msgtxt2, width: "2fr" },
-      { title: t("Sev."), getValue: e => String(e.severity), width: "0.2fr" },
-      { title: t("Timestamp"), getValue: e => e.timestamp, width: "0.7fr" },
-      { title: t("Job"), getValue: e => e.job, width: "1fr" },
-      { title: t("User"), getValue: e => e.user, width: "0.5fr" }
+      { title: vscode.l10n.t("MSGID"), getValue: e => e.msgid, width: "0.5fr" },
+      { title: vscode.l10n.t("First Level"), getValue: e => e.msgtxt1, width: "1fr" },
+      { title: vscode.l10n.t("Second Level"), getValue: e => e.msgtxt2, width: "2fr" },
+      { title: vscode.l10n.t("Sev."), getValue: e => String(e.severity), width: "0.2fr" },
+      { title: vscode.l10n.t("Timestamp"), getValue: e => e.timestamp, width: "0.7fr" },
+      { title: vscode.l10n.t("Job"), getValue: e => e.job, width: "1fr" },
+      { title: vscode.l10n.t("User"), getValue: e => e.user, width: "0.5fr" }
     ];
 
     return generateFastTable({
-      title: t("Message Queue: {0}/{1}", this.library, this.name),
-      subtitle: t("Total Messages: {0}", String(this._entries.length)),
+      title: vscode.l10n.t("Message Queue: {0}/{1}", this.library, this.name),
+      subtitle: vscode.l10n.t("Total Messages: {0}", String(this.totalItems)),
       columns: columns,
       data: this._entries,
       stickyHeader: true,
-      emptyMessage: t("No messages found in this message queue."),
+      emptyMessage: vscode.l10n.t("No messages found in this message queue."),
       customStyles: '',
+      enableSearch: true,
+      searchPlaceholder: vscode.l10n.t("Search messages..."),
+      enablePagination: true,
+      itemsPerPage: this.itemsPerPage,
+      totalItems: this.totalItems,
+      currentPage: this.currentPage,
+      searchTerm: this.searchTerm
     });
   }
 

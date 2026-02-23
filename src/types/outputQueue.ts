@@ -20,11 +20,10 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable, generateFastTable, FastTableColumn, getProtected } from "../tools";
+import { getColumns, generateDetailTable, generateFastTable, FastTableColumn, getProtected, checkTableFunctionExists, checkViewExists, checkProcedureExists, executeSqlIfExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
-import { t } from '../l10n';
 
 /**
  * Namespace containing actions for Output Queue objects
@@ -137,28 +136,28 @@ export namespace OutputQueueActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to clear Output Queue {0}/{1}?", library, name), { modal: true }, t("Clear OUTQ"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Output Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Clear OUTQ"))) {
         const cmdrun: CommandResult = await connection.runCommand({
           command: `CLROUTQ ${library}/${name}`,
           environment: `ile`
         });
 
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Output Queue {0}/{1} cleared.", library, name));
+          vscode.window.showInformationMessage(vscode.l10n.t("Output Queue {0}/{1} cleared.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to clear Output Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to clear Output Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -177,12 +176,12 @@ export namespace OutputQueueActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
       
       // Show confirmation dialog to prevent accidental holds
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to hold Output Queue {0}/{1}?", library, name), { modal: true }, t("Hold OUTQ"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to hold Output Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Hold OUTQ"))) {
 
         // Execute HLDOUTQ command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
@@ -192,17 +191,17 @@ export namespace OutputQueueActions {
 
         // Check command execution result
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Output Queue {0}/{1} held.", library, name));
+          vscode.window.showInformationMessage(vscode.l10n.t("Output Queue {0}/{1} held.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to hold Output Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to hold Output Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -221,11 +220,11 @@ export namespace OutputQueueActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to release Output Queue {0}/{1}?", library, name), { modal: true }, t("Release OUTQ"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to release Output Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Release OUTQ"))) {
         // Execute RLSOUTQ command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
           command: `RLSOUTQ OUTQ(${library}/${name})`,
@@ -234,17 +233,17 @@ export namespace OutputQueueActions {
 
         // Check command execution result
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Output Queue {0}/{1} released.", library, name));
+          vscode.window.showInformationMessage(vscode.l10n.t("Output Queue {0}/{1} released.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to release Output Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to release Output Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Unable to hold Output Queue {0}/{1}", library, name));
+      vscode.window.showErrorMessage(vscode.l10n.t("Unable to hold Output Queue {0}/{1}", library, name));
       return false;
     }
   };
@@ -263,16 +262,27 @@ export namespace OutputQueueActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
       // Query output queue to get writer information
-      let outq = await connection.runSQL(
+      let outq = await executeSqlIfExists(
+        connection,
         `SELECT NETWORK_CONNECTION_TYPE, NUMBER_OF_WRITERS
           FROM QSYS2.OUTPUT_QUEUE_INFO
           WHERE OUTPUT_QUEUE_NAME = '${name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${library}'
-          FETCH FIRST ROW ONLY`);
+          FETCH FIRST ROW ONLY`,
+        'QSYS2',
+        'OUTPUT_QUEUE_INFO',
+        'VIEW'
+      );
+
+      if (outq === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_INFO"));
+        return false;
+      }
+
       // Get network connection type (null for local printers)
       let nettype = outq[0].NETWORK_CONNECTION_TYPE ? String(outq[0].NETWORK_CONNECTION_TYPE) : null;
       // Get current number of active writers
@@ -280,7 +290,7 @@ export namespace OutputQueueActions {
 
       // Check if there's a writer configured for this output queue
       if(!nettype){
-        vscode.window.showErrorMessage(t("No writer to manage"));
+        vscode.window.showErrorMessage(vscode.l10n.t("No writer to manage"));
         return false;
       } else if(nbr === 0){
         // No writers running, start one
@@ -290,7 +300,7 @@ export namespace OutputQueueActions {
         return endWtr(item);
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
     
@@ -306,7 +316,7 @@ export namespace OutputQueueActions {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
     // Show confirmation dialog to prevent accidental termination
-    if (await vscode.window.showWarningMessage(t("Are you sure you want to end writer {0}?", name), { modal: true }, t("End Writer"))) {
+    if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to end writer {0}?", name), { modal: true }, vscode.l10n.t("End Writer"))) {
       const ibmi = getInstance();
       const connection = ibmi?.getConnection();
       if (connection) {
@@ -318,14 +328,14 @@ export namespace OutputQueueActions {
 
         // Check command execution result
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Writer {0} ended.", name));
+          vscode.window.showInformationMessage(vscode.l10n.t("Writer {0} ended.", name));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to end writer {0}:\n{1}", name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to end writer {0}:\n{1}", name, String(cmdrun.stderr)));
           return false;
         }
       } else {
-        vscode.window.showErrorMessage(t("Not connected to IBM i"));
+        vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
         return false;
       }
     }
@@ -345,7 +355,7 @@ export namespace OutputQueueActions {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
     // Show confirmation dialog
-    if (await vscode.window.showWarningMessage(t("Are you sure you want to start writer {0}?", name), { modal: true }, t("Start Writer"))) {
+    if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to start writer {0}?", name), { modal: true }, vscode.l10n.t("Start Writer"))) {
       const ibmi = getInstance();
       const connection = ibmi?.getConnection();
       if (connection) {
@@ -361,14 +371,14 @@ export namespace OutputQueueActions {
 
         // Check command execution result
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Writer {0} started.", name));
+          vscode.window.showInformationMessage(vscode.l10n.t("Writer {0} started.", name));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to start writer {0}:\n{1}", name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to start writer {0}:\n{1}", name, String(cmdrun.stderr)));
           return false;
         }
       } else {
-        vscode.window.showErrorMessage(t("Not connected to IBM i"));
+        vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
         return false;
       }
     }
@@ -390,37 +400,49 @@ export namespace OutputQueueActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
       const days = await vscode.window.showInputBox({
-        placeHolder: t("xxx days"),
-        title: t("Days after which to delete spools"),
+        placeHolder: vscode.l10n.t("xxx days"),
+        title: vscode.l10n.t("Days after which to delete spools"),
         validateInput: days => {
           if (isNaN(Number(days)) || Number(days) < 1) {
-            return t("The number of days should be bigger than 0");
+            return vscode.l10n.t("The number of days should be bigger than 0");
           }
         }
       });
 
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to delete spools that are older than {0} days from Output Queue {1}/{2}?", String(days), library, name), { modal: true }, t("Delete old spools"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to delete spools that are older than {0} days from Output Queue {1}/{2}?", String(days), library, name), { modal: true }, vscode.l10n.t("Delete old spools"))) {
         try {
-          await connection.runSQL(`CALL SYSTOOLS.DELETE_OLD_SPOOLED_FILES(DELETE_OLDER_THAN => CURRENT DATE - ${days} DAYS,
+          const result = await executeSqlIfExists(
+            connection,
+            `CALL SYSTOOLS.DELETE_OLD_SPOOLED_FILES(DELETE_OLDER_THAN => CURRENT DATE - ${days} DAYS,
                                         P_OUTPUT_QUEUE_NAME => '${name}',
                                         P_OUTPUT_QUEUE_LIBRARY_NAME => '${library}',
-                                        PREVIEW => 'NO')`);
-          vscode.window.showInformationMessage(t("Old spools from {0}/{1} deleted.", library, name));
+                                        PREVIEW => 'NO')`,
+            'SYSTOOLS',
+            'DELETE_OLD_SPOOLED_FILES',
+            'PROCEDURE'
+          );
+
+          if (result === null) {
+            vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "PROCEDURE", "SYSTOOLS", "DELETE_OLD_SPOOLED_FILES"));
+            return false;
+          }
+
+          vscode.window.showInformationMessage(vscode.l10n.t("Old spools from {0}/{1} deleted.", library, name));
           return true;
         } catch (error) {
-          vscode.window.showErrorMessage(t("An error occurred while deleting old spool in OUTQ {0}/{1}", library, name));
+          vscode.window.showErrorMessage(vscode.l10n.t("An error occurred while deleting old spool in OUTQ {0}/{1}", library, name));
           return false;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -431,7 +453,7 @@ export namespace OutputQueueActions {
    * @returns True if successful, false otherwise
    */
   export const delSpool = async (item: Entry): Promise<boolean> => {
-    if (await vscode.window.showWarningMessage(t("Are you sure you want to delete spool {0} number {1} of job {2}?", item.spoolname, String(item.nbr), item.job), { modal: true }, t("Delete spool"))) {
+    if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to delete spool {0} number {1} of job {2}?", item.spoolname, String(item.nbr), item.job), { modal: true }, vscode.l10n.t("Delete spool"))) {
       const ibmi = getInstance();
       const connection = ibmi?.getConnection();
       if (connection) {
@@ -441,14 +463,14 @@ export namespace OutputQueueActions {
         });
 
         if (cmdrun.code === 0) {
-          vscode.window.showInformationMessage(t("Spool deleted."));
+          vscode.window.showInformationMessage(vscode.l10n.t("Spool deleted."));
           return true;
         } else {
-          vscode.window.showErrorMessage(t("Unable to delete selected spool:\n{0}", String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to delete selected spool:\n{0}", String(cmdrun.stderr)));
           return false;
         }
       } else {
-        vscode.window.showErrorMessage(t("Not connected to IBM i"));
+        vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
         return false;
       }
     }
@@ -465,8 +487,22 @@ export namespace OutputQueueActions {
   export const genPdf = async (item: Entry): Promise<boolean> => {
     let name = 'generatedPDF'
 
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      // Check if GENERATE_PDF function exists
+      const functionExists = await checkTableFunctionExists(connection, 'SYSTOOLS', 'GENERATE_PDF');
+      if (!functionExists) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "SYSTOOLS", "GENERATE_PDF"));
+        return false;
+      }
+    } else {
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
+      return false;
+    }
+
     const saveLocation = await vscode.window.showSaveDialog({
-      title: t("Download PDF File"),
+      title: vscode.l10n.t("Download PDF File"),
       defaultUri: vscode.Uri.file(`${name}.pdf`),
       // eslint-disable-next-line @typescript-eslint/naming-convention
       filters: { 'PDF': ["pdf"] }
@@ -475,7 +511,7 @@ export namespace OutputQueueActions {
     if (saveLocation) {
       const result = await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
-        title: t("PDF generation")
+        title: vscode.l10n.t("PDF generation")
       }, async progress => {
         const result = {
           successful: true,
@@ -488,7 +524,7 @@ export namespace OutputQueueActions {
           const config = connection.getConfig();
           const tempRemotePath = config.tempDir + '/' + item.job.replaceAll("/", "_") + '_' + item.spoolname + '_' + item.nbr + '.pdf';
 
-          progress.report({ message: t("Generating PDF...") });
+          progress.report({ message: vscode.l10n.t("Generating PDF...") });
           const genpdf = await connection.runSQL(` select SYSTOOLS.GENERATE_PDF(
                             JOB_NAME            => '${item.job}',
                             SPOOLED_FILE_NAME   => '${item.spoolname}',
@@ -498,7 +534,7 @@ export namespace OutputQueueActions {
 
           if (genpdf[0].SENT === 1) {
             try {
-              progress.report({ message: t("Downloading PDF...") });
+              progress.report({ message: vscode.l10n.t("Downloading PDF...") });
               await connection.client.getFile(saveLocation.fsPath, tempRemotePath);
             } catch (error) {
               result.successful = false;
@@ -513,21 +549,21 @@ export namespace OutputQueueActions {
           }
           else {
             result.successful = false;
-            result.error = t("PDF generation failed");
+            result.error = vscode.l10n.t("PDF generation failed");
           }
         } else {
           result.successful = false;
-          result.error = t("Not connected to IBM i");
+          result.error = vscode.l10n.t("Not connected to IBM i");
         }
         return result;
       });
 
       if (result.successful) {
-        vscode.window.showInformationMessage(t("PDF successfully generated."));
+        vscode.window.showInformationMessage(vscode.l10n.t("PDF successfully generated."));
         return true;
       }
       else {
-        vscode.window.showErrorMessage(t("Failed to generate PDF"));
+        vscode.window.showErrorMessage(vscode.l10n.t("Failed to generate PDF"));
         return false;
       }
     } else {
@@ -582,6 +618,14 @@ export default class Outq extends Base {
   }
 
   /**
+   * Fetch only searchable data (spools) without reloading queue info
+   * This avoids reloading the Detail tab when searching/paginating in the Spools tab
+   */
+  async fetchSearchData(): Promise<void> {
+    await this.fetchSpools();
+  }
+
+  /**
    * Fetch output queue metadata from IBM i
    */
   async fetchInfo(): Promise<void> {
@@ -590,7 +634,8 @@ export default class Outq extends Base {
     if (connection) {
       this.columns = await getColumns(connection, 'OUTPUT_QUEUE_INFO');
 
-      this.outq = await connection.runSQL(
+      this.outq = await executeSqlIfExists(
+        connection,
         `select NUMBER_OF_FILES,
             NUMBER_OF_WRITERS,
             WRITERS_TO_AUTOSTART,
@@ -612,22 +657,68 @@ export default class Outq extends Base {
             DESTINATION_OPTIONS
             from QSYS2.OUTPUT_QUEUE_INFO
             WHERE OUTPUT_QUEUE_NAME = '${this.name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${this.library}'
-            Fetch first row only`)
+            Fetch first row only`,
+        'QSYS2',
+        'OUTPUT_QUEUE_INFO',
+        'VIEW'
+      );
+
+      if (this.outq === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_INFO"));
+        return;
+      }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
 
   /**
    * Fetch all spooled files in the output queue
+   * Supports server-side search and pagination
    */
   async fetchSpools(): Promise<void> {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
 
     if (connection) {
-      const entryRows = await connection.runSQL(
+      // Build WHERE clause with base conditions
+      let whereClause = `OUTPUT_QUEUE_NAME = '${this.name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${this.library}'`;
+
+      // Add search filter if present
+      if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
+        const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
+        whereClause += ` AND (
+          UPPER(SPOOLED_FILE_NAME) LIKE '${searchPattern}' OR
+          UPPER(USER_NAME) LIKE '${searchPattern}' OR
+          UPPER(USER_DATA) LIKE '${searchPattern}' OR
+          UPPER(STATUS) LIKE '${searchPattern}' OR
+          UPPER(JOB_NAME) LIKE '${searchPattern}'
+        )`;
+      }
+
+      // Get total count for pagination
+      const countRows = await executeSqlIfExists(
+        connection,
+        `SELECT COUNT(*) as TOTAL FROM QSYS2.OUTPUT_QUEUE_ENTRIES_BASIC WHERE ${whereClause}`,
+        'QSYS2',
+        'OUTPUT_QUEUE_ENTRIES_BASIC',
+        'VIEW'
+      );
+
+      if (countRows === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_ENTRIES_BASIC"));
+        return;
+      }
+
+      this.totalItems = countRows.length > 0 ? Number(countRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for pagination
+      const offset = (this.currentPage - 1) * this.itemsPerPage;
+
+      // Fetch paginated data
+      const entryRows = await executeSqlIfExists(
+        connection,
         `select to_char(CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') as CREATE_TIMESTAMP,
             SPOOLED_FILE_NAME,
             USER_NAME,
@@ -637,7 +728,19 @@ export default class Outq extends Base {
             TOTAL_PAGES,
             JOB_NAME,
             FILE_NUMBER from QSYS2.OUTPUT_QUEUE_ENTRIES_BASIC
-            WHERE OUTPUT_QUEUE_NAME = '${this.name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${this.library}'`)
+            WHERE ${whereClause}
+            ORDER BY CREATE_TIMESTAMP DESC
+            LIMIT ${this.itemsPerPage} OFFSET ${offset}`,
+        'QSYS2',
+        'OUTPUT_QUEUE_ENTRIES_BASIC',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_ENTRIES_BASIC"));
+        return;
+      }
+
       this._entries = [];
 
       this._entries.push(...entryRows.map(this.toEntry));
@@ -650,8 +753,8 @@ export default class Outq extends Base {
    */
   generateHTML(): string {
     return Components.panels([
-      { title: t("Detail"), content: this.renderJobQueuePanel() },
-      { title: t("Spools"), badge: this._entries.length, content: this.renderEntries(this._entries) }
+      { title: vscode.l10n.t("Detail"), content: this.renderJobQueuePanel() },
+      { title: vscode.l10n.t("Spools"), badge: this._entries.length, content: this.renderEntries(this._entries) }
     ]);
   }
 
@@ -669,7 +772,7 @@ export default class Outq extends Base {
     // Generate the detail table with queue information and action buttons
     return generateDetailTable({
       title: `Output Queue: ${this.library}/${this.name}`,
-      subtitle: t('Output Queue Information'),
+      subtitle: vscode.l10n.t('Output Queue Information'),
       columns: this.columns,
       data: this.outq,
       hideNullValues: true
@@ -704,17 +807,17 @@ export default class Outq extends Base {
   renderEntries(entries: Entry[]) {
     // Define table columns with their properties
     const columns: FastTableColumn<Entry>[] = [
-      { title: t("Name"), width: "1fr", getValue: e => e.spoolname },
-      { title: t("Data"), width: "1fr", getValue: e => e.spooldta },
-      { title: t("Status"), width: "0.5fr", getValue: e => e.spoolsts },
-      { title: t("User"), width: "1fr", getValue: e => e.spooluser },
-      { title: t("Job"), width: "2fr", getValue: e => e.job },
-      { title: t("Number"), width: "0.7fr", getValue: e => String(e.nbr) },
-      { title: t("Timestamp"), width: "1.5fr", getValue: e => e.spoolts },
-      { title: t("Pages"), width: "0.5fr", getValue: e => String(e.pages) },
-      { title: t("Size (KB)"), width: "1fr", getValue: e => String(e.spoolsiz) },
+      { title: vscode.l10n.t("Name"), width: "1fr", getValue: e => e.spoolname },
+      { title: vscode.l10n.t("Data"), width: "1fr", getValue: e => e.spooldta },
+      { title: vscode.l10n.t("Status"), width: "0.5fr", getValue: e => e.spoolsts },
+      { title: vscode.l10n.t("User"), width: "1fr", getValue: e => e.spooluser },
+      { title: vscode.l10n.t("Job"), width: "2fr", getValue: e => e.job },
+      { title: vscode.l10n.t("Number"), width: "0.7fr", getValue: e => String(e.nbr) },
+      { title: vscode.l10n.t("Timestamp"), width: "1.5fr", getValue: e => e.spoolts },
+      { title: vscode.l10n.t("Pages"), width: "0.5fr", getValue: e => String(e.pages) },
+      { title: vscode.l10n.t("Size (KB)"), width: "1fr", getValue: e => String(e.spoolsiz) },
       {
-        title: t("Actions"),
+        title: vscode.l10n.t("Actions"),
         width: "1fr",
         getValue: e => {
           // Encode spool entry as URL parameter for action handlers
@@ -736,12 +839,19 @@ export default class Outq extends Base {
     // Generate and return the complete table HTML
     return `<div class="outq-entries-table">` + generateFastTable({
       title: ``,
-      subtitle: ``,
+      subtitle: vscode.l10n.t("Total Spools: {0}", String(this.totalItems)),
       columns: columns,
       data: this._entries,
       stickyHeader: true,
-      emptyMessage: t("No spools found in this outq."),
+      emptyMessage: vscode.l10n.t("No spools found in this outq."),
       customStyles: customStyles,
+      enableSearch: true,
+      searchPlaceholder: vscode.l10n.t("Search spools..."),
+      enablePagination: true,
+      itemsPerPage: this.itemsPerPage,
+      totalItems: this.totalItems,
+      currentPage: this.currentPage,
+      searchTerm: this.searchTerm
     }) + `</div>`;
   }
 

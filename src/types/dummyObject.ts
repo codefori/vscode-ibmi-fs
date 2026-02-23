@@ -16,7 +16,6 @@ import { getInstance } from "../ibmi";
 import { getColumns, generateDetailTable } from "../tools";
 import * as vscode from 'vscode';
 import { CommandResult } from "@halcyontech/vscode-ibmi-types";
-import { t } from '../l10n';
 
 /**
  * Dummy Object class
@@ -122,7 +121,7 @@ export async function fetchQrydfn(library: string, object: string): Promise<stri
         environment: `ile`
       });
       if (cmdrun.code !== 0) {
-        vscode.window.showErrorMessage(t("Unable to create necessary objects for displaying query definitions."));
+        vscode.window.showErrorMessage(vscode.l10n.t("Unable to create necessary objects for displaying query definitions."));
         return '';
       }
     } 
@@ -133,7 +132,7 @@ export async function fetchQrydfn(library: string, object: string): Promise<stri
     });
 
     if (cmdrun.code !== 0) {
-      vscode.window.showErrorMessage(t("Unable to create necessary objects for displaying query definitions."));
+      vscode.window.showErrorMessage(vscode.l10n.t("Unable to create necessary objects for displaying query definitions."));
       return '';
     }
 
@@ -157,13 +156,13 @@ export async function fetchQrydfn(library: string, object: string): Promise<stri
       });
       await connection.runSQL(`DROP ALIAS ${connection.getConfig().tempLibrary}.${object}`)
     } catch{
-      vscode.window.showErrorMessage(t("Unable to create necessary objects for displaying query definitions."));
+      vscode.window.showErrorMessage(vscode.l10n.t("Unable to create necessary objects for displaying query definitions."));
       return '';
     }
     
     return sql;
   } else {
-    vscode.window.showErrorMessage(t("Not connected to IBM i"));
+    vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
     return '';
   }
 } 

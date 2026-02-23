@@ -3,7 +3,6 @@ import { getInstance } from "./ibmi";
 import { Components } from "./webviewToolkit";
 import { ObjectFilters } from '@halcyontech/vscode-ibmi-types';
 import * as vscode from 'vscode';
-import { t } from './l10n';
 
 /**
  * Column definition for FastTable
@@ -41,6 +40,22 @@ export interface FastTableOptions<T> {
   customStyles?: string;
   /** Custom JavaScript (optional) */
   customScript?: string;
+  /** Enable search bar (default: false) */
+  enableSearch?: boolean;
+  /** Search placeholder text (optional) */
+  searchPlaceholder?: string;
+  /** Enable pagination (default: false) */
+  enablePagination?: boolean;
+  /** Items per page (default: 50) */
+  itemsPerPage?: number;
+  /** Total items count (for server-side pagination) */
+  totalItems?: number;
+  /** Current page (for server-side pagination, default: 1) */
+  currentPage?: number;
+  /** Current search term (for server-side search) */
+  searchTerm?: string;
+  /** Table identifier for multi-table documents (e.g., SaveFile with objects/members/spools) */
+  tableId?: string;
 }
 
 /** Regular expression for validating IBM i object names */
@@ -123,7 +138,7 @@ export async function getColumns(ibmi: IBMi, table: String, schema = 'QSYS2') {
     const length = Number(column.LENGTH);
     // Translate using the column name as key (more stable than heading)
     // Falls back to heading if no translation exists for column name
-    const translatedLabel = t(name, heading);
+    const translatedLabel = vscode.l10n.t(name, heading);
     columns.set(name, translatedLabel);
   });
 
@@ -486,7 +501,15 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     stickyHeader = true,
     emptyMessage = 'No data available.',
     customStyles = '',
-    customScript = ''
+    customScript = '',
+    enableSearch = false,
+    searchPlaceholder = 'Search...',
+    enablePagination = false,
+    itemsPerPage = 50,
+    totalItems = data.length,
+    currentPage = 1,
+    searchTerm = '',
+    tableId = undefined
   } = options;
 
   // Escape HTML for security and handle null/undefined
@@ -557,7 +580,7 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
   });
 
   // Generate table rows
-  const rows = data.map(row => {
+  const rows = data.map((row, rowIndex) => {
     const cells = columns.map((col, index) => {
       const value = col.getValue(row);
       const cellClass = col.cellClass ? ` class="${col.cellClass}"` : '';
@@ -575,12 +598,6 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
   }).join('\n        ');
 
   return /*html*/`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapeHtml(title)}</title>
   <style>
     body {
       padding: 0;
@@ -616,6 +633,59 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
       color: var(--vscode-descriptionForeground);
       font-size: 0.95em;
       margin-top: 4px;
+    }
+
+    .search-bar {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.03);
+      border-radius: 6px;
+      border: 1px solid rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.1);
+    }
+
+    .search-bar-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      font-size: 0.9em;
+      color: var(--vscode-foreground);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .search-bar vscode-text-field {
+      width: 100%;
+    }
+
+    .pagination-controls {
+      margin-top: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.03);
+      border-radius: 4px;
+    }
+
+    .pagination-info {
+      color: var(--vscode-descriptionForeground);
+      font-size: 0.9em;
+    }
+
+    .pagination-buttons {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .page-input-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .page-input-container vscode-text-field {
+      width: 80px;
     }
     
     vscode-table {
@@ -676,31 +746,82 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
       padding: 40px;
       color: var(--vscode-descriptionForeground);
     }
+
+    .hidden {
+      display: none !important;
+    }
     
     ${customStyles}
   </style>
-</head>
-<body>
   <div class="container">
     ${title || subtitle ? `
     <div class="header">
       ${title ? `<h1>${escapeHtml(title)}</h1>` : ''}
-      ${subtitle ? `<div class="info">${escapeHtml(subtitle)}</div>` : ''}
+      ${subtitle ? `<div class="info" id="subtitle-info">${escapeHtml(subtitle)}</div>` : ''}
+    </div>
+    ` : ''}
+    
+    ${enableSearch ? `
+    <div class="search-bar">
+      <label class="search-bar-label" for="search-input">
+        <span class="codicon codicon-search"></span> ${vscode.l10n.t('Search')}
+      </label>
+      <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); border-radius: 4px;">
+        <span class="codicon codicon-search" style="color: var(--vscode-input-placeholderForeground);"></span>
+        <input
+          type="text"
+          id="search-input"
+          placeholder="${escapeHtml(searchPlaceholder)}"
+          value="${searchTerm && searchTerm !== '-' ? escapeHtml(searchTerm) : ''}"
+          style="flex: 1; background: transparent; border: none; outline: none; color: var(--vscode-input-foreground); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); padding: 4px 0;">
+      </div>
     </div>
     ` : ''}
     
     ${data.length > 0 ? `
       <vscode-table
+        id="data-table"
         bordered-rows
         columns='${JSON.stringify(columnsArray)}'
         aria-label="${escapeHtml(title)}">
         <vscode-table-header>
           ${headerCells}
         </vscode-table-header>
-        <vscode-table-body>
+        <vscode-table-body id="table-body">
           ${rows}
         </vscode-table-body>
       </vscode-table>
+
+      ${enablePagination ? `
+      <div class="pagination-controls">
+        <div class="pagination-info" id="pagination-info${tableId ? `-${tableId}` : ''}"></div>
+        <div class="pagination-buttons">
+          <vscode-button id="first-page${tableId ? `-${tableId}` : ''}" appearance="icon" aria-label="First page">
+            <span class="codicon codicon-chevron-left"></span>
+            <span class="codicon codicon-chevron-left"></span>
+          </vscode-button>
+          <vscode-button id="prev-page${tableId ? `-${tableId}` : ''}" appearance="icon" aria-label="Previous page">
+            <span class="codicon codicon-chevron-left"></span>
+          </vscode-button>
+          <div class="page-input-container">
+            <span>Page</span>
+            <input
+              type="number"
+              id="page-input${tableId ? `-${tableId}` : ''}"
+              min="1"
+              style="width: 60px; padding: 4px 8px; background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); border-radius: 3px; color: var(--vscode-input-foreground); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); text-align: center;">
+            <span id="total-pages-label${tableId ? `-${tableId}` : ''}"></span>
+          </div>
+          <vscode-button id="next-page${tableId ? `-${tableId}` : ''}" appearance="icon" aria-label="Next page">
+            <span class="codicon codicon-chevron-right"></span>
+          </vscode-button>
+          <vscode-button id="last-page${tableId ? `-${tableId}` : ''}" appearance="icon" aria-label="Last page">
+            <span class="codicon codicon-chevron-right"></span>
+            <span class="codicon codicon-chevron-right"></span>
+          </vscode-button>
+        </div>
+      </div>
+      ` : ''}
     ` : `
       <div class="empty-state">
         <p>${escapeHtml(emptyMessage)}</p>
@@ -708,12 +829,144 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     `}
   </div>
   
-  <script type="module">
-    // Components are automatically registered by @vscode-elements/elements bundle
+  <script defer>
+    ${tableId ? `(function() {` : ''}
+    // Use the global vscode API acquired by webviewToolkit
+    // Note: This script runs after the footer script from webviewToolkit.ts
+    
+    // State management${tableId ? ` for table: ${tableId}` : ''}
+    let currentPage = ${currentPage};
+    let currentSearchTerm = '${escapeHtml(searchTerm)}';
+    const itemsPerPage = ${itemsPerPage};
+    const totalItems = ${totalItems};
+    const enableSearch = ${enableSearch};
+    const enablePagination = ${enablePagination};
+
+    // Get DOM elements
+    const searchInput = document.getElementById('search-input${tableId ? `-${tableId}` : ''}');
+    const paginationInfo = document.getElementById('pagination-info${tableId ? `-${tableId}` : ''}');
+    const pageInput = document.getElementById('page-input${tableId ? `-${tableId}` : ''}');
+    const totalPagesLabel = document.getElementById('total-pages-label${tableId ? `-${tableId}` : ''}');
+    const firstPageBtn = document.getElementById('first-page${tableId ? `-${tableId}` : ''}');
+    const prevPageBtn = document.getElementById('prev-page${tableId ? `-${tableId}` : ''}');
+    const nextPageBtn = document.getElementById('next-page${tableId ? `-${tableId}` : ''}');
+    const lastPageBtn = document.getElementById('last-page${tableId ? `-${tableId}` : ''}');
+
+    // Calculate total pages
+    const totalPages = enablePagination ? Math.ceil(totalItems / itemsPerPage) : 1;
+
+    // Search functionality - sends message to extension
+    let searchTimeout;
+    function performSearch(searchTerm) {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        currentSearchTerm = searchTerm;
+        currentPage = 1;
+        // Set flag to indicate this is a search/pagination operation (preserve tab)
+        sessionStorage.setItem('vscode-ibmi-fs-is-search-restore', 'true');
+        const message = {
+          command: 'search',
+          searchTerm: searchTerm,
+          page: 1,
+          itemsPerPage: itemsPerPage
+        };
+        ${tableId ? `message.tableId = '${tableId}';` : ''}
+        vscode.postMessage(message);
+      }, 500); // Debounce 500ms
+    }
+
+    // Pagination functionality - sends message to extension
+    function changePage(newPage) {
+      if (newPage < 1 || newPage > totalPages) return;
+      currentPage = newPage;
+      // Set flag to indicate this is a search/pagination operation (preserve tab)
+      sessionStorage.setItem('vscode-ibmi-fs-is-search-restore', 'true');
+      const message = {
+        command: 'paginate',
+        searchTerm: currentSearchTerm,
+        page: newPage,
+        itemsPerPage: itemsPerPage
+      };
+      ${tableId ? `message.tableId = '${tableId}';` : ''}
+      vscode.postMessage(message);
+    }
+
+    // Update pagination display
+    function updatePaginationDisplay() {
+      if (enablePagination && paginationInfo) {
+        const displayStart = totalItems > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
+        const displayEnd = Math.min(currentPage * itemsPerPage, totalItems);
+        paginationInfo.textContent = \`Showing \${displayStart}-\${displayEnd} of \${totalItems} items\`;
+        
+        if (pageInput) {
+          pageInput.value = currentPage;
+          pageInput.max = totalPages;
+        }
+        
+        if (totalPagesLabel) {
+          totalPagesLabel.textContent = \`of \${totalPages}\`;
+        }
+
+        // Update button states
+        if (firstPageBtn) firstPageBtn.disabled = currentPage === 1;
+        if (prevPageBtn) prevPageBtn.disabled = currentPage === 1;
+        if (nextPageBtn) nextPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+        if (lastPageBtn) lastPageBtn.disabled = currentPage === totalPages || totalPages === 0;
+      }
+    }
+
+    // Event listeners
+    if (enableSearch && searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        performSearch(e.target.value);
+      });
+    }
+
+    if (enablePagination) {
+      if (firstPageBtn) {
+        firstPageBtn.addEventListener('click', () => {
+          changePage(1);
+        });
+      }
+
+      if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', () => {
+          changePage(currentPage - 1);
+        });
+      }
+
+      if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', () => {
+          changePage(currentPage + 1);
+        });
+      }
+
+      if (lastPageBtn) {
+        lastPageBtn.addEventListener('click', () => {
+          changePage(totalPages);
+        });
+      }
+
+      if (pageInput) {
+        pageInput.addEventListener('change', (e) => {
+          const newPage = parseInt(e.target.value);
+          if (newPage >= 1 && newPage <= totalPages) {
+            changePage(newPage);
+          } else {
+            e.target.value = currentPage;
+          }
+        });
+      }
+    }
+
+    // Initial display update
+    updatePaginationDisplay();
+
+    // Custom script
     ${customScript}
+    ${tableId ? `})();` : ''}
   </script>
-</body>
-</html>
+  </div>
 `;
 }
 
@@ -769,5 +1022,225 @@ export async function openTextTemplate(content: string, language: string = 'plai
   } catch (error) {
     vscode.window.showErrorMessage(`Failed to open text template: ${error}`);
     return false;
+  }
+}
+
+/**
+ * Check if a SQL object (view, table function, procedure, etc.) exists in the system
+ * Uses QSYS2.SYSTABLES for views and tables, QSYS2.SYSPROCS for procedures
+ * @param ibmi - IBM i connection instance
+ * @param schema - Schema/library name
+ * @param objectName - Object name to check
+ * @param objectType - Type of object: 'VIEW', 'TABLE', 'FUNCTION', 'PROCEDURE', 'ALIAS'
+ * @returns Promise<boolean> - True if object exists, false otherwise
+ */
+export async function checkSqlObjectExists(
+  ibmi: IBMi,
+  schema: string,
+  objectName: string,
+  objectType: 'VIEW' | 'TABLE' | 'FUNCTION' | 'PROCEDURE' | 'ALIAS'
+): Promise<boolean> {
+  try {
+    let query: string;
+    
+    switch (objectType) {
+      case 'VIEW':
+        // Check in SYSVIEWS for views
+        query = `
+          SELECT COUNT(*) as OBJECT_COUNT
+          FROM QSYS2.SYSVIEWS
+          WHERE TABLE_SCHEMA = '${schema.toUpperCase()}'
+            AND TABLE_NAME = '${objectName.toUpperCase()}'
+        `;
+        break
+      case 'TABLE':
+      case 'ALIAS':
+        // Check in SYSTABLES tables and aliases
+        query = `
+          SELECT COUNT(*) as OBJECT_COUNT
+          FROM QSYS2.SYSTABLES
+          WHERE TABLE_SCHEMA = '${schema.toUpperCase()}'
+            AND TABLE_NAME = '${objectName.toUpperCase()}'
+            AND TABLE_TYPE = '${objectType}'
+        `;
+        break;
+        
+      case 'FUNCTION':
+        // Check in SYSFUNCS for functions (including table functions)
+        query = `
+          SELECT COUNT(*) as OBJECT_COUNT
+          FROM QSYS2.SYSFUNCS
+          WHERE ROUTINE_SCHEMA = '${schema.toUpperCase()}'
+            AND ROUTINE_NAME = '${objectName.toUpperCase()}'
+        `;
+        break;
+        
+      case 'PROCEDURE':
+        // Check in SYSPROCS for procedures
+        query = `
+          SELECT COUNT(*) as OBJECT_COUNT
+          FROM QSYS2.SYSPROCS
+          WHERE ROUTINE_SCHEMA = '${schema.toUpperCase()}'
+            AND ROUTINE_NAME = '${objectName.toUpperCase()}'
+        `;
+        break;
+        
+      default:
+        throw new Error(`Unsupported object type: ${objectType}`);
+    }
+    
+    const result = await ibmi.runSQL(query);
+    
+    if (result && result.length > 0) {
+      const count = Number(result[0].OBJECT_COUNT);
+      return count > 0;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error(`Error checking SQL object existence: ${error}`);
+    return false;
+  }
+}
+
+/**
+ * Check if a view exists in the system
+ * @param ibmi - IBM i connection instance
+ * @param schema - Schema/library name
+ * @param viewName - View name to check
+ * @returns Promise<boolean> - True if view exists, false otherwise
+ */
+export async function checkViewExists(ibmi: IBMi, schema: string, viewName: string): Promise<boolean> {
+  return checkSqlObjectExists(ibmi, schema, viewName, 'VIEW');
+}
+
+/**
+ * Check if a table function exists in the system
+ * @param ibmi - IBM i connection instance
+ * @param schema - Schema/library name
+ * @param functionName - Function name to check
+ * @returns Promise<boolean> - True if function exists, false otherwise
+ */
+export async function checkTableFunctionExists(ibmi: IBMi, schema: string, functionName: string): Promise<boolean> {
+  return checkSqlObjectExists(ibmi, schema, functionName, 'FUNCTION');
+}
+
+/**
+ * Check if a procedure exists in the system
+ * @param ibmi - IBM i connection instance
+ * @param schema - Schema/library name
+ * @param procedureName - Procedure name to check
+ * @returns Promise<boolean> - True if procedure exists, false otherwise
+ */
+export async function checkProcedureExists(ibmi: IBMi, schema: string, procedureName: string): Promise<boolean> {
+  return checkSqlObjectExists(ibmi, schema, procedureName, 'PROCEDURE');
+}
+
+/**
+ * Check if a table exists in the system
+ * @param ibmi - IBM i connection instance
+ * @param schema - Schema/library name
+ * @param tableName - Table name to check
+ * @returns Promise<boolean> - True if table exists, false otherwise
+ */
+export async function checkTableExists(ibmi: IBMi, schema: string, tableName: string): Promise<boolean> {
+  return checkSqlObjectExists(ibmi, schema, tableName, 'TABLE');
+}
+
+/**
+ * Execute SQL statement with automatic object existence check
+ * Verifies that the specified SQL object exists before executing the query
+ * Returns null if the object doesn't exist or if execution fails
+ *
+ * @param ibmi - IBM i connection instance
+ * @param sqlStatement - SQL statement to execute
+ * @param schema - Schema/library name of the object to check
+ * @param objectName - Name of the object to check
+ * @param objectType - Type of object: 'VIEW', 'TABLE', 'FUNCTION', 'PROCEDURE', 'ALIAS'
+ * @returns Promise<any[] | null> - Query results or null if object doesn't exist or error occurs
+ *
+ * @example
+ * ```typescript
+ * const result = await executeSqlIfExists(ibmi, 'SELECT * FROM MYLIB.MYVIEW', 'MYLIB', 'MYVIEW', 'VIEW');
+ * if (result === null) {
+ *   console.log('View does not exist or query failed');
+ * } else {
+ *   console.log('Query successful:', result);
+ * }
+ * ```
+ */
+export async function executeSqlIfExists(
+  ibmi: IBMi,
+  sqlStatement: string,
+  schema: string,
+  objectName: string,
+  objectType: 'VIEW' | 'TABLE' | 'FUNCTION' | 'PROCEDURE' | 'ALIAS'
+): Promise<any[] | null> {
+  try {
+    // Check if the object exists
+    const exists = await checkSqlObjectExists(ibmi, schema, objectName, objectType);
+    
+    if (!exists) {
+      return null;
+    }
+    
+    // Object exists, execute the SQL
+    const result = await ibmi.runSQL(sqlStatement);
+    return result;
+    
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Validate and execute SQL with object existence check
+ * This function checks if the required SQL objects exist before executing the query
+ * @param ibmi - IBM i connection instance
+ * @param sqlStatement - SQL statement to execute
+ * @param requiredObjects - Array of objects to check before execution
+ * @returns Promise with execution result or error
+ */
+export async function executeSqlWithValidation(
+  ibmi: IBMi,
+  sqlStatement: string,
+  requiredObjects: Array<{
+    schema: string;
+    name: string;
+    type: 'VIEW' | 'TABLE' | 'FUNCTION' | 'PROCEDURE' | 'ALIAS';
+  }>
+): Promise<{ success: boolean; data?: any[]; error?: string; missingObjects?: string[] }> {
+  try {
+    // Check all required objects
+    const missingObjects: string[] = [];
+    
+    for (const obj of requiredObjects) {
+      const exists = await checkSqlObjectExists(ibmi, obj.schema, obj.name, obj.type);
+      if (!exists) {
+        missingObjects.push(`${obj.schema}.${obj.name} (${obj.type})`);
+      }
+    }
+    
+    // If any objects are missing, return error
+    if (missingObjects.length > 0) {
+      return {
+        success: false,
+        error: `Missing SQL objects: ${missingObjects.join(', ')}`,
+        missingObjects
+      };
+    }
+    
+    // All objects exist, execute the SQL
+    const result = await ibmi.runSQL(sqlStatement);
+    return {
+      success: true,
+      data: result
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      error: `SQL execution error: ${error}`
+    };
   }
 }

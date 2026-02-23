@@ -3,7 +3,6 @@
 import * as vscode from 'vscode';
 
 import ObjectProvider from './objectProvider';
-import { t } from './l10n';
 import { DataQueueActions } from './types/dataQueue';
 import { SaveFileActions } from './types/saveFile';
 import { loadBase } from './ibmi';
@@ -47,7 +46,7 @@ export async function activate(context: vscode.ExtensionContext) {
   MessageQueueActions.register(context);
   FileActions.register(context);
 
-  console.log(t('Congratulations, your extension "vscode-ibmi-fs" is now active!'));
+  console.log(vscode.l10n.t('Congratulations, your extension "vscode-ibmi-fs" is now active!'));
 }
 
 /**

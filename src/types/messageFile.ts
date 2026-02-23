@@ -19,9 +19,8 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
-import { generateFastTable, FastTableColumn } from "../tools";
+import { generateFastTable, FastTableColumn, checkViewExists, executeSqlIfExists } from "../tools";
 import * as vscode from 'vscode';
-import { t } from '../l10n';
 
 /**
  * Interface representing a message file entry
@@ -67,12 +66,55 @@ export default class Msgf extends Base {
   /**
    * Fetch all messages from the message file
    * Uses QSYS2.MESSAGE_FILE_DATA service to retrieve message definitions
+   * Supports server-side search and pagination
    */
   async fetchMessages(): Promise<void> {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      const entryRows = await connection.runSQL(
+      console.log('fetchMessages - searchTerm:', this.searchTerm, 'currentPage:', this.currentPage, 'itemsPerPage:', this.itemsPerPage);
+      
+      // Build WHERE clause with search filter
+      let whereClause = `message_file = '${this.name}' AND message_file_library = '${this.library}'`;
+      
+      if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
+        const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
+        console.log('Adding search filter:', searchPattern);
+        whereClause += ` AND (
+          UPPER(MESSAGE_ID) LIKE '${searchPattern}' OR
+          UPPER(MESSAGE_TEXT) LIKE '${searchPattern}' OR
+          UPPER(MESSAGE_SECOND_LEVEL_TEXT) LIKE '${searchPattern}' OR
+          UPPER(REPLY_TYPE) LIKE '${searchPattern}' OR
+          UPPER(DEFAULT_REPLY) LIKE '${searchPattern}'
+        )`;
+      }
+      
+      console.log('WHERE clause:', whereClause);
+
+      // First, get total count for pagination
+      const countRows = await executeSqlIfExists(
+        connection,
+        `SELECT COUNT(*) as TOTAL
+            FROM qsys2.message_file_data
+            WHERE ${whereClause}`,
+        'QSYS2',
+        'MESSAGE_FILE_DATA',
+        'VIEW'
+      );
+
+      if (countRows === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_FILE_DATA"));
+        return;
+      }
+
+      this.totalItems = countRows.length > 0 ? Number(countRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for pagination
+      const offset = (this.currentPage - 1) * this.itemsPerPage;
+
+      // Fetch paginated data
+      const entryRows = await executeSqlIfExists(
+        connection,
         `SELECT MESSAGE_ID,
                 MESSAGE_TEXT,
                 MESSAGE_SECOND_LEVEL_TEXT,
@@ -86,11 +128,23 @@ export default class Msgf extends Base {
                     ELSE null
                 END AS VALID_REPLY_VALUES
             FROM qsys2.message_file_data
-            WHERE message_file = '${this.name}' AND message_file_library = '${this.library}'`)
+            WHERE ${whereClause}
+            ORDER BY MESSAGE_ID
+            LIMIT ${this.itemsPerPage} OFFSET ${offset}`,
+        'QSYS2',
+        'MESSAGE_FILE_DATA',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_FILE_DATA"));
+        return;
+      }
+
       this._entries = [];
       this._entries.push(...entryRows.map(this.toEntry));
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -101,15 +155,17 @@ export default class Msgf extends Base {
    * @returns HTML string
    */
   generateHTML(): string {
+    console.log('MessageFile generateHTML - enableSearch: true, totalItems:', this.totalItems, 'currentPage:', this.currentPage);
+    
     // Define table columns with widths
     const columns: FastTableColumn<Entry>[] = [
-      { title: t("MSGID"), getValue: e => e.msgid, width: "0.25fr" },
-      { title: t("First Level"), getValue: e => e.msgtxt1, width: "1fr" },
-      { title: t("Second Level"), getValue: e => e.msgtxt2, width: "2fr" },
-      { title: t("Sev."), getValue: e => String(e.severity), width: "0.2fr" },
-      { title: t("Reply Type"), getValue: e => e.replytype, width: "0.2fr" },
-      { title: t("Reply Dft"), getValue: e => e.replydft, width: "0.2fr" },
-      { title: t("Reply Valid"), getValue: e => e.replyvalid, width: "0.2fr" }
+      { title: vscode.l10n.t("MSGID"), getValue: e => e.msgid, width: "0.25fr" },
+      { title: vscode.l10n.t("First Level"), getValue: e => e.msgtxt1, width: "1fr" },
+      { title: vscode.l10n.t("Second Level"), getValue: e => e.msgtxt2, width: "2fr" },
+      { title: vscode.l10n.t("Sev."), getValue: e => String(e.severity), width: "0.2fr" },
+      { title: vscode.l10n.t("Reply Type"), getValue: e => e.replytype, width: "0.2fr" },
+      { title: vscode.l10n.t("Reply Dft"), getValue: e => e.replydft, width: "0.2fr" },
+      { title: vscode.l10n.t("Reply Valid"), getValue: e => e.replyvalid, width: "0.2fr" }
     ];
 
     const customStyles = `
@@ -120,13 +176,20 @@ export default class Msgf extends Base {
     `;
 
     return `<div class="messagefile-entries-table">` + generateFastTable({
-      title: t("Message File: {0}/{1}", this.library, this.name),
-      subtitle: t("Total Messages: {0}", String(this._entries.length)),
+      title: vscode.l10n.t("Message File: {0}/{1}", this.library, this.name),
+      subtitle: vscode.l10n.t("Total Messages: {0}", String(this.totalItems)),
       columns: columns,
       data: this._entries,
       stickyHeader: true,
-      emptyMessage: t("No messages found in this message file."),
+      emptyMessage: vscode.l10n.t("No messages found in this message file."),
       customStyles: customStyles,
+      enableSearch: true,
+      searchPlaceholder: vscode.l10n.t("Search messages..."),
+      enablePagination: true,
+      itemsPerPage: this.itemsPerPage,
+      totalItems: this.totalItems,
+      currentPage: this.currentPage,
+      searchTerm: this.searchTerm
     }) + `</div>`;
   }
 

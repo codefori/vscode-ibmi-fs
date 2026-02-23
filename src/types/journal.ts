@@ -18,11 +18,10 @@ import Base from "./base";
 import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, getProtected, openSqlTemplate } from "../tools";
+import { generateDetailTable, getColumns, generateFastTable, FastTableColumn, getProtected, openSqlTemplate, checkTableFunctionExists, checkViewExists, executeSqlIfExists } from "../tools";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
-import { t } from '../l10n';
 
 /**
  * Namespace containing actions for Journal objects
@@ -76,6 +75,20 @@ export namespace JournalActions {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
 
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      // Check if DISPLAY_JOURNAL function exists
+      const functionExists = await checkTableFunctionExists(connection, 'QSYS2', 'DISPLAY_JOURNAL');
+      if (!functionExists) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "DISPLAY_JOURNAL"));
+        return false;
+      }
+    } else {
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
+      return false;
+    }
+
     // Generate SQL statement to display journal entries
     const sqlStatement = `-- Extract journal entries, ref: https://www.ibm.com/docs/en/i/7.6.0?topic=services-display-journal-table-function
     
@@ -125,7 +138,7 @@ export namespace JournalActions {
     if (connection) {
 
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
@@ -135,14 +148,14 @@ export namespace JournalActions {
       });
 
       if (cmdrun.code === 0) {
-        vscode.window.showInformationMessage(t("Generated new journal receiver."));
+        vscode.window.showInformationMessage(vscode.l10n.t("Generated new journal receiver."));
         return true;
       } else {
-        vscode.window.showErrorMessage(t("Unable to generate new journal reciever:\n{0}", String(cmdrun.stderr)));
+        vscode.window.showErrorMessage(vscode.l10n.t("Unable to generate new journal reciever:\n{0}", String(cmdrun.stderr)));
         return false;
       }
   } else {
-    vscode.window.showErrorMessage(t("Not connected to IBM i"));
+    vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
     return false;
   }
   };
@@ -206,7 +219,8 @@ export default class Jrn extends Base {
     if (connection) {
       this.columns = await getColumns(connection, 'JOURNAL_INFO');
 
-      this.jrn = await connection.runSQL(
+      this.jrn = await executeSqlIfExists(
+        connection,
         `SELECT JOURNAL_ASPGRP,
           ATTACHED_JOURNAL_RECEIVER_LIBRARY CONCAT '/' CONCAT ATTACHED_JOURNAL_RECEIVER_NAME ATTACHED_JOURNAL_RECEIVER_NAME,
           MESSAGE_QUEUE_LIBRARY CONCAT '/' CONCAT MESSAGE_QUEUE MESSAGE_QUEUE,
@@ -267,9 +281,18 @@ export default class Jrn extends Base {
           JOURNAL_ENTRY_FILTERING
         FROM QSYS2.JOURNAL_INFO
         where JOURNAL_NAME='${this.name}' and JOURNAL_LIBRARY= '${this.library}'
-          Fetch first row only`)
+          Fetch first row only`,
+        'QSYS2',
+        'JOURNAL_INFO',
+        'VIEW'
+      );
+
+      if (this.jrn === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOURNAL_INFO"));
+        return;
+      }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -282,7 +305,8 @@ export default class Jrn extends Base {
     const connection = ibmi?.getConnection();
     if (connection) {
       this._entries.length=0;
-      const entryRows = await connection.runSQL(
+      const entryRows = await executeSqlIfExists(
+        connection,
         `SELECT JOURNAL_RECEIVER_LIBRARY CONCAT '/' CONCAT JOURNAL_RECEIVER_NAME JOURNAL_RECEIVER_NAME,
           JOURNAL_RECEIVER_ASP_NAME,
           THRESHOLD,
@@ -297,10 +321,20 @@ export default class Jrn extends Base {
         FROM QSYS2.JOURNAL_RECEIVER_INFO
         WHERE JOURNAL_NAME = '${this.name}'
               AND JOURNAL_LIBRARY = '${this.library}'
-        ORDER BY ATTACH_TIMESTAMP ASC`)
+        ORDER BY ATTACH_TIMESTAMP ASC`,
+        'QSYS2',
+        'JOURNAL_RECEIVER_INFO',
+        'VIEW'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOURNAL_RECEIVER_INFO"));
+        return;
+      }
+
       this._entries.push(...entryRows.map(this.toEntry));
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -311,8 +345,8 @@ export default class Jrn extends Base {
    */
   generateHTML(): string {
     return Components.panels([
-      { title: t("Detail"), content: this.renderJournalPanel() },
-      { title: t("Chain"), badge: this._entries.length, content: this.renderEntries(this._entries) }
+      { title: vscode.l10n.t("Detail"), content: this.renderJournalPanel() },
+      { title: vscode.l10n.t("Chain"), badge: this._entries.length, content: this.renderEntries(this._entries) }
     ]);
   }
 
@@ -326,7 +360,7 @@ export default class Jrn extends Base {
     // Generate the detail table with journal information
     return generateDetailTable({
       title: `Journal: ${this.library}/${this.name}`,
-      subtitle: t('Journal Information'),
+      subtitle: vscode.l10n.t('Journal Information'),
       columns: this.columns,
       data: this.jrn,
       hideNullValues: true
@@ -363,16 +397,16 @@ export default class Jrn extends Base {
   renderEntries(entries: Entry[]) {
     // Define table columns with their properties
     const columns: FastTableColumn<Entry>[] = [
-      { title: t("Receiver"), width: "1.2fr", getValue: e => e.receiver },
-      { title: t("iASP"), width: "0.7fr", getValue: e => e.iasp },
-      { title: t("Threshold"), width: "0.5fr", getValue: e => e.threshold },
-      { title: t("Size"), width: "0.5fr", getValue: e => String(e.size) },
-      { title: t("Entries"), width: "0.5fr", getValue: e => String(e.entries) },
-      { title: t("First entry"), width: "0.5fr", getValue: e => String(e.first) },
-      { title: t("Last entry"), width: "0.5fr", getValue: e => String(e.last) },
-      { title: t("Attach timestamp"), width: "1fr", getValue: e => e.attach },
-      { title: t("Detach timestamp"), width: "1fr", getValue: e => e.detach },
-      { title: t("Save timestamp"), width: "1fr", getValue: e => e.save },
+      { title: vscode.l10n.t("Receiver"), width: "1.2fr", getValue: e => e.receiver },
+      { title: vscode.l10n.t("iASP"), width: "0.7fr", getValue: e => e.iasp },
+      { title: vscode.l10n.t("Threshold"), width: "0.5fr", getValue: e => e.threshold },
+      { title: vscode.l10n.t("Size"), width: "0.5fr", getValue: e => String(e.size) },
+      { title: vscode.l10n.t("Entries"), width: "0.5fr", getValue: e => String(e.entries) },
+      { title: vscode.l10n.t("First entry"), width: "0.5fr", getValue: e => String(e.first) },
+      { title: vscode.l10n.t("Last entry"), width: "0.5fr", getValue: e => String(e.last) },
+      { title: vscode.l10n.t("Attach timestamp"), width: "1fr", getValue: e => e.attach },
+      { title: vscode.l10n.t("Detach timestamp"), width: "1fr", getValue: e => e.detach },
+      { title: vscode.l10n.t("Save timestamp"), width: "1fr", getValue: e => e.save },
     ];
 
     // Custom CSS styles for the journal receiver chain table
@@ -390,7 +424,7 @@ export default class Jrn extends Base {
       columns: columns,
       data: this._entries,
       stickyHeader: true,
-      emptyMessage: t("No receivers found in this chain."),
+      emptyMessage: vscode.l10n.t("No receivers found in this chain."),
       customStyles: customStyles,
     }) + `</div>`;
   }

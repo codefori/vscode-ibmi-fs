@@ -1077,6 +1077,12 @@
   "Sbsd {0}/{1} already active": "Sbsd {0}/{1} già attivo",
   "Sbsd {0}/{1} already inactive": "Sbsd {0}/{1} già inattivo",
   "Schema": "Schema",
+  "Search": "Ricerca",
+  "Search members...": "Cerca membri...",
+  "Search messages...": "Cerca messaggi...",
+  "Search objects...": "Cerca oggetti...",
+  "Search spooled files...": "Cerca file spool...",
+  "Search spools...": "Cerca spool...",
   "Second Level": "Secondo livello",
   "Select how to end the subsystem": "Seleziona come terminare il sottosistema",
   "Sequence": "Sequenza",
@@ -1269,5 +1275,6 @@
   "message": "messaggio",
   "xxx days": "xxx giorni",
   "{0} Information": "Informazioni {0}",
-  "{0}: {1}/{2}": "{0}: {1}/{2}"
+  "{0}: {1}/{2}": "{0}: {1}/{2}",
+  "SQL {0} {1}/{2} not found. Please check your IBM i system.": "Oggetto SQL {0} {1}/{2} non trovato. Verificare il sistema IBM i."
 }

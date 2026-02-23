@@ -17,28 +17,16 @@
  * @module savefile
  */
 
-import {
-  CommandResult,
-  FilteredItem,
-  IBMiObject,
-} from "@halcyontech/vscode-ibmi-types";
+import {CommandResult, FilteredItem, IBMiObject} from "@halcyontech/vscode-ibmi-types";
 import { basename } from "path";
 import * as vscode from "vscode";
-import {
-  FastTableColumn,
-  IBMI_OBJECT_NAME,
-  generateDetailTable,
-  generateFastTable,
-  getProtected,
-  getQSYSObjectPath,
-} from "../tools";
+import { FastTableColumn, IBMI_OBJECT_NAME, generateDetailTable, generateFastTable, getProtected, getQSYSObjectPath, checkViewExists, checkTableFunctionExists, executeSqlIfExists } from "../tools";
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance, getVSCodeTools } from "../ibmi";
 import { Tools } from "@halcyontech/vscode-ibmi-types/api/Tools";
 import path = require("path");
 import ObjectProvider from '../objectProvider';
-import { t } from '../l10n';
 
 /**
  * Namespace containing all Save File related actions and commands
@@ -148,15 +136,24 @@ export namespace SaveFileActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      const savfInfo = await connection.runSQL(
+      const savfInfo = await executeSqlIfExists(
+        connection,
         `SELECT SAVE_COMMAND
-        FROM QSYS2.SAVE_FILE_INFO
-        WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
-        FETCH FIRST ROW ONLY`
+          FROM QSYS2.SAVE_FILE_INFO
+          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
+          FETCH FIRST ROW ONLY`,
+        'QSYS2',
+        'SAVE_FILE_INFO',
+        'VIEW'
       );
 
+      if (savfInfo === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
+        return false;
+      }
+
       if (!savfInfo || !savfInfo[0].SAVE_COMMAND) {
-        vscode.window.showErrorMessage(t("Save file {0}/{1} is empty", target.library, target.name));
+        vscode.window.showErrorMessage(vscode.l10n.t("Save file {0}/{1} is empty", target.library, target.name));
         return false;
       }
 
@@ -173,7 +170,7 @@ export namespace SaveFileActions {
 
       // Prompt user to select save location
       const saveLocation = await vscode.window.showSaveDialog({
-        title: t("Download Save File"),
+        title: vscode.l10n.t("Download Save File"),
         defaultUri: vscode.Uri.file(`${name}.savf`),
         // eslint-disable-next-line @typescript-eslint/naming-convention
         filters: { SaveFile: ["savf"] },
@@ -183,7 +180,7 @@ export namespace SaveFileActions {
         const result = await vscode.window.withProgress(
           {
             location: vscode.ProgressLocation.Notification,
-            title: t("Downloading {0}/{1}", library, name),
+            title: vscode.l10n.t("Downloading {0}/{1}", library, name),
           },
           async (progress) => {
             const result = {
@@ -195,7 +192,7 @@ export namespace SaveFileActions {
             const tempRemotePath = `${config.tempDir}/${library}_${name}.savf`;
 
             // Step 1: Copy save file to temporary stream file
-            progress.report({ message: t("Copying to temporary stream file...") });
+            progress.report({ message: vscode.l10n.t("Copying to temporary stream file...") });
             const copyToStreamFile: CommandResult = await connection.runCommand(
               {
                 command: `CPYTOSTMF FROMMBR('${qsysPath}') TOSTMF('${tempRemotePath}') STMFOPT(*REPLACE)`,
@@ -206,7 +203,7 @@ export namespace SaveFileActions {
             if (copyToStreamFile.code === 0) {
               try {
                 // Step 2: Download the stream file to local system
-                progress.report({ message: t("downloading stream file...") });
+                progress.report({ message: vscode.l10n.t("downloading stream file...") });
                 await connection.client.getFile(
                   saveLocation.fsPath,
                   tempRemotePath,
@@ -223,7 +220,7 @@ export namespace SaveFileActions {
               }
             } else {
               result.successful = false;
-              result.error = t("CPYTOSTMF failed.\n{0}", String(copyToStreamFile.stderr));
+              result.error = vscode.l10n.t("CPYTOSTMF failed.\n{0}", String(copyToStreamFile.stderr));
             }
 
             return result;
@@ -233,16 +230,16 @@ export namespace SaveFileActions {
         // Display result to user
         if (result.successful) {
           vscode.window.showInformationMessage(
-            t("Save File {0}/{1} successfully downloaded.", library, name),
+            vscode.l10n.t("Save File {0}/{1} successfully downloaded.", library, name),
           );
         } else {
           vscode.window.showErrorMessage(
-            t("Failed to download {0}/{1}: {2}", library, name, result.error),
+            vscode.l10n.t("Failed to download {0}/{1}: {2}", library, name, result.error),
           );
         }
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
     } 
   };
 
@@ -259,19 +256,28 @@ export namespace SaveFileActions {
 
     if (connection) {
       if(getProtected(connection,target.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
-      const savfInfo = await connection.runSQL(
+      const savfInfo = await executeSqlIfExists(
+        connection,
         `SELECT SAVE_COMMAND
-        FROM QSYS2.SAVE_FILE_INFO
-        WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
-        FETCH FIRST ROW ONLY`
+          FROM QSYS2.SAVE_FILE_INFO
+          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
+          FETCH FIRST ROW ONLY`,
+        'QSYS2',
+        'SAVE_FILE_INFO',
+        'VIEW'
       );
 
+      if (savfInfo === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
+        return false;
+      }
+
       if (savfInfo && savfInfo[0].SAVE_COMMAND) {
-        vscode.window.showErrorMessage(t("Save file {0}/{1} is not empty", target.library, target.name));
+        vscode.window.showErrorMessage(vscode.l10n.t("Save file {0}/{1} is not empty", target.library, target.name));
         return false;
       }
 
@@ -280,7 +286,7 @@ export namespace SaveFileActions {
         canSelectFiles: true,
         canSelectFolders: false,
         canSelectMany: false,
-        title: t("Upload Save File"),
+        title: vscode.l10n.t("Upload Save File"),
         // eslint-disable-next-line @typescript-eslint/naming-convention
         filters: { SaveFile: ["savf"], "All files": ["*"] },
       });
@@ -289,7 +295,7 @@ export namespace SaveFileActions {
         const result = await vscode.window.withProgress(
           {
             location: vscode.ProgressLocation.Notification,
-            title: t("Uploading Save File"),
+            title: vscode.l10n.t("Uploading Save File"),
           },
           async (progress) => {
             const result = {
@@ -304,14 +310,14 @@ export namespace SaveFileActions {
             );
 
             // Step 1: Upload file to temporary location
-            progress.report({ message: t("Uploading Save File...") });
+            progress.report({ message: vscode.l10n.t("Uploading Save File...") });
             await connection.getContent().uploadFiles([
               {
                 local: lclpath,
                 remote: rmtpath,
               },
             ]);
-            progress.report({ message: t("Save File uploaded...") });
+            progress.report({ message: vscode.l10n.t("Save File uploaded...") });
 
             const libinfo = await connection.runSQL(`
               SELECT
@@ -325,7 +331,7 @@ export namespace SaveFileActions {
               getQSYSObjectPath(target.library, target.name, "FILE");
 
             // Step 2: Copy from stream file to save file member
-            progress.report({ message: t("Copying Save File...") });
+            progress.report({ message: vscode.l10n.t("Copying Save File...") });
             const copyFromStreamFile = await connection.runCommand({
               command: `CPYFRMSTMF FROMSTMF('${rmtpath}') TOMBR('${qsysPath}') MBROPT(*REPLACE)`,
             });
@@ -333,11 +339,11 @@ export namespace SaveFileActions {
             if (copyFromStreamFile.code !== 0) {
               result.successful = false;
               result.error =
-                t("Unable to copy Save File: \n{0}", String(copyFromStreamFile.stderr));
+                vscode.l10n.t("Unable to copy Save File: \n{0}", String(copyFromStreamFile.stderr));
             } else {
               result.successful = true;
               result.error = "";
-              progress.report({ message: t("Save File copied...") });
+              progress.report({ message: vscode.l10n.t("Save File copied...") });
             }
 
             // Step 3: Clean up temporary file
@@ -352,10 +358,10 @@ export namespace SaveFileActions {
 
         // Display result to user
         if (result.successful) {
-          vscode.window.showInformationMessage(t("Successfully uploaded Save File"));
+          vscode.window.showInformationMessage(vscode.l10n.t("Successfully uploaded Save File"));
         } else {
           vscode.window.showErrorMessage(
-            t("Failed to upload Save File: {0}", result.error),
+            vscode.l10n.t("Failed to upload Save File: {0}", result.error),
           );
         }
 
@@ -364,7 +370,7 @@ export namespace SaveFileActions {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
       
@@ -383,39 +389,27 @@ export namespace SaveFileActions {
 
     if (connection) {
       if(getProtected(connection,target.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to clear Save File {0}/{1}?", target.library, target.name), { modal: true }, t("Clear SAVF"))) {
-        const savfInfo = await connection.runSQL(
-          `SELECT SAVE_COMMAND
-          FROM QSYS2.SAVE_FILE_INFO
-          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
-          FETCH FIRST ROW ONLY`
-        );
-
-        if (!savfInfo || !savfInfo[0].SAVE_COMMAND) {
-          vscode.window.showErrorMessage(t("Save file {0}/{1} is empty", target.library, target.name));
-          return false;
-        }
-
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Save File {0}/{1}?", target.library, target.name), { modal: true }, vscode.l10n.t("Clear SAVF"))) {
         const clrsavf = await connection.runCommand({
           command: `CLRSAVF FILE(${target.library}/${target.name})`,
         });
 
         if (clrsavf.code !== 0) {
-          vscode.window.showErrorMessage(t("Failed to clear Save File:\n{0}", String(clrsavf.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Failed to clear Save File:\n{0}", String(clrsavf.stderr)));
           return false;
         } else {
-          vscode.window.showInformationMessage(t("Successfully cleared Save File"));
+          vscode.window.showInformationMessage(vscode.l10n.t("Successfully cleared Save File"));
           return true;
         }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -433,30 +427,39 @@ export namespace SaveFileActions {
 
     if (connection) {
       if(getProtected(connection,target.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
       let saveCmd;
 
-      const savfInfo = await connection.runSQL(
+      const savfInfo = await executeSqlIfExists(
+        connection,
         `SELECT SAVE_COMMAND
-        FROM QSYS2.SAVE_FILE_INFO
-        WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
-        FETCH FIRST ROW ONLY`
+          FROM QSYS2.SAVE_FILE_INFO
+          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
+          FETCH FIRST ROW ONLY`,
+        'QSYS2',
+        'SAVE_FILE_INFO',
+        'VIEW'
       );
 
-      if (savfInfo && savfInfo.length > 0 && savfInfo[0].SAVE_COMMAND) {
+      if (savfInfo === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
+        return false;
+      }
+
+      if (savfInfo.length > 0 && savfInfo[0].SAVE_COMMAND) {
         saveCmd = String(savfInfo[0].SAVE_COMMAND);
       } else {
-        vscode.window.showErrorMessage(t("Save file {0}/{1} is empty", target.library, target.name));
+        vscode.window.showErrorMessage(vscode.l10n.t("Save file {0}/{1} is empty", target.library, target.name));
         return false;
       }
 
       const result = await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: t("Restore operation"),
+          title: vscode.l10n.t("Restore operation"),
         },
         async (progress) => {
           const result = {
@@ -493,8 +496,8 @@ export namespace SaveFileActions {
           // Determine restore command based on save command
           if (saveCmd === "SAVLIB") {
             savcmd2 = await vscode.window.showQuickPick(["RSTLIB", "RSTOBJ"], {
-              placeHolder: t("Command for restore"),
-              title: t("Command for restore"),
+              placeHolder: vscode.l10n.t("Command for restore"),
+              title: vscode.l10n.t("Command for restore"),
               canPickMany: false,
             });
 
@@ -509,17 +512,17 @@ export namespace SaveFileActions {
               // Restore IFS objects
               path = await vscode.window.showInputBox({
                 placeHolder: "/xxx",
-                title: t("Path to restore"),
+                title: vscode.l10n.t("Path to restore"),
                 validateInput: (path) => {
                   if (path.length < 1 && !path.startsWith("/")) {
-                    return t("You need to specify a valid path");
+                    return vscode.l10n.t("You need to specify a valid path");
                   }
                 },
               });
 
               tgtpath = await vscode.window.showInputBox({
                 placeHolder: "/yyy",
-                title: t("Path on which to restore"),
+                title: vscode.l10n.t("Path on which to restore"),
                 value: "*SAME",
                 validateInput: (tgtpath) => {
                   if (
@@ -527,7 +530,7 @@ export namespace SaveFileActions {
                     !tgtpath.startsWith("/") &&
                     tgtpath.toUpperCase() !== "*SAME"
                   ) {
-                    return t("You need to specify a valid path");
+                    return vscode.l10n.t("You need to specify a valid path");
                   }
                 },
               });
@@ -535,8 +538,8 @@ export namespace SaveFileActions {
               objdif = await vscode.window.showQuickPick(
                 ["*NONE", "*ALL", "*AUTL", "*OWNER", "*PGP"],
                 {
-                  placeHolder: t("Allow object differences"),
-                  title: t("Allow object differences"),
+                  placeHolder: vscode.l10n.t("Allow object differences"),
+                  title: vscode.l10n.t("Allow object differences"),
                   canPickMany: true,
                 },
               );
@@ -544,8 +547,8 @@ export namespace SaveFileActions {
               option = await vscode.window.showQuickPick(
                 ["*ALL", "*NEW", "*OLD"],
                 {
-                  placeHolder: t("Option"),
-                  title: t("Option"),
+                  placeHolder: vscode.l10n.t("Option"),
+                  title: vscode.l10n.t("Option"),
                   canPickMany: false,
                 },
               );
@@ -554,7 +557,7 @@ export namespace SaveFileActions {
                 cmd = `RST DEV('${getQSYSObjectPath(target.library, target.name, "FILE")}') OBJ(('${path}' *INCLUDE '${tgtpath}')) OPTION(${option}) ALWOBJDIF(${objdif.toString().replace(",", " ")})`;
               } else {
                 result.successful = false;
-                result.error = t("Some parameters are missing... ");
+                result.error = vscode.l10n.t("Some parameters are missing... ");
                 return result;
               }
 
@@ -564,22 +567,22 @@ export namespace SaveFileActions {
               // Restore library
               lib = await vscode.window.showInputBox({
                 placeHolder: "LIBXXX",
-                title: t("Saved library"),
+                title: vscode.l10n.t("Saved library"),
                 value: fromlib,
                 validateInput: (lib) => {
                   if (lib.length < 1 || lib.length > 10) {
-                    return t("You need to specify a valid library name");
+                    return vscode.l10n.t("You need to specify a valid library name");
                   }
                 },
               });
 
               tgtlib = await vscode.window.showInputBox({
                 placeHolder: "LIBYYY",
-                title: t("Restore to library"),
+                title: vscode.l10n.t("Restore to library"),
                 value: `*SAVLIB`,
                 validateInput: (tgtlib) => {
                   if (tgtlib.length < 1 || tgtlib.length > 10) {
-                    return t("You need to specify a valid library name");
+                    return vscode.l10n.t("You need to specify a valid library name");
                   }
                 },
               });
@@ -595,8 +598,8 @@ export namespace SaveFileActions {
                   "*PGP",
                 ],
                 {
-                  placeHolder: t("Allow object differences"),
-                  title: t("Allow object differences"),
+                  placeHolder: vscode.l10n.t("Allow object differences"),
+                  title: vscode.l10n.t("Allow object differences"),
                   canPickMany: true,
                 },
               );
@@ -604,8 +607,8 @@ export namespace SaveFileActions {
               option = await vscode.window.showQuickPick(
                 ["*ALL", "*NEW", "*OLD"],
                 {
-                  placeHolder: t("Option"),
-                  title: t("Option"),
+                  placeHolder: vscode.l10n.t("Option"),
+                  title: vscode.l10n.t("Option"),
                   canPickMany: false,
                 },
               );
@@ -613,8 +616,8 @@ export namespace SaveFileActions {
               dbmbropt = await vscode.window.showQuickPick(
                 ["*MATCH", "*ALL", "*NEW", "*OLD"],
                 {
-                  placeHolder: t("Data base member option"),
-                  title: t("Data base member option"),
+                  placeHolder: vscode.l10n.t("Data base member option"),
+                  title: vscode.l10n.t("Data base member option"),
                   canPickMany: false,
                 },
               );
@@ -639,7 +642,7 @@ export namespace SaveFileActions {
                   ")";
               } else {
                 result.successful = false;
-                result.error = t("Some parameters are missing... ");
+                result.error = vscode.l10n.t("Some parameters are missing... ");
                 return result;
               }
 
@@ -649,18 +652,18 @@ export namespace SaveFileActions {
               // Restore objects
               object = await vscode.window.showInputBox({
                 placeHolder: "OBJXXX",
-                title: t("Objects"),
+                title: vscode.l10n.t("Objects"),
                 value: "*ALL",
                 validateInput: (object) => {
                   if (object.length < 1 || object.length > 10) {
-                    return t("You need to specify a valid object name");
+                    return vscode.l10n.t("You need to specify a valid object name");
                   }
                 },
               });
 
               objtype = await vscode.window.showInputBox({
                 placeHolder: "*ALL",
-                title: t("Object types"),
+                title: vscode.l10n.t("Object types"),
                 value: "*ALL",
                 validateInput: (objtype) => {
                   if (
@@ -668,29 +671,29 @@ export namespace SaveFileActions {
                     objtype.length > 10 ||
                     !objtype.startsWith("*")
                   ) {
-                    return t("You need to specify a valid object type");
+                    return vscode.l10n.t("You need to specify a valid object type");
                   }
                 },
               });
 
               lib = await vscode.window.showInputBox({
                 placeHolder: "LIBXXX",
-                title: t("Saved library"),
+                title: vscode.l10n.t("Saved library"),
                 value: fromlib,
                 validateInput: (lib) => {
                   if (lib.length < 1 || lib.length > 10) {
-                    return t("You need to specify a valid library name");
+                    return vscode.l10n.t("You need to specify a valid library name");
                   }
                 },
               });
 
               tgtlib = await vscode.window.showInputBox({
                 placeHolder: "LIBYYY",
-                title: t("Restore to library"),
+                title: vscode.l10n.t("Restore to library"),
                 value: `*SAVLIB`,
                 validateInput: (tgtlib) => {
                   if (tgtlib.length < 1 || tgtlib.length > 10) {
-                    return t("You need to specify a valid library name");
+                    return vscode.l10n.t("You need to specify a valid library name");
                   }
                 },
               });
@@ -706,8 +709,8 @@ export namespace SaveFileActions {
                   "*PGP",
                 ],
                 {
-                  placeHolder: t("Allow object differences"),
-                  title: t("Allow object differences"),
+                  placeHolder: vscode.l10n.t("Allow object differences"),
+                  title: vscode.l10n.t("Allow object differences"),
                   canPickMany: true,
                 },
               );
@@ -715,8 +718,8 @@ export namespace SaveFileActions {
               option = await vscode.window.showQuickPick(
                 ["*ALL", "*NEW", "*OLD"],
                 {
-                  placeHolder: t("Option"),
-                  title: t("Option"),
+                  placeHolder: vscode.l10n.t("Option"),
+                  title: vscode.l10n.t("Option"),
                   canPickMany: false,
                 },
               );
@@ -724,8 +727,8 @@ export namespace SaveFileActions {
               dbmbropt = await vscode.window.showQuickPick(
                 ["*MATCH", "*ALL", "*NEW", "*OLD"],
                 {
-                  placeHolder: t("Data base member option"),
-                  title: t("Data base member option"),
+                  placeHolder: vscode.l10n.t("Data base member option"),
+                  title: vscode.l10n.t("Data base member option"),
                   canPickMany: false,
                 },
               );
@@ -762,7 +765,7 @@ export namespace SaveFileActions {
                   ")";
               } else {
                 result.successful = false;
-                result.error = t("Some parameters are missing... ");
+                result.error = vscode.l10n.t("Some parameters are missing... ");
                 return result;
               }
 
@@ -770,15 +773,15 @@ export namespace SaveFileActions {
           }
 
           // Allow user to confirm/modify the command
-          progress.report({ message: t("Wait for command confirmation...") });
+          progress.report({ message: vscode.l10n.t("Wait for command confirmation...") });
 
           cmd = await vscode.window.showInputBox({
             value: cmd,
             placeHolder: cmd,
-            title: t("Confirm command"),
+            title: vscode.l10n.t("Confirm command"),
             validateInput: (cmd) => {
               if (cmd.length < 1) {
-                return t("You need to specify a valid command");
+                return vscode.l10n.t("You need to specify a valid command");
               }
             },
           });
@@ -786,21 +789,21 @@ export namespace SaveFileActions {
           // Execute the restore command
           if (!cmd || cmd.length < 1) {
             result.successful = false;
-            result.error = t("Command not valid");
+            result.error = vscode.l10n.t("Command not valid");
           } else {
-            progress.report({ message: t("Command confirmed...") });
+            progress.report({ message: vscode.l10n.t("Command confirmed...") });
             const savecmd = await connection.runCommand({
               command: cmd,
             });
 
             if (savecmd.code !== 0) {
               result.successful = false;
-              result.error = t("Unable to restore: \n{0}", String(savecmd.stderr));
+              result.error = vscode.l10n.t("Unable to restore: \n{0}", String(savecmd.stderr));
             } else {
               result.successful = true;
               result.error = "";
             }
-            progress.report({ message: t("Restore operation completed...") });
+            progress.report({ message: vscode.l10n.t("Restore operation completed...") });
           }
 
           return result;
@@ -810,15 +813,15 @@ export namespace SaveFileActions {
       // Display result to user
       if (result.successful) {
         vscode.window.showInformationMessage(
-          t("Restore operation completed successfully"),
+          vscode.l10n.t("Restore operation completed successfully"),
         );
       } else {
-        vscode.window.showErrorMessage(t("Failed to Restore: {0}", result.error));
+        vscode.window.showErrorMessage(vscode.l10n.t("Failed to Restore: {0}", result.error));
       }
 
       return result.successful;
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -836,26 +839,35 @@ export namespace SaveFileActions {
 
     if (connection) {
       if(getProtected(connection,target.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
-      const savfInfo = await connection.runSQL(
+      const savfInfo = await executeSqlIfExists(
+        connection,
         `SELECT SAVE_COMMAND
-        FROM QSYS2.SAVE_FILE_INFO
-        WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
-        FETCH FIRST ROW ONLY`
+          FROM QSYS2.SAVE_FILE_INFO
+          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'
+          FETCH FIRST ROW ONLY`,
+        'QSYS2',
+        'SAVE_FILE_INFO',
+        'VIEW'
       );
 
+      if (savfInfo === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
+        return false;
+      }
+
       if (savfInfo && savfInfo[0].SAVE_COMMAND) {
-        vscode.window.showErrorMessage(t("Save file {0}/{1} is not empty", target.library, target.name));
+        vscode.window.showErrorMessage(vscode.l10n.t("Save file {0}/{1} is not empty", target.library, target.name));
         return false;
       }
       
       const result = await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: t("Save operation"),
+          title: vscode.l10n.t("Save operation"),
         },
         async (progress) => {
           const result = {
@@ -867,8 +879,8 @@ export namespace SaveFileActions {
           const choice = await vscode.window.showQuickPick(
             ["IFS", "LIBRARY", "OBJECT"],
             {
-              placeHolder: t("Choose your save type"),
-              title: t("Save"),
+              placeHolder: vscode.l10n.t("Choose your save type"),
+              title: vscode.l10n.t("Save"),
               canPickMany: false,
             },
           );
@@ -882,17 +894,17 @@ export namespace SaveFileActions {
               // Save IFS objects
               path = await vscode.window.showInputBox({
                 placeHolder: "/xxx",
-                title: t("Path to save"),
+                title: vscode.l10n.t("Path to save"),
                 validateInput: (path) => {
                   if (path.length < 1 && !path.startsWith("/")) {
-                    return t("You need to specify a valid path");
+                    return vscode.l10n.t("You need to specify a valid path");
                   }
                 },
               });
 
               tgtrls = await vscode.window.showInputBox({
                 placeHolder: "VXRXMX or *CURRENT or *PRV",
-                title: t("Target release"),
+                title: vscode.l10n.t("Target release"),
                 value: "*CURRENT",
                 validateInput: (tgtrls) => {
                   if (
@@ -900,7 +912,7 @@ export namespace SaveFileActions {
                     tgtrls.toUpperCase() !== "*PRV" &&
                     !/^V\dR\dM\d$/.test(tgtrls.toUpperCase())
                   ) {
-                    return t("You need to specify a valid target release");
+                    return vscode.l10n.t("You need to specify a valid target release");
                   }
                 },
               });
@@ -908,8 +920,8 @@ export namespace SaveFileActions {
               compression = await vscode.window.showQuickPick(
                 ["*NO", "*LOW", "*MEDIUM", "*HIGH", "*ZLIB"],
                 {
-                  placeHolder: t("Data compression"),
-                  title: t("Data compression"),
+                  placeHolder: vscode.l10n.t("Data compression"),
+                  title: vscode.l10n.t("Data compression"),
                   canPickMany: false,
                 },
               );
@@ -918,7 +930,7 @@ export namespace SaveFileActions {
                 cmd = `SAV DEV('${getQSYSObjectPath(target.library, target.name, "FILE")}') OBJ(('${path}')) DTACPR(${compression}) TGTRLS(${tgtrls})`;
               } else {
                 result.successful = false;
-                result.error = t("Some parameters are missing... ");
+                result.error = vscode.l10n.t("Some parameters are missing... ");
                 return result;
               }
 
@@ -928,17 +940,17 @@ export namespace SaveFileActions {
               // Save library
               lib = await vscode.window.showInputBox({
                 placeHolder: "LIBXXX",
-                title: t("Library"),
+                title: vscode.l10n.t("Library"),
                 validateInput: (lib) => {
                   if (lib.length < 1 || lib.length > 10) {
-                    return t("You need to specify a valid library name");
+                    return vscode.l10n.t("You need to specify a valid library name");
                   }
                 },
               });
 
               tgtrls = await vscode.window.showInputBox({
                 placeHolder: "VXRXMX or *CURRENT or *PRV",
-                title: t("Target release"),
+                title: vscode.l10n.t("Target release"),
                 value: "*CURRENT",
                 validateInput: (tgtrls) => {
                   if (
@@ -946,22 +958,22 @@ export namespace SaveFileActions {
                     tgtrls.toUpperCase() !== "*PRV" &&
                     !/^V\dR\dM\d$/.test(tgtrls.toUpperCase())
                   ) {
-                    return t("You need to specify a valid target release");
+                    return vscode.l10n.t("You need to specify a valid target release");
                   }
                 },
               });
 
               spool = await vscode.window.showQuickPick(["*NONE", "*ALL"], {
-                placeHolder: t("Spooled file data"),
-                title: t("Spooled file data"),
+                placeHolder: vscode.l10n.t("Spooled file data"),
+                title: vscode.l10n.t("Spooled file data"),
                 canPickMany: false,
               });
 
               compression = await vscode.window.showQuickPick(
                 ["*NO", "*LOW", "*MEDIUM", "*HIGH", "*ZLIB"],
                 {
-                  placeHolder: t("Data compression"),
-                  title: t("Data compression"),
+                  placeHolder: vscode.l10n.t("Data compression"),
+                  title: vscode.l10n.t("Data compression"),
                   canPickMany: false,
                 },
               );
@@ -984,7 +996,7 @@ export namespace SaveFileActions {
                   ")";
               } else {
                 result.successful = false;
-                result.error = t("Some parameters are missing... ");
+                result.error = vscode.l10n.t("Some parameters are missing... ");
                 return result;
               }
 
@@ -994,18 +1006,18 @@ export namespace SaveFileActions {
               // Save objects
               object = await vscode.window.showInputBox({
                 placeHolder: "OBJXXX",
-                title: t("Objects"),
+                title: vscode.l10n.t("Objects"),
                 value: "*ALL",
                 validateInput: (object) => {
                   if (object.length < 1 || object.length > 10) {
-                    return t("You need to specify a valid object name");
+                    return vscode.l10n.t("You need to specify a valid object name");
                   }
                 },
               });
 
               objtype = await vscode.window.showInputBox({
                 placeHolder: "*ALL",
-                title: t("Object types"),
+                title: vscode.l10n.t("Object types"),
                 value: "*ALL",
                 validateInput: (objtype) => {
                   if (
@@ -1013,24 +1025,24 @@ export namespace SaveFileActions {
                     objtype.length > 10 ||
                     !objtype.startsWith("*")
                   ) {
-                    return t("You need to specify a valid object type");
+                    return vscode.l10n.t("You need to specify a valid object type");
                   }
                 },
               });
 
               lib = await vscode.window.showInputBox({
                 placeHolder: "LIBXXX",
-                title: t("Library"),
+                title: vscode.l10n.t("Library"),
                 validateInput: (lib) => {
                   if (lib.length < 1 || lib.length > 10) {
-                    return t("You need to specify a valid library name");
+                    return vscode.l10n.t("You need to specify a valid library name");
                   }
                 },
               });
 
               tgtrls = await vscode.window.showInputBox({
                 placeHolder: "VXRXMX or *CURRENT or *PRV",
-                title: t("Target release"),
+                title: vscode.l10n.t("Target release"),
                 value: `*CURRENT`,
                 validateInput: (tgtrls) => {
                   if (
@@ -1038,22 +1050,22 @@ export namespace SaveFileActions {
                     tgtrls.toUpperCase() !== "*PRV" &&
                     !/^V\dR\dM\d$/.test(tgtrls.toUpperCase())
                   ) {
-                    return t("You need to specify a valid target release");
+                    return vscode.l10n.t("You need to specify a valid target release");
                   }
                 },
               });
 
               spool = await vscode.window.showQuickPick(["*NONE", "*ALL"], {
-                placeHolder: t("Spooled file data"),
-                title: t("Spooled file data"),
+                placeHolder: vscode.l10n.t("Spooled file data"),
+                title: vscode.l10n.t("Spooled file data"),
                 canPickMany: false,
               });
 
               compression = await vscode.window.showQuickPick(
                 ["*NO", "*LOW", "*MEDIUM", "*HIGH", "*ZLIB"],
                 {
-                  placeHolder: t("Data compression"),
-                  title: t("Data compression"),
+                  placeHolder: vscode.l10n.t("Data compression"),
+                  title: vscode.l10n.t("Data compression"),
                   canPickMany: false,
                 },
               );
@@ -1080,7 +1092,7 @@ export namespace SaveFileActions {
                   ")";
               } else {
                 result.successful = false;
-                result.error = t("Some parameters are missing... ");
+                result.error = vscode.l10n.t("Some parameters are missing... ");
                 return result;
               }
 
@@ -1088,15 +1100,15 @@ export namespace SaveFileActions {
           }
 
           // Allow user to confirm/modify the command
-          progress.report({ message: t("Wait for command confirmation...") });
+          progress.report({ message: vscode.l10n.t("Wait for command confirmation...") });
 
           cmd = await vscode.window.showInputBox({
             value: cmd,
             placeHolder: cmd,
-            title: t("Confirm command"),
+            title: vscode.l10n.t("Confirm command"),
             validateInput: (cmd) => {
               if (cmd.length < 1) {
-                return t("You need to specify a valid command");
+                return vscode.l10n.t("You need to specify a valid command");
               }
             },
           });
@@ -1104,21 +1116,21 @@ export namespace SaveFileActions {
           // Execute the save command
           if (!cmd || cmd.length < 1) {
             result.successful = false;
-            result.error = t("Command not valid");
+            result.error = vscode.l10n.t("Command not valid");
           } else {
-            progress.report({ message: t("Command confirmed...") });
+            progress.report({ message: vscode.l10n.t("Command confirmed...") });
             const savecmd = await connection.runCommand({
               command: cmd,
             });
 
             if (savecmd.code !== 0) {
               result.successful = false;
-              result.error = t("Unable to save: \n{0}", String(savecmd.stderr));
+              result.error = vscode.l10n.t("Unable to save: \n{0}", String(savecmd.stderr));
             } else {
               result.successful = true;
               result.error = "";
             }
-            progress.report({ message: t("Save operation completed...") });
+            progress.report({ message: vscode.l10n.t("Save operation completed...") });
           }
 
           return result;
@@ -1128,15 +1140,15 @@ export namespace SaveFileActions {
       // Display result to user
       if (result.successful) {
         vscode.window.showInformationMessage(
-          t("Save operation completed successfully"),
+          vscode.l10n.t("Save operation completed successfully"),
         );
       } else {
-        vscode.window.showErrorMessage(t("Failed to save: {0}", result.error));
+        vscode.window.showErrorMessage(vscode.l10n.t("Failed to save: {0}", result.error));
       }
 
       return result.successful;
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -1229,6 +1241,24 @@ export class SaveFile extends Base {
   private readonly spooledFiles: SpooledFile[] = [];
   private readonly ifsDirectories: IFSDirectory[] = [];
 
+  // Pagination properties for objects
+  private objectsCurrentPage: number = 1;
+  private objectsItemsPerPage: number = 50;
+  private objectsTotalItems: number = 0;
+
+  // Pagination properties for members
+  private membersCurrentPage: number = 1;
+  private membersItemsPerPage: number = 50;
+  private membersTotalItems: number = 0;
+
+  // Pagination properties for spooled files
+  private spoolsCurrentPage: number = 1;
+  private spoolsItemsPerPage: number = 50;
+  private spoolsTotalItems: number = 0;
+
+  // Track which table to update for pagination
+  private currentTableId: string = '';
+
   /**
    * Fetches save file information from IBM i
    * Retrieves metadata, objects, members, and spooled files
@@ -1241,14 +1271,23 @@ export class SaveFile extends Base {
 
     if (connection) {
       // Get save file information from system catalog
-      this.savf = await connection.runSQL(
-        `SELECT SAVE_FILE_LIBRARY, 
-        SAVE_FILE, 
-        SAVE_COMMAND 
-        FROM QSYS2.SAVE_FILE_INFO WHERE
-        SAVE_FILE_LIBRARY = '${this.library}' AND SAVE_FILE = '${this.name}'
-        Fetch first row only`,
+      this.savf = await executeSqlIfExists(
+        connection,
+        `SELECT SAVE_FILE_LIBRARY,
+          SAVE_FILE,
+          SAVE_COMMAND
+          FROM QSYS2.SAVE_FILE_INFO WHERE
+          SAVE_FILE_LIBRARY = '${this.library}' AND SAVE_FILE = '${this.name}'
+          Fetch first row only`,
+        'QSYS2',
+        'SAVE_FILE_INFO',
+        'VIEW'
       );
+
+      if (this.savf === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
+        return;
+      }
 
       isIfs = this.savf[0].SAVE_COMMAND === "SAV";
 
@@ -1268,6 +1307,29 @@ export class SaveFile extends Base {
       }
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);
+    }
+  }
+
+  /**
+   * Fetch only searchable data (objects/members/spools) without reloading headers
+   * This avoids reloading the Detail tab when searching/paginating in other tabs
+   */
+  async fetchSearchData(): Promise<void> {
+    // Fetch only the specific table based on currentTableId
+    switch (this.currentTableId) {
+      case 'objects':
+        await this.fetchObjects();
+        break;
+      case 'members':
+        await this.fetchMembers();
+        break;
+      case 'spools':
+        await this.fetchSpools();
+        break;
+      default:
+        // If no specific table, fetch all (used during initial load)
+        await this.fetchSavfLib();
+        break;
     }
   }
 
@@ -1305,59 +1367,283 @@ export class SaveFile extends Base {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-      // Fetch all objects
+      // Fetch objects with pagination
       this.objects.length = 0;
-      const objectsRows = await connection.runSQL(`
-          SELECT OBJECT_NAME,
-        OBJECT_TYPE,
-        OBJECT_ATTRIBUTE,
-        TEXT_DESCRIPTION,
-        to_char(SAVE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS SAVE_TIMESTAMP,
-        OBJECT_SIZE,
-        DATA_SAVED,
-        OBJECT_OWNER,
-        IASP_NAME
-        FROM TABLE (
+
+      // Get total count for objects
+      const objectsCountRows = await executeSqlIfExists(
+        connection,
+        `SELECT COUNT(*) as TOTAL
+          FROM TABLE (
             QSYS2.SAVE_FILE_OBJECTS(
-        SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
-        )`);
+              SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
+          )`,
+        'QSYS2',
+        'SAVE_FILE_OBJECTS',
+        'FUNCTION'
+      );
+
+      if (objectsCountRows === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
+        return;
+      }
+
+      this.objectsTotalItems = objectsCountRows.length > 0 ? Number(objectsCountRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for objects pagination
+      const objectsOffset = (this.objectsCurrentPage - 1) * this.objectsItemsPerPage;
+
+      // Fetch paginated objects
+      const objectsRows = await executeSqlIfExists(
+        connection,
+        `SELECT OBJECT_NAME,
+          OBJECT_TYPE,
+          OBJECT_ATTRIBUTE,
+          TEXT_DESCRIPTION,
+          to_char(SAVE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS SAVE_TIMESTAMP,
+          OBJECT_SIZE,
+          DATA_SAVED,
+          OBJECT_OWNER,
+          IASP_NAME
+          FROM TABLE (
+            QSYS2.SAVE_FILE_OBJECTS(
+              SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
+          )
+          ORDER BY OBJECT_NAME
+          LIMIT ${this.objectsItemsPerPage} OFFSET ${objectsOffset}`,
+        'QSYS2',
+        'SAVE_FILE_OBJECTS',
+        'FUNCTION'
+      );
+
+      if (objectsRows === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
+        return;
+      }
       this.objects.push(...objectsRows.map(this.toEntryObject));
 
-      // Fetch file members
+      // Fetch file members with pagination
       this.members.length = 0;
-      const memberRows = await connection.runSQL(`
-          SELECT OBJECT_NAME,
-        TEXT_DESCRIPTION,
-        MEMBER_NAME
+
+      // Get total count for members
+      const membersCountRows = await connection.runSQL(`
+        SELECT COUNT(*) as TOTAL
         FROM TABLE (
-            QSYS2.SAVE_FILE_OBJECTS(
-        SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
         )
-        where member_name is not null`);
+        WHERE MEMBER_NAME IS NOT NULL`);
+
+      this.membersTotalItems = membersCountRows.length > 0 ? Number(membersCountRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for members pagination
+      const membersOffset = (this.membersCurrentPage - 1) * this.membersItemsPerPage;
+
+      // Fetch paginated members
+      const memberRows = await connection.runSQL(`
+        SELECT OBJECT_NAME,
+          TEXT_DESCRIPTION,
+          MEMBER_NAME
+        FROM TABLE (
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
+        )
+        WHERE MEMBER_NAME IS NOT NULL
+        ORDER BY OBJECT_NAME, MEMBER_NAME
+        LIMIT ${this.membersItemsPerPage} OFFSET ${membersOffset}`);
       this.members.push(...memberRows.map(this.toEntryMember));
 
-      // Fetch spooled files
+      // Fetch spooled files with pagination
       this.spooledFiles.length = 0;
-      const spoolRows = await connection.runSQL(`
-          SELECT OBJECT_NAME,
-        TEXT_DESCRIPTION,
-        SPOOLED_FILE_NAME,
-        SPOOLED_FILE_NUMBER,
-        QUALIFIED_JOB_NAME,
-        JOB_NAME,
-        JOB_USER,
-        JOB_NUMBER,
-        SYSTEM_NAME,
-        to_char(CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS CREATE_TIMESTAMP
+
+      // Get total count for spools
+      const spoolsCountRows = await connection.runSQL(`
+        SELECT COUNT(*) as TOTAL
         FROM TABLE (
-            QSYS2.SAVE_FILE_OBJECTS(
-        SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*OUTQ', DETAILED_INFO => 'OUTQ')
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*OUTQ', DETAILED_INFO => 'OUTQ')
         )
         WHERE SPOOLED_FILE_NAME IS NOT NULL`);
+
+      this.spoolsTotalItems = spoolsCountRows.length > 0 ? Number(spoolsCountRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for spools pagination
+      const spoolsOffset = (this.spoolsCurrentPage - 1) * this.spoolsItemsPerPage;
+
+      // Fetch paginated spools
+      const spoolRows = await connection.runSQL(`
+        SELECT OBJECT_NAME,
+          TEXT_DESCRIPTION,
+          SPOOLED_FILE_NAME,
+          SPOOLED_FILE_NUMBER,
+          QUALIFIED_JOB_NAME,
+          JOB_NAME,
+          JOB_USER,
+          JOB_NUMBER,
+          SYSTEM_NAME,
+          to_char(CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS CREATE_TIMESTAMP
+        FROM TABLE (
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*OUTQ', DETAILED_INFO => 'OUTQ')
+        )
+        WHERE SPOOLED_FILE_NAME IS NOT NULL
+        ORDER BY OBJECT_NAME, SPOOLED_FILE_NAME
+        LIMIT ${this.spoolsItemsPerPage} OFFSET ${spoolsOffset}`);
       this.spooledFiles.push(...spoolRows.map(this.toEntrySpool));
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
+    }
+  }
+
+  /**
+   * Fetches only objects from the save file with pagination
+   */
+  private async fetchObjects() {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+
+    if (connection) {
+      this.objects.length = 0;
+
+      // Get total count for objects
+      const objectsCountRows = await executeSqlIfExists(
+        connection,
+        `SELECT COUNT(*) as TOTAL
+          FROM TABLE (
+            QSYS2.SAVE_FILE_OBJECTS(
+              SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
+          )`,
+        'QSYS2',
+        'SAVE_FILE_OBJECTS',
+        'FUNCTION'
+      );
+
+      if (objectsCountRows === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
+        return;
+      }
+
+      this.objectsTotalItems = objectsCountRows.length > 0 ? Number(objectsCountRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for objects pagination
+      const objectsOffset = (this.objectsCurrentPage - 1) * this.objectsItemsPerPage;
+
+      // Fetch paginated objects
+      const objectsRows = await executeSqlIfExists(
+        connection,
+        `SELECT OBJECT_NAME,
+          OBJECT_TYPE,
+          OBJECT_ATTRIBUTE,
+          TEXT_DESCRIPTION,
+          to_char(SAVE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS SAVE_TIMESTAMP,
+          OBJECT_SIZE,
+          DATA_SAVED,
+          OBJECT_OWNER,
+          IASP_NAME
+          FROM TABLE (
+            QSYS2.SAVE_FILE_OBJECTS(
+              SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
+          )
+          ORDER BY OBJECT_NAME
+          LIMIT ${this.objectsItemsPerPage} OFFSET ${objectsOffset}`,
+        'QSYS2',
+        'SAVE_FILE_OBJECTS',
+        'FUNCTION'
+      );
+
+      if (objectsRows === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
+        return;
+      }
+      this.objects.push(...objectsRows.map(this.toEntryObject));
+    }
+  }
+
+  /**
+   * Fetches only members from the save file with pagination
+   */
+  private async fetchMembers() {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+
+    if (connection) {
+      this.members.length = 0;
+
+      // Get total count for members
+      const membersCountRows = await connection.runSQL(`
+        SELECT COUNT(*) as TOTAL
+        FROM TABLE (
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
+        )
+        WHERE MEMBER_NAME IS NOT NULL`);
+
+      this.membersTotalItems = membersCountRows.length > 0 ? Number(membersCountRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for members pagination
+      const membersOffset = (this.membersCurrentPage - 1) * this.membersItemsPerPage;
+
+      // Fetch paginated members
+      const memberRows = await connection.runSQL(`
+        SELECT OBJECT_NAME,
+          TEXT_DESCRIPTION,
+          MEMBER_NAME
+        FROM TABLE (
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
+        )
+        WHERE MEMBER_NAME IS NOT NULL
+        ORDER BY OBJECT_NAME, MEMBER_NAME
+        LIMIT ${this.membersItemsPerPage} OFFSET ${membersOffset}`);
+      this.members.push(...memberRows.map(this.toEntryMember));
+    }
+  }
+
+  /**
+   * Fetches only spooled files from the save file with pagination
+   */
+  private async fetchSpools() {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+
+    if (connection) {
+      this.spooledFiles.length = 0;
+
+      // Get total count for spools
+      const spoolsCountRows = await connection.runSQL(`
+        SELECT COUNT(*) as TOTAL
+        FROM TABLE (
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*OUTQ', DETAILED_INFO => 'OUTQ')
+        )
+        WHERE SPOOLED_FILE_NAME IS NOT NULL`);
+
+      this.spoolsTotalItems = spoolsCountRows.length > 0 ? Number(spoolsCountRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for spools pagination
+      const spoolsOffset = (this.spoolsCurrentPage - 1) * this.spoolsItemsPerPage;
+
+      // Fetch paginated spools
+      const spoolRows = await connection.runSQL(`
+        SELECT OBJECT_NAME,
+          TEXT_DESCRIPTION,
+          SPOOLED_FILE_NAME,
+          SPOOLED_FILE_NUMBER,
+          QUALIFIED_JOB_NAME,
+          JOB_NAME,
+          JOB_USER,
+          JOB_NUMBER,
+          SYSTEM_NAME,
+          to_char(CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS CREATE_TIMESTAMP
+        FROM TABLE (
+          QSYS2.SAVE_FILE_OBJECTS(
+            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*OUTQ', DETAILED_INFO => 'OUTQ')
+        )
+        WHERE SPOOLED_FILE_NAME IS NOT NULL
+        ORDER BY OBJECT_NAME, SPOOLED_FILE_NAME
+        LIMIT ${this.spoolsItemsPerPage} OFFSET ${spoolsOffset}`);
+      this.spooledFiles.push(...spoolRows.map(this.toEntrySpool));
     }
   }
 
@@ -1478,7 +1764,7 @@ export class SaveFile extends Base {
 
     return generateDetailTable({
       title: `Save File: ${this.library}/${this.name}`,
-      subtitle: t("Save File Information"),
+      subtitle: vscode.l10n.t("Save File Information"),
       columns: columns,
       data: data
     });
@@ -1491,7 +1777,7 @@ export class SaveFile extends Base {
   generateHTML(): string {
     const panels: Components.Panel[] = [
       {
-        title: t("Detail"),
+        title: vscode.l10n.t("Detail"),
         content: this.renderSavfPanel(this.headers),
       },
     ];
@@ -1503,36 +1789,54 @@ export class SaveFile extends Base {
         0,
       );
       panels.push({
-        title: t("IFS Objects"),
+        title: vscode.l10n.t("IFS Objects"),
         badge: totalIFSObjects,
         content: renderIFSDirectories(this.ifsDirectories),
       });
     }
 
-    // Add objects panel if present
-    if (this.objects.length) {
+    // Add objects panel if present (always show panel even if empty to allow search)
+    if (this.objects.length || this.objectsTotalItems > 0) {
       panels.push({
-        title: t("Objects"),
-        badge: this.objects.length,
-        content: renderObjects(this.objects),
+        title: vscode.l10n.t("Objects"),
+        badge: this.objectsTotalItems,
+        content: renderObjects(
+          this.objects,
+          this.objectsCurrentPage,
+          this.objectsItemsPerPage,
+          this.objectsTotalItems,
+          'objects'
+        ),
       });
     }
 
-    // Add members panel if present
-    if (this.members.length) {
+    // Add members panel if present (always show panel even if empty to allow search)
+    if (this.members.length || this.membersTotalItems > 0) {
       panels.push({
-        title: t("Members"),
-        badge: this.members.length,
-        content: renderMembers(this.members),
+        title: vscode.l10n.t("Members"),
+        badge: this.membersTotalItems,
+        content: renderMembers(
+          this.members,
+          this.membersCurrentPage,
+          this.membersItemsPerPage,
+          this.membersTotalItems,
+          'members'
+        ),
       });
     }
 
-    // Add spooled files panel if present
-    if (this.spooledFiles.length) {
+    // Add spooled files panel if present (always show panel even if empty to allow search)
+    if (this.spooledFiles.length || this.spoolsTotalItems > 0) {
       panels.push({
-        title: t("Spooled files"),
-        badge: this.spooledFiles.length,
-        content: renderSpooledFiles(this.spooledFiles),
+        title: vscode.l10n.t("Spooled files"),
+        badge: this.spoolsTotalItems,
+        content: renderSpooledFiles(
+          this.spooledFiles,
+          this.spoolsCurrentPage,
+          this.spoolsItemsPerPage,
+          this.spoolsTotalItems,
+          'spools'
+        ),
       });
     }
 
@@ -1559,18 +1863,24 @@ export class SaveFile extends Base {
  * @param entries - Array of Object entries to display
  * @returns HTML string for the objects table
  */
-function renderObjects(entries: Object[]) {
+function renderObjects(
+  entries: Object[],
+  currentPage: number = 1,
+  itemsPerPage: number = 10,
+  totalItems: number = 0,
+  tableId: string = ''
+) {
   // Define table columns with their properties
   const columns: FastTableColumn<Object>[] = [
-    { title: t("Name"), width: "1fr", getValue: (e) => e.name },
-    { title: t("Type"), width: "0.5fr", getValue: (e) => e.type },
-    { title: t("Attribute"), width: "0.5fr", getValue: (e) => e.attribute },
-    { title: t("Description"), width: "2.5fr", getValue: (e) => e.text },
-    { title: t("Save date"), width: "1fr", getValue: (e) => e.savets },
-    { title: t("Size"), width: "1fr", getValue: (e) => e.size },
-    { title: t("With Data?"), width: "0.5fr", getValue: (e) => e.data },
-    { title: t("Owner"), width: "0.7fr", getValue: (e) => e.owner },
-    { title: t("iASP"), width: "0.7fr", getValue: (e) => e.iasp },
+    { title: vscode.l10n.t("Name"), width: "1fr", getValue: (e) => e.name },
+    { title: vscode.l10n.t("Type"), width: "0.5fr", getValue: (e) => e.type },
+    { title: vscode.l10n.t("Attribute"), width: "0.5fr", getValue: (e) => e.attribute },
+    { title: vscode.l10n.t("Description"), width: "2.5fr", getValue: (e) => e.text },
+    { title: vscode.l10n.t("Save date"), width: "1fr", getValue: (e) => e.savets },
+    { title: vscode.l10n.t("Size"), width: "1fr", getValue: (e) => e.size },
+    { title: vscode.l10n.t("With Data?"), width: "0.5fr", getValue: (e) => e.data },
+    { title: vscode.l10n.t("Owner"), width: "0.7fr", getValue: (e) => e.owner },
+    { title: vscode.l10n.t("iASP"), width: "0.7fr", getValue: (e) => e.iasp },
   ];
 
   // Custom CSS styles for the objects table
@@ -1586,12 +1896,17 @@ function renderObjects(entries: Object[]) {
     `<div class="savf-object-table">` +
     generateFastTable({
       title: ``,
-      subtitle: ``,
+      subtitle: vscode.l10n.t("Total Objects: {0}", String(totalItems)),
       columns: columns,
       data: entries,
       stickyHeader: true,
-      emptyMessage: t("No objects found in this savf."),
+      emptyMessage: vscode.l10n.t("No objects found in this savf."),
       customStyles: customStyles,
+      enablePagination: true,
+      itemsPerPage: itemsPerPage,
+      totalItems: totalItems,
+      currentPage: currentPage,
+      tableId: tableId
     }) +
     `</div>`
   );
@@ -1602,12 +1917,18 @@ function renderObjects(entries: Object[]) {
  * @param entries - Array of FileMember entries to display
  * @returns HTML string for the members table
  */
-function renderMembers(entries: FileMember[]) {
+function renderMembers(
+  entries: FileMember[],
+  currentPage: number = 1,
+  itemsPerPage: number = 50,
+  totalItems: number = 0,
+  tableId: string = ''
+) {
   // Define table columns with their properties
   const columns: FastTableColumn<FileMember>[] = [
-    { title: t("File Name"), width: "1fr", getValue: (e) => e.name },
-    { title: t("File Description"), width: "3fr", getValue: (e) => e.text },
-    { title: t("Member name"), width: "1fr", getValue: (e) => e.member },
+    { title: vscode.l10n.t("File Name"), width: "1fr", getValue: (e) => e.name },
+    { title: vscode.l10n.t("File Description"), width: "3fr", getValue: (e) => e.text },
+    { title: vscode.l10n.t("Member name"), width: "1fr", getValue: (e) => e.member },
   ];
 
   // Generate and return the complete table HTML
@@ -1615,11 +1936,16 @@ function renderMembers(entries: FileMember[]) {
     `<div>` +
     generateFastTable({
       title: ``,
-      subtitle: ``,
+      subtitle: vscode.l10n.t("Total Members: {0}", String(totalItems)),
       columns: columns,
       data: entries,
       stickyHeader: true,
-      emptyMessage: t("No objects found in this savf."),
+      emptyMessage: vscode.l10n.t("No members found in this savf."),
+      enablePagination: true,
+      itemsPerPage: itemsPerPage,
+      totalItems: totalItems,
+      currentPage: currentPage,
+      tableId: tableId
     }) +
     `</div>`
   );
@@ -1630,16 +1956,22 @@ function renderMembers(entries: FileMember[]) {
  * @param entries - Array of SpooledFile entries to display
  * @returns HTML string for the spooled files table
  */
-function renderSpooledFiles(entries: SpooledFile[]) {
+function renderSpooledFiles(
+  entries: SpooledFile[],
+  currentPage: number = 1,
+  itemsPerPage: number = 50,
+  totalItems: number = 0,
+  tableId: string = ''
+) {
   // Define table columns with their properties
   const columns: FastTableColumn<SpooledFile>[] = [
-    { title: t("Outq Name"), width: "1fr", getValue: (e) => e.name },
-    { title: t("Outq Description"), width: "3fr", getValue: (e) => e.text },
-    { title: t("Spool name"), width: "1fr", getValue: (e) => e.spoolname },
-    { title: t("Spool number"), width: "0.8fr", getValue: (e) => String(e.spoolnumber) },
-    { title: t("Job"), width: "2fr", getValue: (e) => e.job },
-    { title: t("System"), width: "1fr", getValue: (e) => e.system },
-    { title: t("Creation"), width: "1fr", getValue: (e) => e.creation },
+    { title: vscode.l10n.t("Outq Name"), width: "1fr", getValue: (e) => e.name },
+    { title: vscode.l10n.t("Outq Description"), width: "3fr", getValue: (e) => e.text },
+    { title: vscode.l10n.t("Spool name"), width: "1fr", getValue: (e) => e.spoolname },
+    { title: vscode.l10n.t("Spool number"), width: "0.8fr", getValue: (e) => String(e.spoolnumber) },
+    { title: vscode.l10n.t("Job"), width: "2fr", getValue: (e) => e.job },
+    { title: vscode.l10n.t("System"), width: "1fr", getValue: (e) => e.system },
+    { title: vscode.l10n.t("Creation"), width: "1fr", getValue: (e) => e.creation },
   ];
 
   // Generate and return the complete table HTML
@@ -1647,11 +1979,16 @@ function renderSpooledFiles(entries: SpooledFile[]) {
     `<div>` +
     generateFastTable({
       title: ``,
-      subtitle: ``,
+      subtitle: vscode.l10n.t("Total Spooled Files: {0}", String(totalItems)),
       columns: columns,
       data: entries,
       stickyHeader: true,
-      emptyMessage: t("No objects found in this savf."),
+      emptyMessage: vscode.l10n.t("No spooled files found in this savf."),
+      enablePagination: true,
+      itemsPerPage: itemsPerPage,
+      totalItems: totalItems,
+      currentPage: currentPage,
+      tableId: tableId
     }) +
     `</div>`
   );
@@ -1672,17 +2009,17 @@ function renderIFSDirectories(directories: IFSDirectory[]): string {
       {
         stickyHeader: false,
         columns: [
-          { title: t("Name"), cellValue: (obj) => obj.name, size: "2fr" },
-          { title: t("Type"), cellValue: (obj) => obj.type, size: "1fr" },
-          { title: t("Owner"), cellValue: (obj) => obj.owner, size: "1fr" },
+          { title: vscode.l10n.t("Name"), cellValue: (obj) => obj.name, size: "2fr" },
+          { title: vscode.l10n.t("Type"), cellValue: (obj) => obj.type, size: "1fr" },
+          { title: vscode.l10n.t("Owner"), cellValue: (obj) => obj.owner, size: "1fr" },
           {
-            title: t("Size"),
+            title: vscode.l10n.t("Size"),
             cellValue: (obj) => `${(obj.size / 1024).toFixed(2)} KB`,
             size: "1fr",
           },
-          { title: t("Data"), cellValue: (obj) => obj.data, size: "0.5fr" },
+          { title: vscode.l10n.t("Data"), cellValue: (obj) => obj.data, size: "0.5fr" },
           {
-            title: t("Checkpoint"),
+            title: vscode.l10n.t("Checkpoint"),
             cellValue: (obj) => obj.allowCheckpoint,
             size: "0.5fr",
           },

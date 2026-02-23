@@ -25,10 +25,9 @@
 
 import Base from "./base";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable } from "../tools";
+import { getColumns, generateDetailTable, checkProcedureExists, checkViewExists, checkTableFunctionExists } from "../tools";
 import * as vscode from 'vscode';
 import { CommandResult } from "@halcyontech/vscode-ibmi-types";
-import { t } from '../l10n';
 
 /**
  * Class (CLS) object class
@@ -70,27 +69,14 @@ export default class Cls extends Base {
     if (connection) {
       // Check if required SQL objects exist in the temporary library
       // We need: QWCRCLSI procedure, CLASS_INFO view, and CLASS_INFO function
-      let check = await connection.runSQL(
-        `SELECT SUM(CONTEGGIO) AS objok
-          FROM (
-                  SELECT COUNT(*) AS CONTEGGIO
-                      FROM qsys2.sysroutines
-                      WHERE specific_schema = '${connection.getConfig().tempLibrary}'
-                            AND SPECIFIC_NAME = 'QWCRCLSI'
-                  UNION ALL
-                  SELECT COUNT(*) AS CONTEGGIO
-                      FROM QSYS2.sysviews
-                      WHERE table_schema = '${connection.getConfig().tempLibrary}'
-                            AND table_name = 'CLASS_INFO'
-                  UNION ALL
-                  SELECT COUNT(*) AS CONTEGGIO
-                      FROM QSYS2.SYSFUNCS
-                      WHERE specific_schema = '${connection.getConfig().tempLibrary}'
-                            AND SPECIFIC_NAME = 'CLASS_INFO'
-         )`);
+      const tempLib = connection.getConfig().tempLibrary;
+      
+      const procedureExists = await checkProcedureExists(connection, tempLib, 'QWCRCLSI');
+      const viewExists = await checkViewExists(connection, tempLib, 'CLASS_INFO');
+      const functionExists = await checkTableFunctionExists(connection, tempLib, 'CLASS_INFO');
      
      // If any of the 3 required objects are missing, create them all
-     if(!check || check[0].OBJOK!==3){
+     if(!procedureExists || !viewExists || !functionExists){
        try{
          // Write SQL script to create the required objects
           const content=connection.getContent();
@@ -259,7 +245,7 @@ export default class Cls extends Base {
             });
 
             if (runsql.code !== 0) {
-              vscode.window.showErrorMessage(t("Unable to create necessary objects for displaying classes."));
+              vscode.window.showErrorMessage(vscode.l10n.t("Unable to create necessary SQL objects for displaying classes."));
               return;
             } else {
               // Clean up the temporary SQL script file
@@ -269,12 +255,12 @@ export default class Cls extends Base {
               });
             }
           } else {
-            vscode.window.showErrorMessage(t("Unable to create necessary objects for displaying classes."));
+            vscode.window.showErrorMessage(vscode.l10n.t("Unable to create necessary SQL objects for displaying classes."));
             return;
           }
         } catch (error) {
           console.dir(error)
-          vscode.window.showErrorMessage(t("Unable to create necessary objects for displaying classes."));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to create necessary SQL objects for displaying classes."));
           return;
         }
       }
@@ -282,16 +268,16 @@ export default class Cls extends Base {
       // Define column mappings for display
       // Maps database column names to user-friendly display labels
       this.columns= new Map<string,string>([
-        ['TEXT_DESCRIPTION', t('Text')],
-        ['LAST_USED_TIMESTAMP', t('Last used date')],
-        ['USE_COUNT', t('Days used count')],
-        ['RUN_PRIORITY', t('Run priority')],
-        ['TIME_SLICE', t('Time slice in ms')],
-        ['ELIGIBLE_PURGE', t('Eligible for purge')],
-        ['DEFAULT_WAIT', t('Default wait time in s')],
-        ['MAXIMUM_CPU_TIME', t('Maximum CPU time in ms')],
-        ['MAXIMUM_TEMPORARY_STORAGE_ALLOWED', t('Maximum temporary storage in MB')],
-        ['MAXIMUM_ACTIVE_THREADS', t('Maximum threads')]
+        ['TEXT_DESCRIPTION', vscode.l10n.t('Text')],
+        ['LAST_USED_TIMESTAMP', vscode.l10n.t('Last used date')],
+        ['USE_COUNT', vscode.l10n.t('Days used count')],
+        ['RUN_PRIORITY', vscode.l10n.t('Run priority')],
+        ['TIME_SLICE', vscode.l10n.t('Time slice in ms')],
+        ['ELIGIBLE_PURGE', vscode.l10n.t('Eligible for purge')],
+        ['DEFAULT_WAIT', vscode.l10n.t('Default wait time in s')],
+        ['MAXIMUM_CPU_TIME', vscode.l10n.t('Maximum CPU time in ms')],
+        ['MAXIMUM_TEMPORARY_STORAGE_ALLOWED', vscode.l10n.t('Maximum temporary storage in MB')],
+        ['MAXIMUM_ACTIVE_THREADS', vscode.l10n.t('Maximum threads')]
       ])
 
       // Query the class information for the specific class
@@ -309,7 +295,7 @@ export default class Cls extends Base {
         FROM ${connection.getConfig().tempLibrary}.class_info
         where CLASS_LIBRARY= '${this.library}' and CLASS_NAME = '${this.name}'`)
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -328,8 +314,8 @@ export default class Cls extends Base {
    */
   generateHTML(): string {
     return generateDetailTable({
-      title: t("Class: {0}/{1}", this.library, this.name),
-      subtitle: t('Class Information'),
+      title: vscode.l10n.t("Class: {0}/{1}", this.library, this.name),
+      subtitle: vscode.l10n.t('Class Information'),
       columns: this.columns,
       data: this.cls,
       hideNullValues:true

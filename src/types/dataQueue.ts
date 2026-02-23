@@ -21,9 +21,8 @@ import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected } from "../tools";
+import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected, checkProcedureExists, checkTableFunctionExists, checkViewExists, executeSqlIfExists } from "../tools";
 import ObjectProvider from '../objectProvider';
-import { t } from '../l10n';
 
 /**
  * Namespace containing actions for Data Queue objects
@@ -95,24 +94,36 @@ export namespace DataQueueActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
-      if (await vscode.window.showWarningMessage(t("Are you sure you want to clear Data Queue {0}/{1}?", library, name), { modal: true }, t("Clear DTAQ"))) {
+      if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Data Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Clear DTAQ"))) {
         try {
-          await connection.runSQL(`Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}');`);
-          vscode.window.showInformationMessage(t("Data Queue {0}/{1} cleared.", library, name));
+          const result = await executeSqlIfExists(
+            connection,
+            `Call QSYS2.CLEAR_DATA_QUEUE('${name}', '${library}')`,
+            'QSYS2',
+            'CLEAR_DATA_QUEUE',
+            'PROCEDURE'
+          );
+
+          if (result === null) {
+            vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "PROCEDURE", "QSYS2", "CLEAR_DATA_QUEUE"));
+            return false;
+          }
+
+          vscode.window.showInformationMessage(vscode.l10n.t("Data Queue {0}/{1} cleared.", library, name));
           return true;
         } catch (error) {
-          vscode.window.showErrorMessage(t("An error occurred while clearing DTAQ {0}/{1}", library, name));
+          vscode.window.showErrorMessage(vscode.l10n.t("An error occurred while clearing DTAQ {0}/{1}", library, name));
           return false;
        }
       } else {
         return false;
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -128,7 +139,7 @@ export namespace DataQueueActions {
     const connection = ibmi?.getConnection();
     if (connection) {
       if(getProtected(connection,item.library)){
-        vscode.window.showWarningMessage(t("Unable to perform object action because it is protected."));
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
 
@@ -141,7 +152,7 @@ export namespace DataQueueActions {
         return _sendToDataQueue(dataQueue);
       }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
   };
@@ -154,11 +165,11 @@ export namespace DataQueueActions {
   export const _sendToDataQueue = async (dataQueue: Dtaq): Promise<boolean> => {
     // Get key data if this is a keyed data queue
     const key = dataQueue.keyed ? await vscode.window.showInputBox({
-      placeHolder: t("key data"),
-      title: t("Enter key data"),
+      placeHolder: vscode.l10n.t("key data"),
+      title: vscode.l10n.t("Enter key data"),
       validateInput: data => {
         if (data.length > Number(dataQueue.keyLength)) {
-          return t("Key data is too long (maximum {0} characters)", String(dataQueue.keyLength));
+          return vscode.l10n.t("Key data is too long (maximum {0} characters)", String(dataQueue.keyLength));
         }
       }
     }) : "";
@@ -166,21 +177,21 @@ export namespace DataQueueActions {
     if (!dataQueue.keyed || key) {
       // Ask if message is in UTF8 format
       const fmt = await vscode.window.showQuickPick(
-        [t("YES"), t("NO")],
+        [vscode.l10n.t("YES"), vscode.l10n.t("NO")],
         {
-          placeHolder: t("Is message in UTF8 format?"),
-          title: t("Is message in UTF8 format?"),
+          placeHolder: vscode.l10n.t("Is message in UTF8 format?"),
+          title: vscode.l10n.t("Is message in UTF8 format?"),
           canPickMany: false,
         },
       );
       
       // Get the message data
       const data = await vscode.window.showInputBox({
-        placeHolder: t("message"),
-        title: t("Enter message"),
+        placeHolder: vscode.l10n.t("message"),
+        title: vscode.l10n.t("Enter message"),
         validateInput: data => {
           if (data.length > Number(dataQueue.maximumMessageLength)) {
-            return t("Message is too long (maximum {0} characters)", String(dataQueue.maximumMessageLength));
+            return vscode.l10n.t("Message is too long (maximum {0} characters)", String(dataQueue.maximumMessageLength));
           }
         }
       });
@@ -191,21 +202,32 @@ export namespace DataQueueActions {
         if (connection) {
           try {
             // Use UTF8 or standard procedure based on user input
-            if (fmt === t("YES")) {
-              await connection.runSQL(`CALL QSYS2.SEND_DATA_QUEUE_UTF8(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',
-                                DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
-            } else {
-              await connection.runSQL(`CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}',
-                                DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`);
+            const procName = fmt === vscode.l10n.t("YES") ? 'SEND_DATA_QUEUE_UTF8' : 'SEND_DATA_QUEUE';
+            const sqlCall = fmt === vscode.l10n.t("YES")
+              ? `CALL QSYS2.SEND_DATA_QUEUE_UTF8(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}', DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`
+              : `CALL QSYS2.SEND_DATA_QUEUE(${key ? `KEY_DATA => '${key}',` : ""} MESSAGE_DATA => '${data}', DATA_QUEUE => '${dataQueue.name}', DATA_QUEUE_LIBRARY => '${dataQueue.library}')`;
+
+            const result = await executeSqlIfExists(
+              connection,
+              sqlCall,
+              'QSYS2',
+              procName,
+              'PROCEDURE'
+            );
+
+            if (result === null) {
+              vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "PROCEDURE", "QSYS2", procName));
+              return false;
             }
-            vscode.window.showInformationMessage(t("Data successfully sent to {0}/{1}.", dataQueue.library, dataQueue.name));
+
+            vscode.window.showInformationMessage(vscode.l10n.t("Data successfully sent to {0}/{1}.", dataQueue.library, dataQueue.name));
             return true;
           } catch (error) {
-            vscode.window.showErrorMessage(t("An error occurred while sending data to DTAQ {0}/{1}", dataQueue.library, dataQueue.name));
+            vscode.window.showErrorMessage(vscode.l10n.t("An error occurred while sending data to DTAQ {0}/{1}", dataQueue.library, dataQueue.name));
             return false;
           }
         } else {
-          vscode.window.showErrorMessage(t("Not connected to IBM i"));
+          vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
           return false;
         }
       }
@@ -281,11 +303,21 @@ export class Dtaq extends Base {
       let sql: string;
 
       // First query to get data queue type
-      this.dtaq = await connection.runSQL(
+      this.dtaq = await executeSqlIfExists(
+        connection,
         `SELECT DATA_QUEUE_TYPE
         FROM QSYS2.DATA_QUEUE_INFO
         WHERE DATA_QUEUE_NAME = '${this.name}' AND DATA_QUEUE_LIBRARY = '${this.library}'
-        Fetch first row only`)
+        Fetch first row only`,
+        'QSYS2',
+        'DATA_QUEUE_INFO',
+        'VIEW'
+      );
+
+      if (this.dtaq === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_QUEUE_INFO"));
+        return;
+      }
 
       // Build SQL based on data queue type (DDM vs standard)
       if (this.dtaq[0].DATA_QUEUE_TYPE === 'DDM') {
@@ -321,9 +353,20 @@ export class Dtaq extends Base {
                 WHERE DATA_QUEUE_NAME = '${this.name}' AND DATA_QUEUE_LIBRARY = '${this.library}'
                 Fetch first row only`
 
-      this.dtaq = await connection.runSQL(sql)
+      this.dtaq = await executeSqlIfExists(
+        connection,
+        sql,
+        'QSYS2',
+        'DATA_QUEUE_INFO',
+        'VIEW'
+      );
+
+      if (this.dtaq === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_QUEUE_INFO"));
+        return;
+      }
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -336,8 +379,9 @@ export class Dtaq extends Base {
     const connection = ibmi?.getConnection();
     if (connection) {
       this._entries.length = 0;
-      const entryRows = await connection.runSQL(`
-                Select MESSAGE_DATA,
+      const entryRows = await executeSqlIfExists(
+        connection,
+        `Select MESSAGE_DATA,
                 MESSAGE_DATA_UTF8,
                 to_char(MESSAGE_ENQUEUE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') as MESSAGE_ENQUEUE_TIMESTAMP,
                 SENDER_JOB_NAME,
@@ -346,11 +390,20 @@ export class Dtaq extends Base {
                     DATA_QUEUE_LIBRARY => '${this.library}',
                     DATA_QUEUE => '${this.name}'
                 ))
-                Order By ORDINAL_POSITION`);
+                Order By ORDINAL_POSITION`,
+        'QSYS2',
+        'DATA_QUEUE_ENTRIES',
+        'FUNCTION'
+      );
+
+      if (entryRows === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "DATA_QUEUE_ENTRIES"));
+        return;
+      }
 
       this._entries.push(...entryRows.map(toEntry));
     } else {
-      vscode.window.showErrorMessage(t("Not connected to IBM i"));
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
     }
   }
@@ -361,9 +414,9 @@ export class Dtaq extends Base {
    */
   generateHTML(): string {
     return Components.panels([
-      { title: t("Detail"), content: this.renderDataQueuePanel() },
-      { title: t("Messages"), badge: this._entries.length, content: renderEntries(this._keyed, this._entries, false) },
-      { title: t("Messages UTF8"), badge: this._entries.length, content: renderEntries(this._keyed, this._entries, true) }
+      { title: vscode.l10n.t("Detail"), content: this.renderDataQueuePanel() },
+      { title: vscode.l10n.t("Messages"), badge: this._entries.length, content: renderEntries(this._keyed, this._entries, false) },
+      { title: vscode.l10n.t("Messages UTF8"), badge: this._entries.length, content: renderEntries(this._keyed, this._entries, true) }
     ]);
   }
 
@@ -389,8 +442,8 @@ export class Dtaq extends Base {
    */
   private renderDataQueuePanel(): string {
     return generateDetailTable({
-      title: t("Data Queue: {0}/{1}", this.library, this.name),
-      subtitle: t("Data Queue Information"),
+      title: vscode.l10n.t("Data Queue: {0}/{1}", this.library, this.name),
+      subtitle: vscode.l10n.t("Data Queue Information"),
       columns: this.columns,
       data: this.dtaq
     });
@@ -422,18 +475,18 @@ function toEntry(row: Tools.DB2Row): Entry {
  */
 function renderEntries(keyed: boolean, entries: Entry[], isUtf8: boolean) {
   const columns: FastTableColumn<Entry>[] = [
-    { title: t("Timestamp"), width: "0.5fr", getValue: e => e.timestamp },
-    { title: t("User"), width: "0.5fr", getValue: e => e.senderUser },
+    { title: vscode.l10n.t("Timestamp"), width: "0.5fr", getValue: e => e.timestamp },
+    { title: vscode.l10n.t("User"), width: "0.5fr", getValue: e => e.senderUser },
   ];
 
   if (isUtf8) {
-    columns.push({ title: t("Message"), width: "3fr", getValue: e => e.datautf8 });
+    columns.push({ title: vscode.l10n.t("Message"), width: "3fr", getValue: e => e.datautf8 });
   } else {
-    columns.push({ title: t("Message"), width: "3fr", getValue: e => e.data });
+    columns.push({ title: vscode.l10n.t("Message"), width: "3fr", getValue: e => e.data });
   }
 
   if (keyed) {
-    columns.push({ title: t("Key"), width: "1fr", getValue: e => e.key! });
+    columns.push({ title: vscode.l10n.t("Key"), width: "1fr", getValue: e => e.key! });
   }
 
   let customStyles = "";
@@ -453,7 +506,7 @@ function renderEntries(keyed: boolean, entries: Entry[], isUtf8: boolean) {
     columns: columns,
     data: entries,
     stickyHeader: true,
-    emptyMessage: t("No messages in this dtaq."),
+    emptyMessage: vscode.l10n.t("No messages in this dtaq."),
     customStyles: customStyles,
   }) + `</div>`;
 

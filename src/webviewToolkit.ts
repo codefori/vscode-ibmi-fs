@@ -105,6 +105,46 @@ const footer = /*html*/`
       }
     }
 
+    // Save and restore active tab using sessionStorage (only during search/pagination)
+    (function() {
+      const tabs = document.querySelector('vscode-tabs');
+      if (tabs) {
+        // Get a unique key for this document based on the page URL
+        const storageKey = 'vscode-ibmi-fs-active-tab-' + window.location.pathname;
+        const isSearchRestoreKey = 'vscode-ibmi-fs-is-search-restore';
+        
+        // Check if this is a search/pagination restore (flag set by search/pagination events)
+        const isSearchRestore = sessionStorage.getItem(isSearchRestoreKey) === 'true';
+        
+        if (isSearchRestore) {
+          // Restore previously active tab only if coming from search/pagination
+          const savedIndex = sessionStorage.getItem(storageKey);
+          if (savedIndex !== null) {
+            const index = parseInt(savedIndex);
+            if (!isNaN(index) && index >= 0) {
+              // Set the selected index after a short delay to ensure tabs are rendered
+              setTimeout(() => {
+                tabs.setAttribute('selected-index', index.toString());
+              }, 50);
+            }
+          }
+          // Clear the flag after restoring
+          sessionStorage.removeItem(isSearchRestoreKey);
+        } else {
+          // New document opened, clear saved tab to start from first tab
+          sessionStorage.removeItem(storageKey);
+        }
+        
+        // Save active tab when it changes (for future search/pagination)
+        tabs.addEventListener('vsc-select', (event) => {
+          const selectedIndex = event.detail.selectedIndex;
+          if (selectedIndex !== undefined && selectedIndex !== null) {
+            sessionStorage.setItem(storageKey, selectedIndex.toString());
+          }
+        });
+      }
+    })();
+
     window.addEventListener("message", (event) => {
       // Handle messages from extension
     });
