@@ -72,14 +72,12 @@ export default class Msgf extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      console.log('fetchMessages - searchTerm:', this.searchTerm, 'currentPage:', this.currentPage, 'itemsPerPage:', this.itemsPerPage);
       
       // Build WHERE clause with search filter
       let whereClause = `message_file = '${this.name}' AND message_file_library = '${this.library}'`;
       
       if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
         const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
-        console.log('Adding search filter:', searchPattern);
         whereClause += ` AND (
           UPPER(MESSAGE_ID) LIKE '${searchPattern}' OR
           UPPER(MESSAGE_TEXT) LIKE '${searchPattern}' OR
@@ -89,8 +87,6 @@ export default class Msgf extends Base {
         )`;
       }
       
-      console.log('WHERE clause:', whereClause);
-
       // First, get total count for pagination
       const countRows = await executeSqlIfExists(
         connection,
@@ -154,9 +150,7 @@ export default class Msgf extends Base {
    * Uses a fast table component for better performance with many messages
    * @returns HTML string
    */
-  generateHTML(): string {
-    console.log('MessageFile generateHTML - enableSearch: true, totalItems:', this.totalItems, 'currentPage:', this.currentPage);
-    
+  generateHTML(): string {    
     // Define table columns with widths
     const columns: FastTableColumn<Entry>[] = [
       { title: vscode.l10n.t("MSGID"), getValue: e => e.msgid, width: "0.25fr" },

@@ -118,10 +118,8 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
     if (object) {
       // Set context based on file type fragment
       const fragment = uri.fragment.toUpperCase();
-      console.log(`Opening document with fragment: ${fragment}, URI: ${uri.toString()}`);
       if (fragment) {
         await vscode.commands.executeCommand('setContext', 'ibmiFileType', fragment);
-        console.log(`Set context ibmiFileType to: ${fragment}`);
       }
       
       try {
@@ -163,10 +161,8 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
         const fragment = document.uri.fragment.toUpperCase();
         if (fragment) {
           vscode.commands.executeCommand('setContext', 'ibmiFileType', fragment);
-          console.log(`Panel became active, set context ibmiFileType to: ${fragment}`);
         } else {
           vscode.commands.executeCommand('setContext', 'ibmiFileType', undefined);
-          console.log(`Panel became active, cleared context ibmiFileType`);
         }
       }
     });
