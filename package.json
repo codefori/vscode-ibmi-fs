@@ -363,8 +363,7 @@
           "group": "navigation@6"
         }
       ],
-      "view/item/context": [
-      ],
+      "view/item/context": [],
       "commandPalette": [
         {
           "command": "vscode-ibmi-fs.downloadSavf",
@@ -488,7 +487,7 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
-    "@microsoft/fast-element": "^2.9.1",
-    "@vscode-elements/elements": "^1.6.1"
+    "@microsoft/fast-element": "^2.10.0",
+    "@vscode-elements/elements": "^2.5.1"
   }
 }
