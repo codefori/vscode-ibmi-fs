@@ -299,16 +299,23 @@ This extension supports multiple languages through VSCode's built-in localizatio
 ### Supported Languages
 
 - 🇬🇧 **English** (default)
-- 🇮🇹 **Italian** (Italiano)
+- 🇮🇹 **Italian**
+- 🇫🇷 **French**
+- 🇩🇪 **German**
+- 🇪🇸 **Spanish**
+- 🇯🇵 **Japanese**
+- 🇰🇷 **Korean**
+- 🇧🇷 🇵🇹 **Brazilian Portuguese**
+- 🇨🇳 **Simplified and traditional Chinese**
 
 ### Features
 
 - 🌍 **Automatic language detection** - The extension automatically uses your VSCode display language
-- 📝 **1,271 translated strings** including:
+- 📝 **1200+ translated strings** including:
   - User interface messages and labels
   - Tab and panel titles
   - Table column headers
-  - 808 IBM i database column names
+  - IBM i database column names
 - 🔄 **Dynamic translation** - All UI elements are translated in real-time
 
 ### Adding New Languages
