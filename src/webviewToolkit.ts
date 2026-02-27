@@ -122,10 +122,13 @@ const footer = /*html*/`
           if (savedIndex !== null) {
             const index = parseInt(savedIndex);
             if (!isNaN(index) && index >= 0) {
-              // Set the selected index after a short delay to ensure tabs are rendered
+              // Set the selected index immediately (the attribute is available before rendering)
+              tabs.setAttribute('selected-index', index.toString());
+              
+              // Also set it after a delay as a fallback to ensure it's applied
               setTimeout(() => {
                 tabs.setAttribute('selected-index', index.toString());
-              }, 50);
+              }, 100);
             }
           }
           // Clear the flag after restoring

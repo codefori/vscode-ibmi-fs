@@ -396,6 +396,14 @@ export default class Jobq extends Base {
   }
 
   /**
+   * Fetch only searchable data (jobs) without reloading queue info
+   * This avoids reloading the Detail tab when searching/paginating in the Jobs tab
+   */
+  async fetchSearchData(): Promise<void> {
+    await this.fetchJobs();
+  }
+
+  /**
    * Fetch job queue metadata from IBM i
    */
   async fetchInfo(): Promise<void> {
@@ -428,19 +436,57 @@ export default class Jobq extends Base {
 
   /**
    * Fetch all jobs in the job queue
+   * Supports server-side search and pagination
    */
   async fetchJobs(): Promise<void> {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
+    
     if (connection) {
+      // Build WHERE clause with base conditions
+      let whereClause = `JOB_QUEUE_NAME = '${this.name}' AND JOB_QUEUE_LIBRARY = '${this.library}'`;
+
+      // Add search filter if present
+      if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
+        const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
+        whereClause += ` AND (
+          UPPER(JOB_NAME) LIKE '${searchPattern}' OR
+          UPPER(SUBMITTER_JOB_NAME) LIKE '${searchPattern}' OR
+          UPPER(JOB_QUEUE_STATUS) LIKE '${searchPattern}'
+        )`;
+      }
+
+      // Get total count for pagination
+      const countRows = await executeSqlIfExists(
+        connection,
+        `SELECT COUNT(*) as TOTAL FROM SYSTOOLS.JOB_QUEUE_ENTRIES WHERE ${whereClause}`,
+        'SYSTOOLS',
+        'JOB_QUEUE_ENTRIES',
+        'VIEW'
+      );
+
+      if (countRows === null) {
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "SYSTOOLS", "JOB_QUEUE_ENTRIES"));
+        return;
+      }
+
+      this.totalItems = countRows.length > 0 ? Number(countRows[0].TOTAL) : 0;
+
+      // Calculate OFFSET for pagination
+      const offset = (this.currentPage - 1) * this.itemsPerPage;
+
+      // Fetch paginated data
       const entryRows = await executeSqlIfExists(
         connection,
         `SELECT JOB_NAME,
                 SUBMITTER_JOB_NAME,
-                to_char(JOB_ENTERED_SYSTEM_TIME, 'yyyy-mm-dd HH24:mi') as JOB_ENTERED_SYSTEM_TIME, JOB_QUEUE_STATUS,
+                to_char(JOB_ENTERED_SYSTEM_TIME, 'yyyy-mm-dd HH24:mi') as JOB_ENTERED_SYSTEM_TIME,
+                JOB_QUEUE_STATUS,
                 case when JOB_SCHEDULED_TIME is not null then to_char(JOB_SCHEDULED_TIME, 'yyyy-mm-dd HH24:mi') else null end as JOB_SCHEDULED_TIME
             FROM SYSTOOLS.JOB_QUEUE_ENTRIES
-            WHERE JOB_QUEUE_NAME = '${this.name}' AND JOB_QUEUE_LIBRARY = '${this.library}'`,
+            WHERE ${whereClause}
+            ORDER BY JOB_ENTERED_SYSTEM_TIME DESC
+            LIMIT ${this.itemsPerPage} OFFSET ${offset}`,
         'SYSTOOLS',
         'JOB_QUEUE_ENTRIES',
         'VIEW'
@@ -466,7 +512,7 @@ export default class Jobq extends Base {
   generateHTML(): string {
     return Components.panels([
       { title: vscode.l10n.t("Detail"), content: this.renderJobQueuePanel() },
-      { title: vscode.l10n.t("Jobs"), badge: this._entries.length, content: this.renderEntries(this._entries) }
+      { title: vscode.l10n.t("Jobs"), badge: this.totalItems, content: this.renderEntries(this._entries) }
     ]);
   }
 
@@ -547,12 +593,19 @@ export default class Jobq extends Base {
     // Generate and return the complete table HTML
     return `<div class="jobqueue-entries-table">` + generateFastTable({
       title: ``,
-      subtitle: ``,
+      subtitle: vscode.l10n.t("Total Jobs: {0}", String(this.totalItems)),
       columns: columns,
       data: this._entries,
       stickyHeader: true,
-      emptyMessage: 'No jobs found in this jobq.',
+      emptyMessage: vscode.l10n.t('No jobs found in this jobq.'),
       customStyles: customStyles,
+      enableSearch: true,
+      searchPlaceholder: vscode.l10n.t("Search jobs..."),
+      enablePagination: true,
+      itemsPerPage: this.itemsPerPage,
+      totalItems: this.totalItems,
+      currentPage: this.currentPage,
+      searchTerm: this.searchTerm
     }) + `</div>`;
   }
 
