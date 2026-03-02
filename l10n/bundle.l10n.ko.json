@@ -1276,5 +1276,9 @@
   "xxx days": "xxx일",
   "{0} Information": "{0} 정보",
   "{0}: {1}/{2}": "{0}: {1}/{2}",
-  "SQL {0} {1}/{2} not found. Please check your IBM i system.": "SQL {0} {1} / {2} not found. IBM i 시스템을 확인해 주십시오."
+  "SQL {0} {1}/{2} not found. Please check your IBM i system.": "SQL {0} {1} / {2} not found. IBM i 시스템을 확인해 주십시오.",
+  "Download": "다운로드",
+  "Delete": "삭제",
+  "Hold": "보류",
+  "Release": "해제"
 }

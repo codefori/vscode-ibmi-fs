@@ -868,7 +868,20 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
         currentSearchTerm = searchTerm;
         currentPage = 1;
         // Set flag to indicate this is a search/pagination operation (preserve tab)
-        sessionStorage.setItem('vscode-ibmi-fs-is-search-restore', 'true');
+        // IMPORTANT: Save BOTH the flag AND the current tab index BEFORE sending message
+        const state = vscode.getState() || {};
+        state.isSearchRestore = true;
+        
+        // Save the current active tab index
+        const tabs = document.querySelector('vscode-tabs');
+        if (tabs) {
+          const currentTabIndex = tabs.getAttribute('selected-index');
+          if (currentTabIndex !== null) {
+            state.activeTabIndex = parseInt(currentTabIndex);
+          }
+        }
+        
+        vscode.setState(state);
         const message = {
           command: 'search',
           searchTerm: searchTerm,
@@ -885,7 +898,20 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
       if (newPage < 1 || newPage > totalPages) return;
       currentPage = newPage;
       // Set flag to indicate this is a search/pagination operation (preserve tab)
-      sessionStorage.setItem('vscode-ibmi-fs-is-search-restore', 'true');
+      // IMPORTANT: Save BOTH the flag AND the current tab index BEFORE sending message
+      const state = vscode.getState() || {};
+      state.isSearchRestore = true;
+      
+      // Save the current active tab index
+      const tabs = document.querySelector('vscode-tabs');
+      if (tabs) {
+        const currentTabIndex = tabs.getAttribute('selected-index');
+        if (currentTabIndex !== null) {
+          state.activeTabIndex = parseInt(currentTabIndex);
+        }
+      }
+      
+      vscode.setState(state);
       const message = {
         command: 'paginate',
         searchTerm: currentSearchTerm,

@@ -1276,5 +1276,9 @@
   "xxx days": "xxx日間",
   "{0} Information": "{0} 情報",
   "{0}: {1}/{2}": "{0}: {1}/{2}",
-  "SQL {0} {1}/{2} not found. Please check your IBM i system.": "SQL {0} {1} / {2} が見つかりません。 IBM i システムをご確認ください。"
+  "SQL {0} {1}/{2} not found. Please check your IBM i system.": "SQL {0} {1} / {2} が見つかりません。 IBM i システムをご確認ください。",
+  "Download": "ダウンロード",
+  "Delete": "削除",
+  "Hold": "保留",
+  "Release": "解放"
 }

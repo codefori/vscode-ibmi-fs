@@ -105,43 +105,68 @@ const footer = /*html*/`
       }
     }
 
-    // Save and restore active tab using sessionStorage (only during search/pagination)
+    // Save and restore active tab using vscode state (persists across webview reloads)
     (function() {
       const tabs = document.querySelector('vscode-tabs');
       if (tabs) {
-        // Get a unique key for this document based on the page URL
-        const storageKey = 'vscode-ibmi-fs-active-tab-' + window.location.pathname;
-        const isSearchRestoreKey = 'vscode-ibmi-fs-is-search-restore';
+        // Get the current state from vscode
+        const state = vscode.getState() || {};
         
         // Check if this is a search/pagination restore (flag set by search/pagination events)
-        const isSearchRestore = sessionStorage.getItem(isSearchRestoreKey) === 'true';
+        const isSearchRestore = state.isSearchRestore === true;
         
         if (isSearchRestore) {
           // Restore previously active tab only if coming from search/pagination
-          const savedIndex = sessionStorage.getItem(storageKey);
-          if (savedIndex !== null) {
+          const savedIndex = state.activeTabIndex;
+          if (savedIndex !== undefined && savedIndex !== null) {
             const index = parseInt(savedIndex);
             if (!isNaN(index) && index >= 0) {
-              // Set the selected index after a short delay to ensure tabs are rendered
+              // Set the selected index immediately (the attribute is available before rendering)
+              tabs.setAttribute('selected-index', index.toString());
+              
+              // Also set it after a delay as a fallback to ensure it's applied
               setTimeout(() => {
                 tabs.setAttribute('selected-index', index.toString());
-              }, 50);
+              }, 100);
             }
           }
-          // Clear the flag after restoring
-          sessionStorage.removeItem(isSearchRestoreKey);
+          // DON'T clear the flag here - it will be cleared after scroll is done
         } else {
           // New document opened, clear saved tab to start from first tab
-          sessionStorage.removeItem(storageKey);
+          state.activeTabIndex = undefined;
+          vscode.setState(state);
         }
         
         // Save active tab when it changes (for future search/pagination)
         tabs.addEventListener('vsc-select', (event) => {
           const selectedIndex = event.detail.selectedIndex;
           if (selectedIndex !== undefined && selectedIndex !== null) {
-            sessionStorage.setItem(storageKey, selectedIndex.toString());
+            const currentState = vscode.getState() || {};
+            currentState.activeTabIndex = selectedIndex;
+            vscode.setState(currentState);
           }
         });
+      }
+    })();
+
+    // Scroll to top after pagination or search
+    (function() {
+      const state = vscode.getState() || {};
+      const isSearchRestore = state.isSearchRestore === true;
+      
+      if (isSearchRestore) {
+        // Wait for tabs to be fully rendered before scrolling
+        // This ensures the tab restoration happens first
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+        }, 200);
+        
+        // Clear the flag after all operations are complete
+        setTimeout(() => {
+          const currentState = vscode.getState() || {};
+          currentState.isSearchRestore = false;
+          vscode.setState(currentState);
+        }, 250);
       }
     })();
 

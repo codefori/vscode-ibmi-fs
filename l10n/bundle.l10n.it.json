@@ -1276,5 +1276,9 @@
   "You need to specify a valid object name": "È necessario specificare un nome oggetto valido",
   "You need to specify a valid object type": "È necessario specificare un tipo oggetto valido",
   "You need to specify a valid path": "È necessario specificare un percorso valido",
-  "You need to specify a valid target release": "È necessario specificare una release di destinazione valida"
+  "You need to specify a valid target release": "È necessario specificare una release di destinazione valida",
+  "Download": "Scarica",
+  "Delete": "Elimina",
+  "Hold": "Holda",
+  "Release": "Rilascia"
 }

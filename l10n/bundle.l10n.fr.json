@@ -1276,5 +1276,9 @@
   "xxx days": "xxx jours",
   "{0} Information": "Informations {0}",
   "{0}: {1}/{2}": "{0}: {1}/{2}",
-  "SQL {0} {1}/{2} not found. Please check your IBM i system.": "SQL {0} {1}/{2} introuvable. Veuillez vérifier votre système IBM i."
+  "SQL {0} {1}/{2} not found. Please check your IBM i system.": "SQL {0} {1}/{2} introuvable. Veuillez vérifier votre système IBM i.",
+  "Download": "Télécharger",
+  "Delete": "Supprimer",
+  "Hold": "Retenir",
+  "Release": "Libérer"
 }

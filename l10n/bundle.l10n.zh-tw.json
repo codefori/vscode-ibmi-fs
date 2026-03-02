@@ -1276,5 +1276,9 @@
   "xxx days": "xxx天",
   "{0} Information": "{0} 資訊",
   "{0}: {1}/{2}": "{0}: {1}/{2}",
-  "SQL {0} {1}/{2} not found. Please check your IBM i system.": "SQL {0} {1} / {2} 未找到。 請檢查您的 IBM i 系統。"
+  "SQL {0} {1}/{2} not found. Please check your IBM i system.": "SQL {0} {1} / {2} 未找到。 請檢查您的 IBM i 系統。",
+  "Download": "下載",
+  "Delete": "刪除",
+  "Hold": "保留",
+  "Release": "釋放"
 }
