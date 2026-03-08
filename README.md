@@ -259,6 +259,7 @@ File objects include physical files (PF), logical files (LF), views, and indexes
 - 📋 View file attributes (creation date, owner, journaling status, CCSID)
 - 📈 View detailed statistics (row counts, operations, I/O metrics)
 - 👥 Display file members with their statistics
+- 🧭 Display columns and data types
 - 🔗 Show dependent objects (indexes, views, constraints)
 - 🔍 Query file contents using SQL SELECT
 - 📄 View view definitions and capabilities
