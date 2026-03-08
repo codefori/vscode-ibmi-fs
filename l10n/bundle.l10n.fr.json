@@ -1280,5 +1280,13 @@
   "Download": "Télécharger",
   "Delete": "Supprimer",
   "Hold": "Retenir",
-  "Release": "Libérer"
+  "Release": "Libérer",
+  "Column name": "Nom de colonne",
+  "Data type": "Type de données",
+  "Default": "Par défaut",
+  "File columns": "Colonnes de fichier",
+  "Has default": "A une valeur par défaut",
+  "Is nullable": "Est nullable",
+  "Length": "Longueur",
+  "Position": "Position"
 }

@@ -1280,5 +1280,13 @@
   "Download": "다운로드",
   "Delete": "삭제",
   "Hold": "보류",
-  "Release": "해제"
+  "Release": "해제",
+  "Column name": "열 이름",
+  "Data type": "데이터 유형",
+  "Default": "기본값",
+  "File columns": "파일 열",
+  "Has default": "기본값 있음",
+  "Is nullable": "NULL 가능",
+  "Length": "길이",
+  "Position": "위치"
 }

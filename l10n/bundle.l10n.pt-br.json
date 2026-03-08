@@ -1280,5 +1280,13 @@
   "Download": "Baixar",
   "Delete": "Excluir",
   "Hold": "Reter",
-  "Release": "Liberar"
+  "Release": "Liberar",
+  "Column name": "Nome da coluna",
+  "Data type": "Tipo de dados",
+  "Default": "Padrão",
+  "File columns": "Colunas do arquivo",
+  "Has default": "Tem padrão",
+  "Is nullable": "É anulável",
+  "Length": "Comprimento",
+  "Position": "Posição"
 }

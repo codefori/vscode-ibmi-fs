@@ -1280,5 +1280,13 @@
   "Download": "Herunterladen",
   "Delete": "Löschen",
   "Hold": "Halten",
-  "Release": "Freigeben"
+  "Release": "Freigeben",
+  "Column name": "Spaltenname",
+  "Data type": "Datentyp",
+  "Default": "Standard",
+  "File columns": "Dateispalten",
+  "Has default": "Hat Standardwert",
+  "Is nullable": "Ist nullbar",
+  "Length": "Länge",
+  "Position": "Position"
 }

@@ -1280,5 +1280,13 @@
   "Download": "下載",
   "Delete": "刪除",
   "Hold": "保留",
-  "Release": "釋放"
+  "Release": "釋放",
+  "Column name": "欄位名稱",
+  "Data type": "資料類型",
+  "Default": "預設值",
+  "File columns": "檔案欄位",
+  "Has default": "有預設值",
+  "Is nullable": "可為空",
+  "Length": "長度",
+  "Position": "位置"
 }

@@ -1280,5 +1280,13 @@
   "Download": "下载",
   "Delete": "删除",
   "Hold": "保留",
-  "Release": "释放"
+  "Release": "释放",
+  "Column name": "列名",
+  "Data type": "数据类型",
+  "Default": "默认值",
+  "File columns": "文件列",
+  "Has default": "有默认值",
+  "Is nullable": "可为空",
+  "Length": "长度",
+  "Position": "位置"
 }
