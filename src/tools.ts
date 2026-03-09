@@ -698,6 +698,7 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
       border-radius: 6px;
       overflow: hidden;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+      table-layout: fixed;
     }
     
     vscode-table-header {
@@ -735,6 +736,13 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
       overflow-wrap: break-word;
       padding: 12px 16px;
       border-bottom: 1px solid rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.08);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    vscode-table-header-cell,
+    vscode-table-cell {
+      box-sizing: border-box;
     }
     
     /* Add spacing between buttons in action columns */
