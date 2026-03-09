@@ -19,10 +19,13 @@
   "command.ChgDtaara.title": "DTAARA 변경",
   "command.chgUsrspc.title": "USRSPC 변경",
   "command.Addbnddire.title": "바인딩　디렉토리　항목　추가",
+  "command.AddUsridxEntry.title": "사용자　인덱스　항목　추가",
   "command.GenJrnRcv.title": "새로운 저널 리시버 생성",
   "command.DspJrn.title": "저널　표시",
   "command.StrSbs.title": "서브시스템 시작",
   "command.EndSbs.title": "서브시스템　종료",
   "command.clearMessageQueue.title": "메세지　큐　비움",
-  "command.QueryFile.title": "쿼리　파일"
+  "command.sendToMessageQueue.title": "메시지를 메시지 큐로 전송",
+  "command.QueryFile.title": "쿼리　파일",
+  "command.RmvUsridxEntry.title": "사용자　인덱스　항목　제거"
 }

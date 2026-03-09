@@ -19,10 +19,13 @@
   "command.ChgDtaara.title": "Cambiar DTAARA",
   "command.chgUsrspc.title": "Cambiar USRSPC",
   "command.Addbnddire.title": "Añadir entrada dir enlace",
+  "command.AddUsridxEntry.title": "Añadir entrada índice usuario",
   "command.GenJrnRcv.title": "Generar nuevo receptor de diarios",
   "command.DspJrn.title": "Visualizar diario",
   "command.StrSbs.title": "Arrancar subsistema",
   "command.EndSbs.title": "Finalizar subsistema",
   "command.clearMessageQueue.title": "Borrar cola de mensajes",
-  "command.QueryFile.title": "Archivo de consulta"
+  "command.sendToMessageQueue.title": "Enviar mensaje a cola de mensajes",
+  "command.QueryFile.title": "Archivo de consulta",
+  "command.RmvUsridxEntry.title": "Eliminar entrada índice usuario"
 }

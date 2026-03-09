@@ -19,10 +19,13 @@
   "command.ChgDtaara.title": "Ändern Sie DTAARA",
   "command.chgUsrspc.title": "Ändern USRSPC",
   "command.Addbnddire.title": "Binderverz.eintrag hinzufügen",
+  "command.AddUsridxEntry.title": "Benutzerindexeintrag hinzufügen",
   "command.GenJrnRcv.title": "Neuen Journalempfänger generieren",
   "command.DspJrn.title": "Journal anzeigen",
   "command.StrSbs.title": "Subsystem starten",
   "command.EndSbs.title": "Subsystem beenden",
   "command.clearMessageQueue.title": "Nachr.warteschl.inh. löschen",
-  "command.QueryFile.title": "Abfragedatei"
+  "command.sendToMessageQueue.title": "Nachricht an Nachrichtenwarteschlange senden",
+  "command.QueryFile.title": "Abfragedatei",
+  "command.RmvUsridxEntry.title": "Benutzerindexeintrag entfernen"
 }

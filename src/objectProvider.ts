@@ -25,6 +25,7 @@ import { Binddir } from './types/bindingDirectory';
 import { SaveFile } from './types/saveFile';
 import DummyObj, { fetchQrydfn } from './types/dummyObject';
 import Msgq from './types/messageQueue';
+import { Usridx } from './types/userIndex';
 
 
 /**
@@ -297,6 +298,9 @@ function getTypeFile(uri: vscode.Uri): Base | undefined {
 
       case `MSGQ`:
         return new Msgq(uri, library, objectName);  
+
+      case `USRIDX`:
+        return new Usridx(uri, library, objectName);  
 
       case `FILE`:
         if (uri.fragment.toUpperCase() === 'SAVF') {

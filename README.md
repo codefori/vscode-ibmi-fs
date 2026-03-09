@@ -79,7 +79,20 @@ User spaces provide temporary or permanent storage for data that can be accessed
 
 ---
 
-### 💬 Message Files (MSGF)
+### 🔑 User Indexes (USRIDX)
+User indexes provide fast keyed access to data stored in user-defined entries, similar to a hash table or dictionary.
+
+**Features:**
+- 📊 Display user index information and attributes
+- 📋 View all entries with their keys and values
+- ➕ Add new entries to the user index
+- 🗑️ Remove entries from the user index
+- 🔑 Support for variable-length entries
+- 📏 View entry statistics and index configuration
+
+---
+
+###  Message Files (MSGF)
 Message files contain predefined messages used by IBM i applications.
 
 **Features:**
@@ -99,6 +112,7 @@ Message queues store messages sent by programs, system functions, or users, prov
 - 📋 View message text (first and second level)
 - 📅 Show message metadata (severity, timestamp, sender job/user)
 - 🗑️ Clear all messages from the queue
+- 📨 Send message the queue
 - 🚀 Fast table component for performance with many messages
 
 ---
@@ -259,6 +273,7 @@ File objects include physical files (PF), logical files (LF), views, and indexes
 - 📋 View file attributes (creation date, owner, journaling status, CCSID)
 - 📈 View detailed statistics (row counts, operations, I/O metrics)
 - 👥 Display file members with their statistics
+- 🧭 Display columns and data types
 - 🔗 Show dependent objects (indexes, views, constraints)
 - 🔍 Query file contents using SQL SELECT
 - 📄 View view definitions and capabilities

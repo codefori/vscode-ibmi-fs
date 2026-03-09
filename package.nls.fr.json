@@ -19,10 +19,13 @@
   "command.ChgDtaara.title": "Modifier DTAARA",
   "command.chgUsrspc.title": "Modifier USRSPC",
   "command.Addbnddire.title": "Ajouter poste répertoire liage",
+  "command.AddUsridxEntry.title": "Ajouter entrée index utilisateur",
   "command.GenJrnRcv.title": "Générer un nouveau récepteur de journal",
   "command.DspJrn.title": "Afficher un journal",
   "command.StrSbs.title": "Démarrer un sous-système",
   "command.EndSbs.title": "Arrêter un sous-système",
   "command.clearMessageQueue.title": "Mettre à blanc file de message",
-  "command.QueryFile.title": "Fichier à analyser"
+  "command.sendToMessageQueue.title": "Envoyer un message à la file de messages",
+  "command.QueryFile.title": "Fichier à analyser",
+  "command.RmvUsridxEntry.title": "Supprimer entrée index utilisateur"
 }

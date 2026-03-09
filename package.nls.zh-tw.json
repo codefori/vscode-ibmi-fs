@@ -19,10 +19,13 @@
   "command.ChgDtaara.title": "更改 DTAARA",
   "command.chgUsrspc.title": "變更 USRSPC",
   "command.Addbnddire.title": "新增連結目錄項目",
+  "command.AddUsridxEntry.title": "新增使用者索引項目",
   "command.GenJrnRcv.title": "建立新的期刊接收器",
   "command.DspJrn.title": "顯示日誌",
   "command.StrSbs.title": "啟動子系統",
   "command.EndSbs.title": "結束子系統",
   "command.clearMessageQueue.title": "清除訊息佇列",
-  "command.QueryFile.title": "查詢檔案"
+  "command.sendToMessageQueue.title": "傳送訊息至訊息佇列",
+  "command.QueryFile.title": "查詢檔案",
+  "command.RmvUsridxEntry.title": "移除使用者索引項目"
 }

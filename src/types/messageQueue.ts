@@ -34,6 +34,27 @@ export namespace MessageQueueActions {
    */
   export const register = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
+      vscode.commands.registerCommand("vscode-ibmi-fs.sendToMessageQueue", async (item?: IBMiObject | vscode.Uri) => {
+        if (item instanceof vscode.Uri) {
+          // Called from editor toolbar - get library and name from URI
+          const parts = item.path.split('/');
+          if (parts.length >= 3) {
+            const library = parts[1];
+            const nameWithExt = parts[2];
+            const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
+            const msgq: Msgq = new Msgq(item, library, name);
+            const result = await sendToMessageQueue(msgq);
+            // Refresh the editor after action
+            if (result) {
+              await ObjectProvider.refreshDocument(item);
+            }
+            return result;
+          }
+        } else if (item) {
+          // Called from context menu
+          return sendToMessageQueue(item);
+        }
+      }),
       vscode.commands.registerCommand("vscode-ibmi-fs.clearMessageQueue", async (item?: IBMiObject | vscode.Uri) => {
         if (item instanceof vscode.Uri) {
           // Called from editor toolbar - get library and name from URI
@@ -42,8 +63,8 @@ export namespace MessageQueueActions {
             const library = parts[1];
             const nameWithExt = parts[2];
             const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
-            const dtaq: Msgq = new Msgq(item, library, name);
-            const result = await clearMessageQueue(dtaq);
+            const msgq: Msgq = new Msgq(item, library, name);
+            const result = await clearMessageQueue(msgq);
             // Refresh the editor after action
             if (result) {
               await ObjectProvider.refreshDocument(item);
@@ -56,6 +77,108 @@ export namespace MessageQueueActions {
         }
       }),
     );
+  };
+
+  /**
+   * Send a message to a Message Queue
+   * @param item - The Message Queue object or IBMiObject
+   * @returns True if successful, false otherwise
+   */
+  export const sendToMessageQueue = async (item: IBMiObject | Msgq): Promise<boolean> => {
+    const library = item.library.toUpperCase();
+    const name = item.name.toUpperCase();
+    
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      if(getProtected(connection, item.library)){
+        vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
+        return false;
+      }
+
+      // Ask for message ID (required)
+      const messageId = await vscode.window.showInputBox({
+        placeHolder: vscode.l10n.t("Message ID (e.g., CPF9898)"),
+        title: vscode.l10n.t("Enter Message ID"),
+        prompt: vscode.l10n.t("Message ID")
+      });
+
+      if (!messageId) {
+        return false;
+      }
+
+      // Ask for message file (defaults to QCPFMSG)
+      const messageFile = await vscode.window.showInputBox({
+        placeHolder: vscode.l10n.t("Message file name (default: QCPFMSG)"),
+        title: vscode.l10n.t("Enter Message File"),
+        prompt: vscode.l10n.t("Message file"),
+        value: "QCPFMSG"
+      });
+
+      if (!messageFile) {
+        return false;
+      }
+
+      // Ask for message file library (defaults to QSYS)
+      const messageFileLibrary = await vscode.window.showInputBox({
+        placeHolder: vscode.l10n.t("Message file library (default: QSYS)"),
+        title: vscode.l10n.t("Enter Message File Library"),
+        prompt: vscode.l10n.t("Message file library"),
+        value: "QSYS"
+      });
+
+      if (!messageFileLibrary) {
+        return false;
+      }
+
+      // Ask for message text (optional)
+      const messageText = await vscode.window.showInputBox({
+        placeHolder: vscode.l10n.t("Message text (optional)"),
+        title: vscode.l10n.t("Enter message text (optional)"),
+        prompt: vscode.l10n.t("Message text")
+      });
+
+      // User can cancel or leave empty
+      if (messageText === undefined) {
+        return false;
+      }
+
+      try {
+        // Build SQL call using QSYS2.SEND_MESSAGE procedure
+        const messageLength = messageText ? messageText.length : 1;
+        const sqlCall = `CALL QSYS2.SEND_MESSAGE(
+          MESSAGE_ID => '${messageId}',
+          MESSAGE_LENGTH => ${messageLength},
+          MESSAGE_TEXT => ${messageText ? `'${messageText.replace(/'/g, "''")}'` : `'-'`},
+          MESSAGE_FILE_LIBRARY => '${messageFileLibrary}',
+          MESSAGE_FILE => '${messageFile}',
+          MESSAGE_QUEUE_LIBRARY => '${library}',
+          MESSAGE_QUEUE => '${name}'
+        )`;
+
+        const result = await executeSqlIfExists(
+          connection,
+          sqlCall,
+          'QSYS2',
+          'SEND_MESSAGE',
+          'PROCEDURE'
+        );
+
+        if (result === null) {
+          vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "PROCEDURE", "QSYS2", "SEND_MESSAGE"));
+          return false;
+        }
+
+        vscode.window.showInformationMessage(vscode.l10n.t("Message sent to Message Queue {0}/{1}.", library, name));
+        return true;
+      } catch (error) {
+        vscode.window.showErrorMessage(vscode.l10n.t("An error occurred while sending message to Message Queue {0}/{1}: {2}", library, name, String(error)));
+        return false;
+      }
+    } else {
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
+      return false;
+    }
   };
 
   /**
