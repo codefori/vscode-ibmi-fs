@@ -3,7 +3,7 @@
   "displayName": "%displayName%",
   "description": "%description%",
   "l10n": "./l10n",
-  "version": "0.0.5-dev0",
+  "version": "0.0.6-dev0",
   "preview": true,
   "license": "MIT",
   "engines": {
@@ -89,6 +89,9 @@
           },
           {
             "filenamePattern": "object*/**/*.MSGQ"
+          },
+          {
+            "filenamePattern": "object*/**/*.USRIDX"
           }
         ],
         "priority": "default"
@@ -135,7 +138,7 @@
         "command": "vscode-ibmi-fs.sendToDataQueue",
         "title": "%command.sendToDataQueue.title%",
         "category": "IBM i FS",
-        "icon": "$(arrow-right)"
+        "icon": "$(mail)"
       },
       {
         "command": "vscode-ibmi-fs.HldJobq",
@@ -234,10 +237,28 @@
         "icon": "$(trash)"
       },
       {
+        "command": "vscode-ibmi-fs.sendToMessageQueue",
+        "title": "%command.sendToMessageQueue.title%",
+        "category": "IBM i FS",
+        "icon": "$(mail)"
+      },
+      {
         "command": "vscode-ibmi-fs.QueryFile",
         "title": "%command.QueryFile.title%",
         "category": "IBM i FS",
         "icon": "$(file-code)"
+      },
+      {
+        "command": "vscode-ibmi-fs.AddUsridxEntry",
+        "title": "%command.AddUsridxEntry.title%",
+        "category": "IBM i FS",
+        "icon": "$(plus)"
+      },
+      {
+        "command": "vscode-ibmi-fs.RmvUsridxEntry",
+        "title": "%command.RmvUsridxEntry.title%",
+        "category": "IBM i FS",
+        "icon": "$(trash)"
       }
     ],
     "menus": {
@@ -353,14 +374,29 @@
           "group": "navigation@2"
         },
         {
-          "command": "vscode-ibmi-fs.clearMessageQueue",
+          "command": "vscode-ibmi-fs.sendToMessageQueue",
           "when": "resourceExtname == .MSGQ && activeCustomEditorId == vscode-ibmi-fs.editor",
           "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.clearMessageQueue",
+          "when": "resourceExtname == .MSGQ && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@2"
         },
         {
           "command": "vscode-ibmi-fs.QueryFile",
           "when": "resourceExtname == .FILE && activeCustomEditorId == vscode-ibmi-fs.editor && (ibmiFileType == 'PF' || ibmiFileType == 'LF')",
           "group": "navigation@6"
+        },
+        {
+          "command": "vscode-ibmi-fs.AddUsridxEntry",
+          "when": "resourceExtname == .USRIDX && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.RmvUsridxEntry",
+          "when": "resourceExtname == .USRIDX && activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [],
@@ -458,7 +494,19 @@
           "when": "never"
         },
         {
+          "command": "vscode-ibmi-fs.sendToMessageQueue",
+          "when": "never"
+        },
+        {
           "command": "vscode-ibmi-fs.QueryFile",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.AddUsridxEntry",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.RmvUsridxEntry",
           "when": "never"
         }
       ]

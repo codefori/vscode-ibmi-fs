@@ -19,10 +19,13 @@
   "command.ChgDtaara.title": "DTAARAを変更する",
   "command.chgUsrspc.title": "USRSPCを変更する",
   "command.Addbnddire.title": "ﾊﾞｲﾝﾄﾞ･ﾃﾞｨﾚｸﾄﾘｰ項目の追加",
+  "command.AddUsridxEntry.title": "ユーザー索引項目の追加",
   "command.GenJrnRcv.title": "新しいジャーナル受信機を生成する",
   "command.DspJrn.title": "ジャーナル表示",
   "command.StrSbs.title": "サブシステムの始動",
   "command.EndSbs.title": "サブシステム終了",
   "command.clearMessageQueue.title": "メッセージ待ち行列消去",
-  "command.QueryFile.title": "QUERYファイル"
+  "command.sendToMessageQueue.title": "メッセージをメッセージ待ち行列に送信",
+  "command.QueryFile.title": "QUERYファイル",
+  "command.RmvUsridxEntry.title": "ユーザー索引項目の削除"
 }

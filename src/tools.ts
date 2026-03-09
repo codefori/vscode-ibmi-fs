@@ -584,12 +584,13 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     return col.width;
   });
 
-  // Generate table rows
+  // Generate table rows with width styles
   const rows = data.map((row, rowIndex) => {
     const cells = columns.map((col, index) => {
       const value = col.getValue(row);
       const cellClass = col.cellClass ? ` class="${col.cellClass}"` : '';
-      return `<vscode-table-cell${cellClass}>${formatFastValue(value)}</vscode-table-cell>`;
+      const widthStyle = columnsArray[index] !== 'auto' ? ` style="width: ${columnsArray[index]};"` : '';
+      return `<vscode-table-cell${cellClass}${widthStyle}>${formatFastValue(value)}</vscode-table-cell>`;
     }).join('\n        ');
     
     return `<vscode-table-row>
@@ -597,9 +598,10 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
       </vscode-table-row>`;
   }).join('\n      ');
 
-  // Generate table header
+  // Generate table header with width styles
   const headerCells = columns.map((col, index) => {
-    return `<vscode-table-header-cell>${escapeHtml(col.title)}</vscode-table-header-cell>`;
+    const widthStyle = columnsArray[index] !== 'auto' ? ` style="width: ${columnsArray[index]};"` : '';
+    return `<vscode-table-header-cell${widthStyle}>${escapeHtml(col.title)}</vscode-table-header-cell>`;
   }).join('\n        ');
 
   return /*html*/`
