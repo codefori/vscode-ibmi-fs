@@ -27,5 +27,6 @@
   "command.sendToMessageQueue.title": "Send Message to Message Queue",
   "command.QueryFile.title": "Query file",
   "command.AddUsridxEntry.title": "Add User Index Entry",
-  "command.RmvUsridxEntry.title": "Remove User Index Entry"
+  "command.RmvUsridxEntry.title": "Remove User Index Entry",
+  "command.wrkobj.title": "Object Information"
 }

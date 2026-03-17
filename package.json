@@ -259,6 +259,12 @@
         "title": "%command.RmvUsridxEntry.title%",
         "category": "IBM i FS",
         "icon": "$(trash)"
+      },
+      {
+        "command": "vscode-ibmi-fs.wrkobj",
+        "title": "%command.wrkobj.title%",
+        "category": "IBM i FS",
+        "icon": "$(info)"
       }
     ],
     "menus": {
@@ -397,6 +403,11 @@
           "command": "vscode-ibmi-fs.RmvUsridxEntry",
           "when": "resourceExtname == .USRIDX && activeCustomEditorId == vscode-ibmi-fs.editor",
           "group": "navigation@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.wrkobj",
+          "when": "activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@99"
         }
       ],
       "view/item/context": [],
@@ -507,6 +518,10 @@
         },
         {
           "command": "vscode-ibmi-fs.RmvUsridxEntry",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.wrkobj",
           "when": "never"
         }
       ]

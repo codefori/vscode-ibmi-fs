@@ -26,6 +26,7 @@
   "command.sendToDataQueue.title": "Invia dati a Data Queue",
   "command.StrSbs.title": "Avvia Subsystem",
   "command.uploadSavf.title": "Carica Save File",
+  "command.wrkobj.title": "Informazioni oggetto",
   "description": "Browser del file system per IBM i QSYS",
   "displayName": "IBM i FileSystem"
 }
