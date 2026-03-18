@@ -401,20 +401,20 @@ export class Sbsd extends Base {
    * Fetch subsystem information, pools, entries, and active jobs
    */
   async fetch() {
-    await this.fetchInfo();
-    await this.fetchPools();
-    await this.fetchAjes();
-    await this.fetchWses();
-    await this.fetchPjes();
-    await this.fetchRtges();
-    
+
     this.jobqes.length=0;
     this.jobs.length=0;
 
-    if(this.sbs[0].STATUS==='ACTIVE'){
-      await this.fetchJobqes();
-      await this.fetchJobs();
-    }    
+    await Promise.all([
+      await this.fetchInfo(),
+      await this.fetchPools(),
+      await this.fetchAjes(),
+      await this.fetchWses(),
+      await this.fetchPjes(),
+      await this.fetchRtges(),
+      this.sbs[0].STATUS==='ACTIVE' ? this.fetchJobqes() : Promise.resolve(),
+      this.sbs[0].STATUS==='ACTIVE' ? this.fetchJobs() : Promise.resolve()
+    ])  
   }
 
   /**

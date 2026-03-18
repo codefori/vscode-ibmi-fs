@@ -9,9 +9,9 @@
 
 import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import * as vscode from 'vscode';
-import { getInstance } from '../ibmi';
-import { FastTableColumn, generateFastTable } from "../tools";
-import { Components } from "../webviewToolkit";
+import { getInstance } from './ibmi';
+import { FastTableColumn, generateFastTable } from "./tools";
+import { Components } from "./webviewToolkit";
 
 /**
  * Namespace containing actions for Work with Object

@@ -16,7 +16,7 @@ import { SubsystemActions } from './types/subsystemDescription';
 import { MessageQueueActions } from './types/messageQueue';
 import { FileActions } from './types/file';
 import { UserIndexActions } from './types/userIndex';
-import { WrkobjActions } from './types/wrkobj';
+import { WrkobjActions } from './wrkobj';
 
 /**
  * Extension activation function

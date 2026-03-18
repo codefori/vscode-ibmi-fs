@@ -1367,129 +1367,11 @@ export class SaveFile extends Base {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-      // Fetch objects with pagination
-      this.objects.length = 0;
-
-      // Get total count for objects
-      const objectsCountRows = await executeSqlIfExists(
-        connection,
-        `SELECT COUNT(*) as TOTAL
-          FROM TABLE (
-            QSYS2.SAVE_FILE_OBJECTS(
-              SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
-          )`,
-        'QSYS2',
-        'SAVE_FILE_OBJECTS',
-        'FUNCTION'
-      );
-
-      if (objectsCountRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
-        return;
-      }
-
-      this.objectsTotalItems = objectsCountRows.length > 0 ? Number(objectsCountRows[0].TOTAL) : 0;
-
-      // Calculate OFFSET for objects pagination
-      const objectsOffset = (this.objectsCurrentPage - 1) * this.objectsItemsPerPage;
-
-      // Fetch paginated objects
-      const objectsRows = await executeSqlIfExists(
-        connection,
-        `SELECT OBJECT_NAME,
-          OBJECT_TYPE,
-          OBJECT_ATTRIBUTE,
-          TEXT_DESCRIPTION,
-          to_char(SAVE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS SAVE_TIMESTAMP,
-          OBJECT_SIZE,
-          DATA_SAVED,
-          OBJECT_OWNER,
-          IASP_NAME
-          FROM TABLE (
-            QSYS2.SAVE_FILE_OBJECTS(
-              SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
-          )
-          ORDER BY OBJECT_NAME
-          LIMIT ${this.objectsItemsPerPage} OFFSET ${objectsOffset}`,
-        'QSYS2',
-        'SAVE_FILE_OBJECTS',
-        'FUNCTION'
-      );
-
-      if (objectsRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
-        return;
-      }
-      this.objects.push(...objectsRows.map(this.toEntryObject));
-
-      // Fetch file members with pagination
-      this.members.length = 0;
-
-      // Get total count for members
-      const membersCountRows = await connection.runSQL(`
-        SELECT COUNT(*) as TOTAL
-        FROM TABLE (
-          QSYS2.SAVE_FILE_OBJECTS(
-            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
-        )
-        WHERE MEMBER_NAME IS NOT NULL`);
-
-      this.membersTotalItems = membersCountRows.length > 0 ? Number(membersCountRows[0].TOTAL) : 0;
-
-      // Calculate OFFSET for members pagination
-      const membersOffset = (this.membersCurrentPage - 1) * this.membersItemsPerPage;
-
-      // Fetch paginated members
-      const memberRows = await connection.runSQL(`
-        SELECT OBJECT_NAME,
-          TEXT_DESCRIPTION,
-          MEMBER_NAME
-        FROM TABLE (
-          QSYS2.SAVE_FILE_OBJECTS(
-            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
-        )
-        WHERE MEMBER_NAME IS NOT NULL
-        ORDER BY OBJECT_NAME, MEMBER_NAME
-        LIMIT ${this.membersItemsPerPage} OFFSET ${membersOffset}`);
-      this.members.push(...memberRows.map(this.toEntryMember));
-
-      // Fetch spooled files with pagination
-      this.spooledFiles.length = 0;
-
-      // Get total count for spools
-      const spoolsCountRows = await connection.runSQL(`
-        SELECT COUNT(*) as TOTAL
-        FROM TABLE (
-          QSYS2.SAVE_FILE_OBJECTS(
-            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*OUTQ', DETAILED_INFO => 'OUTQ')
-        )
-        WHERE SPOOLED_FILE_NAME IS NOT NULL`);
-
-      this.spoolsTotalItems = spoolsCountRows.length > 0 ? Number(spoolsCountRows[0].TOTAL) : 0;
-
-      // Calculate OFFSET for spools pagination
-      const spoolsOffset = (this.spoolsCurrentPage - 1) * this.spoolsItemsPerPage;
-
-      // Fetch paginated spools
-      const spoolRows = await connection.runSQL(`
-        SELECT OBJECT_NAME,
-          TEXT_DESCRIPTION,
-          SPOOLED_FILE_NAME,
-          SPOOLED_FILE_NUMBER,
-          QUALIFIED_JOB_NAME,
-          JOB_NAME,
-          JOB_USER,
-          JOB_NUMBER,
-          SYSTEM_NAME,
-          to_char(CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS CREATE_TIMESTAMP
-        FROM TABLE (
-          QSYS2.SAVE_FILE_OBJECTS(
-            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*OUTQ', DETAILED_INFO => 'OUTQ')
-        )
-        WHERE SPOOLED_FILE_NAME IS NOT NULL
-        ORDER BY OBJECT_NAME, SPOOLED_FILE_NAME
-        LIMIT ${this.spoolsItemsPerPage} OFFSET ${spoolsOffset}`);
-      this.spooledFiles.push(...spoolRows.map(this.toEntrySpool));
+      await Promise.all([
+        this.fetchObjects(connection),
+        this.fetchMembers(connection),
+        this.fetchSpools(connection)
+      ])
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
@@ -1498,17 +1380,18 @@ export class SaveFile extends Base {
 
   /**
    * Fetches only objects from the save file with pagination
+   * @param connection Optional IBM i connection. If not provided, will get a new connection
    */
-  private async fetchObjects() {
+  private async fetchObjects(connection?: any): Promise<boolean> {
     const ibmi = getInstance();
-    const connection = ibmi?.getConnection();
+    const conn = connection || ibmi?.getConnection();
 
-    if (connection) {
+    if (conn) {
       this.objects.length = 0;
 
       // Get total count for objects
       const objectsCountRows = await executeSqlIfExists(
-        connection,
+        conn,
         `SELECT COUNT(*) as TOTAL
           FROM TABLE (
             QSYS2.SAVE_FILE_OBJECTS(
@@ -1521,7 +1404,7 @@ export class SaveFile extends Base {
 
       if (objectsCountRows === null) {
         vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
-        return;
+        return false;
       }
 
       this.objectsTotalItems = objectsCountRows.length > 0 ? Number(objectsCountRows[0].TOTAL) : 0;
@@ -1531,7 +1414,7 @@ export class SaveFile extends Base {
 
       // Fetch paginated objects
       const objectsRows = await executeSqlIfExists(
-        connection,
+        conn,
         `SELECT OBJECT_NAME,
           OBJECT_TYPE,
           OBJECT_ATTRIBUTE,
@@ -1554,24 +1437,27 @@ export class SaveFile extends Base {
 
       if (objectsRows === null) {
         vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
-        return;
+        return false;
       }
       this.objects.push(...objectsRows.map(this.toEntryObject));
+      return true;
     }
+    return false;
   }
 
   /**
    * Fetches only members from the save file with pagination
+   * @param connection Optional IBM i connection. If not provided, will get a new connection
    */
-  private async fetchMembers() {
+  private async fetchMembers(connection?: any): Promise<boolean> {
     const ibmi = getInstance();
-    const connection = ibmi?.getConnection();
+    const conn = connection || ibmi?.getConnection();
 
-    if (connection) {
+    if (conn) {
       this.members.length = 0;
 
       // Get total count for members
-      const membersCountRows = await connection.runSQL(`
+      const membersCountRows = await conn.runSQL(`
         SELECT COUNT(*) as TOTAL
         FROM TABLE (
           QSYS2.SAVE_FILE_OBJECTS(
@@ -1585,7 +1471,7 @@ export class SaveFile extends Base {
       const membersOffset = (this.membersCurrentPage - 1) * this.membersItemsPerPage;
 
       // Fetch paginated members
-      const memberRows = await connection.runSQL(`
+      const memberRows = await conn.runSQL(`
         SELECT OBJECT_NAME,
           TEXT_DESCRIPTION,
           MEMBER_NAME
@@ -1597,21 +1483,24 @@ export class SaveFile extends Base {
         ORDER BY OBJECT_NAME, MEMBER_NAME
         LIMIT ${this.membersItemsPerPage} OFFSET ${membersOffset}`);
       this.members.push(...memberRows.map(this.toEntryMember));
+      return true;
     }
+    return false;
   }
 
   /**
    * Fetches only spooled files from the save file with pagination
+   * @param connection Optional IBM i connection. If not provided, will get a new connection
    */
-  private async fetchSpools() {
+  private async fetchSpools(connection?: any): Promise<boolean> {
     const ibmi = getInstance();
-    const connection = ibmi?.getConnection();
+    const conn = connection || ibmi?.getConnection();
 
-    if (connection) {
+    if (conn) {
       this.spooledFiles.length = 0;
 
       // Get total count for spools
-      const spoolsCountRows = await connection.runSQL(`
+      const spoolsCountRows = await conn.runSQL(`
         SELECT COUNT(*) as TOTAL
         FROM TABLE (
           QSYS2.SAVE_FILE_OBJECTS(
@@ -1625,7 +1514,7 @@ export class SaveFile extends Base {
       const spoolsOffset = (this.spoolsCurrentPage - 1) * this.spoolsItemsPerPage;
 
       // Fetch paginated spools
-      const spoolRows = await connection.runSQL(`
+      const spoolRows = await conn.runSQL(`
         SELECT OBJECT_NAME,
           TEXT_DESCRIPTION,
           SPOOLED_FILE_NAME,
@@ -1644,7 +1533,9 @@ export class SaveFile extends Base {
         ORDER BY OBJECT_NAME, SPOOLED_FILE_NAME
         LIMIT ${this.spoolsItemsPerPage} OFFSET ${spoolsOffset}`);
       this.spooledFiles.push(...spoolRows.map(this.toEntrySpool));
+      return true;
     }
+    return false;
   }
 
   /**

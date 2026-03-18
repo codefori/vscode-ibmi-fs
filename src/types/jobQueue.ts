@@ -391,8 +391,10 @@ export default class Jobq extends Base {
    * Fetch job queue information and jobs
    */
   async fetch() {
-    await this.fetchInfo();
-    await this.fetchJobs();
+    await Promise.all([
+      this.fetchInfo(),
+      this.fetchJobs()
+    ])
   }
 
   /**

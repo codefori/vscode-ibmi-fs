@@ -197,18 +197,19 @@ export default class File extends Base {
       this.stats=false;
 
       if (this.objtype === 'TABLE' || this.objtype === 'VIEW') {
-        await this.fetchInfoFile();
-        await this.fetchColumns();
-        if( this.objtype === 'VIEW') {
-          await this.fetchInfoView();
-        } else {
-          await this.fetchStatsFile();
-          await this.fetchMembers();
-          await this.fetchDependency();
-        }
+        await Promise.all([
+          this.fetchInfoFile(),
+          this.fetchColumns(),
+          this.objtype === 'VIEW' ? this.fetchInfoView() : Promise.resolve(),
+          this.objtype !== 'VIEW' ? this.fetchStatsFile() : Promise.resolve(),
+          this.objtype !== 'VIEW' ? this.fetchMembers() : Promise.resolve(),
+          this.objtype !== 'VIEW' ? this.fetchDependency() : Promise.resolve(),
+        ])
       } else {
-        await this.fetchInfoIndex();
-        await this.fetchStatsIndex();
+        await Promise.all([
+          this.fetchInfoIndex(),
+          this.fetchStatsIndex()
+        ])
       }
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));

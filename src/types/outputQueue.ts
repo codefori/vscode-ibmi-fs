@@ -613,8 +613,10 @@ export default class Outq extends Base {
    * Fetch output queue information and spooled files
    */
   async fetch() {
-    await this.fetchInfo();
-    await this.fetchSpools();
+    await Promise.all([
+      await this.fetchInfo(),
+      await this.fetchSpools()
+    ])
   }
 
   /**

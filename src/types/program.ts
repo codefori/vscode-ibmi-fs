@@ -96,13 +96,13 @@ export class Pgm extends Base {
    * Fetch program information, modules, service programs, and exports
    */
   async fetch() {
-    await this.fetchInfo();
-    await this.fetchModules();
-    await this.fetchSrvpgms();
-
-    if (this.isSrvpgm) {
-      await this.fetchExports();
-    }
+    this.isSrvpgm=this.uri.path.includes('SRVPGM')
+    await Promise.all([
+      this.fetchInfo(),
+      this.fetchModules(),
+      this.fetchSrvpgms(),
+      this.isSrvpgm ? this.fetchExports() : Promise.resolve()
+    ])
   }
 
   /**
@@ -222,8 +222,6 @@ export class Pgm extends Base {
         vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "PROGRAM_INFO"));
         return;
       }
-
-      this.isSrvpgm = this.pgm[0].OBJECT_TYPE === '*SRVPGM';
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;

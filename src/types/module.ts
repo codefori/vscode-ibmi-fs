@@ -89,13 +89,14 @@ export class Module extends Base {
    * Fetch program information, modules, service programs, and exports
    */
   async fetch() {
-
-    await this.fetchBasic();
-    await this.fetchSize();
-    await this.fetchImpExports();
-    await this.fetchProcList();
-    await this.fetchSysObj();
-    await this.fetchCopyRight();
+    await Promise.all([
+      await this.fetchBasic(),
+      await this.fetchSize(),
+      await this.fetchImpExports(),
+      await this.fetchProcList(),
+      await this.fetchSysObj(),
+      await this.fetchCopyRight()
+    ])
   }
 
   /**

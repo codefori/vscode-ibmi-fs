@@ -226,8 +226,10 @@ export class Binddir extends Base {
    * Fetch binding directory entries and exported procedures
    */
   async fetch() {
-    await this.fetchEntries();
-    await this.fetchExports();
+    await Promise.all([
+      this.fetchEntries(),
+      this.fetchExports()
+    ])
   }
 
   /**
