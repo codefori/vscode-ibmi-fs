@@ -122,12 +122,17 @@ export namespace WrkobjActions {
       // Create panels with the two tables
       const panelsHtml = Components.panels([
         {
-          title: vscode.l10n.t("Tab 1"),
+          title: vscode.l10n.t("Information"),
           badge: sampleData1.length,
           content: table1
         },
         {
-          title: vscode.l10n.t("Tab 2"),
+          title: vscode.l10n.t("Authorizations"),
+          badge: sampleData2.length,
+          content: table2
+        },
+        {
+          title: vscode.l10n.t("Locks"),
           badge: sampleData2.length,
           content: table2
         }
