@@ -10,7 +10,7 @@
 import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import * as vscode from 'vscode';
 import { getInstance } from './ibmi';
-import { FastTableColumn, generateFastTable } from "./tools";
+import { FastTableColumn, generateDetailTable, generateFastTable, executeSqlIfExists, checkTableFunctionExists, checkViewExists } from "./tools";
 import { Components } from "./webviewToolkit";
 
 /**
@@ -31,14 +31,168 @@ export namespace WrkobjActions {
             const library = parts[1];
             const nameWithExt = parts[2];
             const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
-            return openWrkobjWebview(library, name);
+            const type = '*'+parts[2].split('.')[1];
+            return openWrkobjWebview(library, name, type);
           }
         } else if (item) {
-          // Called from context menu
-          return openWrkobjWebview(item.library, item.name);
+          // Called from context menu or Object Browser
+          // Check if it's a tree item with object property or direct IBMiObject
+          const library = (item as any).object?.library || item.library;
+          const name = (item as any).object?.name || item.name;
+          const type = (item as any).object?.type || item.type;
+          return openWrkobjWebview(library, name, type);
         }
       })
     );
+  };
+
+  /**
+   * Fetch object statistics and privileges
+   * @param library - The library name
+   * @param name - The object name
+   * @param type - The object type (without asterisk, e.g., 'PGM')
+   * @returns Object statistics data
+   */
+  const fetchObjectStatistics = async (library: string, name: string, type: string): Promise<any[] | null> => {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    
+    if (!connection) {
+      throw new Error(vscode.l10n.t("Not connected to IBM i"));
+    }
+
+    const query = `
+      SELECT DISTINCT OBJOWNER,
+                      OBJDEFINER,
+                      to_char(OBJCREATED, 'yyyy-mm-dd HH24:mi') OBJCREATED,
+                      OBJSIZE,
+                      OBJTEXT,
+                      to_char(LAST_USED_TIMESTAMP, 'yyyy-mm-dd HH24:mi') LAST_USED_TIMESTAMP,
+                      DAYS_USED_COUNT,
+                      to_char(SAVE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') SAVE_TIMESTAMP,
+                      to_char(RESTORE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') RESTORE_TIMESTAMP,
+                      AUTHORIZATION_LIST
+      FROM TABLE (
+               QSYS2.OBJECT_STATISTICS('${library}', '${type}', '${name}')
+           ) X
+           INNER JOIN QSYS2.OBJECT_PRIVILEGES Y
+               ON X.OBJNAME = Y.SYSTEM_OBJECT_NAME
+                   AND X.OBJTYPE = Y.OBJECT_TYPE
+                   AND X.OBJLIB = Y.SYSTEM_OBJECT_SCHEMA
+    `;
+
+    const result = await executeSqlIfExists(
+      connection,
+      query,
+      'QSYS2',
+      'OBJECT_STATISTICS',
+      'FUNCTION'
+    );
+
+    if (result === null) {
+      vscode.window.showErrorMessage(
+        vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OBJECT_STATISTICS")
+      );
+      return null;
+    }
+
+    return result;
+  };
+
+  /**
+   * Fetch object lock information
+   * @param library - The library name
+   * @param name - The object name
+   * @param type - The object type (with asterisk, e.g., '*PGM')
+   * @returns Object lock data
+   */
+  const fetchObjectLocks = async (library: string, name: string, type: string): Promise<any[] | null> => {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    
+    if (!connection) {
+      throw new Error(vscode.l10n.t("Not connected to IBM i"));
+    }
+
+    const query = `
+      SELECT LOCK_STATE,
+             LOCK_STATUS,
+             LOCK_SCOPE,
+             JOB_NAME
+      FROM QSYS2.OBJECT_LOCK_INFO
+      WHERE SYSTEM_OBJECT_SCHEMA = '${library}'
+            AND SYSTEM_OBJECT_NAME = '${name}'
+            AND OBJECT_TYPE='${type}'
+    `;
+
+    const result = await executeSqlIfExists(
+      connection,
+      query,
+      'QSYS2',
+      'OBJECT_LOCK_INFO',
+      'VIEW'
+    );
+
+    if (result === null) {
+      vscode.window.showErrorMessage(
+        vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OBJECT_LOCK_INFO")
+      );
+      return null;
+    }
+
+    return result;
+  };
+
+  /**
+   * Fetch object privileges/authorizations
+   * @param library - The library name
+   * @param name - The object name
+   * @param type - The object type (with asterisk, e.g., '*PGM')
+   * @returns Object privileges data
+   */
+  const fetchObjectPrivileges = async (library: string, name: string, type: string): Promise<any[] | null> => {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    
+    if (!connection) {
+      throw new Error(vscode.l10n.t("Not connected to IBM i"));
+    }
+
+    const query = `
+      SELECT AUTHORIZATION_NAME,
+             OBJECT_AUTHORITY,
+             OBJECT_OPERATIONAL,
+             OBJECT_MANAGEMENT,
+             OBJECT_EXISTENCE,
+             OBJECT_ALTER,
+             OBJECT_REFERENCE,
+             DATA_READ,
+             DATA_ADD,
+             DATA_UPDATE,
+             DATA_DELETE,
+             DATA_EXECUTE
+      FROM QSYS2.OBJECT_PRIVILEGES
+      WHERE SYSTEM_OBJECT_SCHEMA = '${library}'
+            AND SYSTEM_OBJECT_NAME = '${name}'
+            AND OBJECT_TYPE='${type}'
+    `;
+
+    const result = await executeSqlIfExists(
+      connection,
+      query,
+      'QSYS2',
+      'OBJECT_PRIVILEGES',
+      'VIEW'
+    );
+
+    if (result === null) {
+      vscode.window.showErrorMessage(
+        vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OBJECT_PRIVILEGES")
+      );
+      return null;
+    }
+
+    return result;
   };
 
   /**
@@ -47,7 +201,7 @@ export namespace WrkobjActions {
    * @param name - The object name
    * @returns True if successful, false otherwise
    */
-  const openWrkobjWebview = async (library: string, name: string): Promise<boolean> => {
+  const openWrkobjWebview = async (library: string, name: string, type: string): Promise<boolean> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     
@@ -57,10 +211,23 @@ export namespace WrkobjActions {
     }
 
     try {
+
+      // Fetch data from IBM i in parallel
+      const [objectStats, objectLocks, objectPrivileges] = await Promise.all([
+        fetchObjectStatistics(library, name, type),
+        fetchObjectLocks(library, name, type),
+        fetchObjectPrivileges(library, name, type)
+      ]);
+
+      // Check if any fetch failed
+      if (objectStats === null || objectLocks === null || objectPrivileges === null) {
+        return false;
+      }
+
       // Create webview panel
       const panel = vscode.window.createWebviewPanel(
         'wrkobjView',
-        vscode.l10n.t("Work with Object: {0}/{1}", library, name),
+        vscode.l10n.t("Work with Object: {0}/{1} {2}", library, name, type),
         vscode.ViewColumn.One,
         {
           enableScripts: true,
@@ -68,73 +235,87 @@ export namespace WrkobjActions {
         }
       );
 
-      // Generate sample data for the tables
-      const sampleData1 = [
-        { column1: vscode.l10n.t('Value 1'), column2: vscode.l10n.t('Data A'), column3: '100' },
-        { column1: vscode.l10n.t('Value 2'), column2: vscode.l10n.t('Data B'), column3: '200' },
-        { column1: vscode.l10n.t('Value 3'), column2: vscode.l10n.t('Data C'), column3: '300' },
-        { column1: vscode.l10n.t('Value 4'), column2: vscode.l10n.t('Data D'), column3: '400' },
-        { column1: vscode.l10n.t('Value 5'), column2: vscode.l10n.t('Data E'), column3: '500' }
+      // Define columns for object statistics (detail table - Map format)
+      const statsColumns = new Map<string, string>([
+        ['OBJOWNER', vscode.l10n.t('Owner')],
+        ['OBJDEFINER', vscode.l10n.t('Definer')],
+        ['OBJCREATED', vscode.l10n.t('Created')],
+        ['OBJSIZE', vscode.l10n.t('Size')],
+        ['OBJTEXT', vscode.l10n.t('Text')],
+        ['LAST_USED_TIMESTAMP', vscode.l10n.t('Last Used')],
+        ['DAYS_USED_COUNT', vscode.l10n.t('Days Used')],
+        ['SAVE_TIMESTAMP', vscode.l10n.t('Saved')],
+        ['RESTORE_TIMESTAMP', vscode.l10n.t('Restored')],
+        ['AUTHORIZATION_LIST', vscode.l10n.t('Auth List')]
+      ]);
+
+      // Define columns for locks table
+      const locksColumns: FastTableColumn<any>[] = [
+        { title: vscode.l10n.t('Lock State'), width: '1fr', getValue: e => e.LOCK_STATE },
+        { title: vscode.l10n.t('Lock Status'), width: '1fr', getValue: e => e.LOCK_STATUS },
+        { title: vscode.l10n.t('Lock Scope'), width: '1fr', getValue: e => e.LOCK_SCOPE },
+        { title: vscode.l10n.t('Job Name'), width: '2fr', getValue: e => e.JOB_NAME }
       ];
 
-      const sampleData2 = [
-        { info: vscode.l10n.t('Information 1'), value: 'Alpha', status: vscode.l10n.t('Active') },
-        { info: vscode.l10n.t('Information 2'), value: 'Beta', status: vscode.l10n.t('Inactive') },
-        { info: vscode.l10n.t('Information 3'), value: 'Gamma', status: vscode.l10n.t('Active') },
-        { info: vscode.l10n.t('Information 4'), value: 'Delta', status: vscode.l10n.t('Active') },
-        { info: vscode.l10n.t('Information 5'), value: 'Epsilon', status: vscode.l10n.t('Inactive') }
+      // Define columns for privileges table
+      const privilegesColumns: FastTableColumn<any>[] = [
+        { title: vscode.l10n.t('Authorization'), width: '1.5fr', getValue: e => e.AUTHORIZATION_NAME },
+        { title: vscode.l10n.t('Object Auth'), width: '1fr', getValue: e => e.OBJECT_AUTHORITY },
+        { title: vscode.l10n.t('Operational'), width: '0.8fr', getValue: e => e.OBJECT_OPERATIONAL },
+        { title: vscode.l10n.t('Management'), width: '0.8fr', getValue: e => e.OBJECT_MANAGEMENT },
+        { title: vscode.l10n.t('Existence'), width: '0.8fr', getValue: e => e.OBJECT_EXISTENCE },
+        { title: vscode.l10n.t('Alter'), width: '0.8fr', getValue: e => e.OBJECT_ALTER },
+        { title: vscode.l10n.t('Reference'), width: '0.8fr', getValue: e => e.OBJECT_REFERENCE },
+        { title: vscode.l10n.t('Read'), width: '0.8fr', getValue: e => e.DATA_READ },
+        { title: vscode.l10n.t('Add'), width: '0.8fr', getValue: e => e.DATA_ADD },
+        { title: vscode.l10n.t('Update'), width: '0.8fr', getValue: e => e.DATA_UPDATE },
+        { title: vscode.l10n.t('Delete'), width: '0.8fr', getValue: e => e.DATA_DELETE },
+        { title: vscode.l10n.t('Execute'), width: '0.8fr', getValue: e => e.DATA_EXECUTE }
       ];
 
-      // Define columns for first table
-      const columns1: FastTableColumn<typeof sampleData1[0]>[] = [
-        { title: vscode.l10n.t('Column 1'), width: '1fr', getValue: e => e.column1 },
-        { title: vscode.l10n.t('Column 2'), width: '1fr', getValue: e => e.column2 },
-        { title: vscode.l10n.t('Column 3'), width: '0.5fr', getValue: e => e.column3 }
-      ];
-
-      // Define columns for second table
-      const columns2: FastTableColumn<typeof sampleData2[0]>[] = [
-        { title: vscode.l10n.t('Info'), width: '1.5fr', getValue: e => e.info },
-        { title: vscode.l10n.t('Value'), width: '1fr', getValue: e => e.value },
-        { title: vscode.l10n.t('Status'), width: '0.8fr', getValue: e => e.status }
-      ];
-
-      // Generate the first table
-      const table1 = generateFastTable({
-        title: vscode.l10n.t("First Table"),
-        subtitle: vscode.l10n.t("Sample data for {0}/{1}", library, name),
-        columns: columns1,
-        data: sampleData1,
-        stickyHeader: true,
-        emptyMessage: vscode.l10n.t("No data available")
+      // Generate the detail table for object statistics
+      const table1 = generateDetailTable({
+        title: `${library}/${name} ${type}`,
+        subtitle: vscode.l10n.t('Object Information'),
+        columns: statsColumns,
+        data: objectStats,
+        hideNullValues: true
       });
 
-      // Generate the second table
+      // Generate the locks table
       const table2 = generateFastTable({
-        title: vscode.l10n.t("Second Table"),
-        subtitle: vscode.l10n.t("Additional information for {0}/{1}", library, name),
-        columns: columns2,
-        data: sampleData2,
+        title: vscode.l10n.t("Object Locks"),
+        columns: locksColumns,
+        data: objectLocks,
         stickyHeader: true,
-        emptyMessage: vscode.l10n.t("No data available")
+        emptyMessage: vscode.l10n.t("No locks found")
       });
 
-      // Create panels with the two tables
+      // Generate the privileges table
+      const table3 = generateFastTable({
+        title: vscode.l10n.t("Object Authorizations"),
+        columns: privilegesColumns,
+        data: objectPrivileges,
+        stickyHeader: true,
+        emptyMessage: vscode.l10n.t("No authorizations found")
+      });
+
+      // Create panels with the three tables
       const panelsHtml = Components.panels([
         {
           title: vscode.l10n.t("Information"),
-          badge: sampleData1.length,
+          badge: objectStats?.length || 0,
           content: table1
         },
         {
-          title: vscode.l10n.t("Authorizations"),
-          badge: sampleData2.length,
+          title: vscode.l10n.t("Locks"),
+          badge: objectLocks?.length || 0,
           content: table2
         },
         {
-          title: vscode.l10n.t("Locks"),
-          badge: sampleData2.length,
-          content: table2
+          title: vscode.l10n.t("Authorizations"),
+          badge: objectPrivileges?.length || 0,
+          content: table3
         }
       ]);
 

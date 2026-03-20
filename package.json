@@ -3,7 +3,7 @@
   "displayName": "%displayName%",
   "description": "%description%",
   "l10n": "./l10n",
-  "version": "0.0.6-dev0",
+  "version": "0.0.7-dev0",
   "preview": true,
   "license": "MIT",
   "engines": {
@@ -410,7 +410,13 @@
           "group": "navigation@99"
         }
       ],
-      "view/item/context": [],
+      "view/item/context": [
+        {
+          "command": "vscode-ibmi-fs.wrkobj",
+          "when": "viewItem =~ /^object/ && code-for-ibmi:connected",
+          "group": "navigation@1"
+        }
+      ],
       "commandPalette": [
         {
           "command": "vscode-ibmi-fs.downloadSavf",
@@ -522,7 +528,7 @@
         },
         {
           "command": "vscode-ibmi-fs.wrkobj",
-          "when": "never"
+          "when": "code-for-ibmi:connected"
         }
       ]
     }
