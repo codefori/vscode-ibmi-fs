@@ -26,7 +26,7 @@
   "command.sendToDataQueue.title": "Enviar datos a la cola de datos",
   "command.sendToMessageQueue.title": "Enviar mensaje a cola de mensajes",
   "command.uploadSavf.title": "Subir archivo guardado",
-  "command.wrkobj.title": "Información del objeto",
+  "command.dspobj.title": "Información del objeto",
   "description": "Proveedor de sistemas de archivos para IBM i QSYS",
   "displayName": "IBM i FileSystem"
 }

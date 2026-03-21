@@ -26,7 +26,7 @@
   "command.sendToDataQueue.title": "データをデータキューに送信する",
   "command.sendToMessageQueue.title": "メッセージをメッセージ待ち行列に送信",
   "command.uploadSavf.title": "セーブデータをアップロード",
-  "command.wrkobj.title": "オブジェクト情報",
+  "command.dspobj.title": "オブジェクト情報",
   "description": "IBM i QSYS用ファイルシステムプロバイダ",
   "displayName": "IBM i FileSystem"
 }

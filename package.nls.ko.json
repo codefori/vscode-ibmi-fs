@@ -26,7 +26,7 @@
   "command.sendToDataQueue.title": "데이터를 데이터 큐로 전송",
   "command.sendToMessageQueue.title": "메시지를 메시지 큐로 전송",
   "command.uploadSavf.title": "저장 파일 업로드",
-  "command.wrkobj.title": "오브젝트 정보",
+  "command.dspobj.title": "오브젝트 정보",
   "description": "IBM i 용 파일 시스템 공급자 QSYS",
   "displayName": "IBM i FileSystem"
 }

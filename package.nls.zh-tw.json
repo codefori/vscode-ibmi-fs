@@ -26,7 +26,7 @@
   "command.sendToDataQueue.title": "將資料傳送至資料佇列",
   "command.sendToMessageQueue.title": "傳送訊息至訊息佇列",
   "command.uploadSavf.title": "上傳儲存檔案",
-  "command.wrkobj.title": "物件資訊",
+  "command.dspobj.title": "物件資訊",
   "description": "IBM i QSYS 檔案系統供應商",
   "displayName": "IBM i FileSystem"
 }

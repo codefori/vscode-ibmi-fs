@@ -292,8 +292,8 @@ Query definitions are objects created by Query/400 or Query Manager that define 
 
 ---
 
-### 🔧 Work with Object (WRKOBJ)
-A generic action that provides comprehensive information about any IBM i object, similar to the WRKOBJ command.
+### 🔧 Display Object information
+A generic action that provides comprehensive information about any IBM i object, similar to the WRKOBJ/DSPOBJD command.
 
 **Features:**
 - 📊 Display detailed object information (owner, definer, creation date, size, text description)

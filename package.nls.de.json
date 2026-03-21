@@ -26,7 +26,7 @@
   "command.sendToDataQueue.title": "Daten an Datenwarteschlange senden",
   "command.sendToMessageQueue.title": "Nachricht an Nachrichtenwarteschlange senden",
   "command.uploadSavf.title": "Datei hochladen und speichern",
-  "command.wrkobj.title": "Objektinformationen",
+  "command.dspobj.title": "Objektinformationen",
   "description": "Dateisystemanbieter für IBM i QSYS",
   "displayName": "IBM i FileSystem"
 }

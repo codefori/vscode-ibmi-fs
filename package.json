@@ -261,8 +261,8 @@
         "icon": "$(trash)"
       },
       {
-        "command": "vscode-ibmi-fs.wrkobj",
-        "title": "%command.wrkobj.title%",
+        "command": "vscode-ibmi-fs.dspobj",
+        "title": "%command.dspobj.title%",
         "category": "IBM i FS",
         "icon": "$(info)"
       }
@@ -405,14 +405,14 @@
           "group": "navigation@2"
         },
         {
-          "command": "vscode-ibmi-fs.wrkobj",
+          "command": "vscode-ibmi-fs.dspobj",
           "when": "activeCustomEditorId == vscode-ibmi-fs.editor",
           "group": "navigation@99"
         }
       ],
       "view/item/context": [
         {
-          "command": "vscode-ibmi-fs.wrkobj",
+          "command": "vscode-ibmi-fs.dspobj",
           "when": "viewItem =~ /^object/ && code-for-ibmi:connected",
           "group": "navigation@1"
         }
@@ -527,7 +527,7 @@
           "when": "never"
         },
         {
-          "command": "vscode-ibmi-fs.wrkobj",
+          "command": "vscode-ibmi-fs.dspobj",
           "when": "code-for-ibmi:connected"
         }
       ]

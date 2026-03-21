@@ -16,14 +16,14 @@ import { Components } from "./webviewToolkit";
 /**
  * Namespace containing actions for Work with Object
  */
-export namespace WrkobjActions {
+export namespace DspobjActions {
   /**
    * Register Work with Object commands with VS Code
    * @param context - Extension context
    */
   export const register = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
-      vscode.commands.registerCommand("vscode-ibmi-fs.wrkobj", async (item?: IBMiObject | vscode.Uri) => {
+      vscode.commands.registerCommand("vscode-ibmi-fs.dspobj", async (item?: IBMiObject | vscode.Uri) => {
         if (item instanceof vscode.Uri) {
           // Called from editor toolbar - get library and name from URI
           const parts = item.path.split('/');
@@ -63,15 +63,20 @@ export namespace WrkobjActions {
 
     const query = `
       SELECT DISTINCT OBJOWNER,
-                      OBJDEFINER,
-                      to_char(OBJCREATED, 'yyyy-mm-dd HH24:mi') OBJCREATED,
-                      OBJSIZE,
-                      OBJTEXT,
-                      to_char(LAST_USED_TIMESTAMP, 'yyyy-mm-dd HH24:mi') LAST_USED_TIMESTAMP,
-                      DAYS_USED_COUNT,
-                      to_char(SAVE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') SAVE_TIMESTAMP,
-                      to_char(RESTORE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') RESTORE_TIMESTAMP,
-                      AUTHORIZATION_LIST
+                OBJDEFINER,
+                TO_CHAR(OBJCREATED, 'yyyy-mm-dd HH24:mi') OBJCREATED,
+                OBJSIZE,
+                OBJTEXT,
+                TO_CHAR(CHANGE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') CHANGE_TIMESTAMP,
+                TO_CHAR(LAST_USED_TIMESTAMP, 'yyyy-mm-dd HH24:mi') LAST_USED_TIMESTAMP,
+                DAYS_USED_COUNT,
+                TO_CHAR(SAVE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') SAVE_TIMESTAMP,
+                X.SAVE_DEVICE,
+                X.SAVE_VOLUME,
+                X.SAVE_SEQUENCE_NUMBER,
+                TO_CHAR(RESTORE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') RESTORE_TIMESTAMP,
+                CASE WHEN JOURNALED = 'YES' THEN JOURNALED CONCAT ' ' CONCAT JOURNAL_LIBRARY CONCAT '/' CONCAT JOURNAL_NAME ELSE 'NO' END AS JOURNALED,
+                AUTHORIZATION_LIST
       FROM TABLE (
                QSYS2.OBJECT_STATISTICS('${library}', '${type}', '${name}')
            ) X
@@ -227,7 +232,7 @@ export namespace WrkobjActions {
       // Create webview panel
       const panel = vscode.window.createWebviewPanel(
         'wrkobjView',
-        vscode.l10n.t("Work with Object: {0}/{1} {2}", library, name, type),
+        vscode.l10n.t("Display Object Information: {0}/{1} {2}", library, name, type),
         vscode.ViewColumn.One,
         {
           enableScripts: true,
@@ -239,13 +244,18 @@ export namespace WrkobjActions {
       const statsColumns = new Map<string, string>([
         ['OBJOWNER', vscode.l10n.t('Owner')],
         ['OBJDEFINER', vscode.l10n.t('Definer')],
-        ['OBJCREATED', vscode.l10n.t('Created')],
         ['OBJSIZE', vscode.l10n.t('Size')],
         ['OBJTEXT', vscode.l10n.t('Text')],
+        ['OBJCREATED', vscode.l10n.t('Created')],
+        ['CHANGE_TIMESTAMP', vscode.l10n.t('Changed')],
         ['LAST_USED_TIMESTAMP', vscode.l10n.t('Last Used')],
         ['DAYS_USED_COUNT', vscode.l10n.t('Days Used')],
         ['SAVE_TIMESTAMP', vscode.l10n.t('Saved')],
+        ['SAVE_DEVICE', vscode.l10n.t('Save Device')],
+        ['SAVE_VOLUME', vscode.l10n.t('Save Volume')],
+        ['SAVE_SEQUENCE_NUMBER', vscode.l10n.t('Save Sequence')],
         ['RESTORE_TIMESTAMP', vscode.l10n.t('Restored')],
+        ['JOURNALED', vscode.l10n.t('Journaled')],
         ['AUTHORIZATION_LIST', vscode.l10n.t('Auth List')]
       ]);
 
@@ -321,10 +331,6 @@ export namespace WrkobjActions {
 
       // Generate complete HTML page
       panel.webview.html = generateWebviewHtml(panelsHtml);
-
-      vscode.window.showInformationMessage(
-        vscode.l10n.t("Work with Object opened for {0}/{1}", library, name)
-      );
 
       return true;
     } catch (error) {
