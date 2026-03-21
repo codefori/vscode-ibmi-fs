@@ -325,7 +325,7 @@ export function generateDetailTable(options: DetailTableOptions): string {
     
     // Handle code columns
     if (isCodeColumn) {
-      return `<code style="background: var(--vscode-textCodeBlock-background); padding: 4px 8px; border-radius: 4px; font-family: var(--vscode-editor-font-family); border: 1px solid var(--vscode-panel-border); display: inline-block; max-width: 100%; overflow-x: auto;">${escapeHtml(value)}</code>`;
+      return `<code style="background: var(--vscode-textCodeBlock-background); padding: 4px 8px; border-radius: 4px; font-family: var(--vscode-editor-font-family); border: 1px solid var(--vscode-panel-border); display: inline-block; max-width: 100%; white-space: pre-wrap; word-break: break-all; overflow-wrap: break-word;">${escapeHtml(value)}</code>`;
     }
     
     return escapeHtml(value);
@@ -429,7 +429,7 @@ export function generateDetailTable(options: DetailTableOptions): string {
         display: flex;
         align-items: center;
         min-width: 0;
-        overflow-x: auto;
+        overflow-wrap: break-word;
       }
       
       .detail-table-container code {
@@ -440,8 +440,9 @@ export function generateDetailTable(options: DetailTableOptions): string {
         border-radius: 4px;
         border: 1px solid var(--vscode-panel-border);
         max-width: 100%;
-        overflow-x: auto;
-        white-space: pre;
+        white-space: pre-wrap;
+        word-break: break-all;
+        overflow-wrap: break-word;
       }
       
       .detail-table-actions {
