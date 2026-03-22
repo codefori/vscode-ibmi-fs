@@ -115,7 +115,7 @@ export namespace SubsystemActions {
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to start {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Start SBSD"))) {
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `STRSBS SBSD(${library}/${name})`,
+          command: `QSYS/STRSBS SBSD(${library}/${name})`,
           environment: `ile`
         });
 
@@ -192,7 +192,7 @@ export namespace SubsystemActions {
       if (endOption) {
         if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to end {0}/{1} with option {2}?", library, name, endOption.label), { modal: true }, vscode.l10n.t("End SBSD"))) {
           const cmdrun: CommandResult = await connection.runCommand({
-            command: `ENDSBS SBS(${name}) OPTION(${endOption.value})`,
+            command: `QSYS/ENDSBS SBS(${name}) OPTION(${endOption.value})`,
             environment: `ile`
           });
 
@@ -231,7 +231,7 @@ export namespace SubsystemActions {
 
         // Execute ENDJOB command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `ENDJOB JOB(${item.job}) OPTION(*IMMED)`,
+          command: `QSYS/ENDJOB JOB(${item.job}) OPTION(*IMMED)`,
           environment: `ile`
         });
 

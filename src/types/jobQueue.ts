@@ -129,7 +129,7 @@ export namespace JobQueueActions {
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to hold Job Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Hold JOBQ"))) {
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `HLDJOBQ ${library}/${name}`,
+          command: `QSYS/HLDJOBQ ${library}/${name}`,
           environment: `ile`
         });
 
@@ -191,7 +191,7 @@ export namespace JobQueueActions {
       }
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to release Job Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Release JOBQ"))) {
           const cmdrun: CommandResult = await connection.runCommand({
-            command: `RLSJOBQ ${library}/${name}`,
+            command: `QSYS/RLSJOBQ ${library}/${name}`,
             environment: `ile`
           });
 
@@ -230,7 +230,7 @@ export namespace JobQueueActions {
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Job Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Clear JOBQ"))) {
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `CLRJOBQ ${library}/${name}`,
+          command: `QSYS/CLRJOBQ ${library}/${name}`,
           environment: `ile`
         });
 
@@ -264,7 +264,7 @@ export namespace JobQueueActions {
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to hold job {0} ?", item.job), { modal: true }, vscode.l10n.t("Hold job"))) {
         // Execute HLDJOB command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `HLDJOB JOB(${item.job})`,
+          command: `QSYS/HLDJOB JOB(${item.job})`,
           environment: `ile`
         });
 
@@ -300,7 +300,7 @@ export namespace JobQueueActions {
 
           // Execute RLSJOB command on IBM i
           const cmdrun: CommandResult = await connection.runCommand({
-            command: `RLSJOB JOB(${item.job})`,
+            command: `QSYS/RLSJOB JOB(${item.job})`,
             environment: `ile`
           });
 
@@ -336,7 +336,7 @@ export namespace JobQueueActions {
 
         // Execute ENDJOB command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `ENDJOB JOB(${item.job})`,
+          command: `QSYS/ENDJOB JOB(${item.job})`,
           environment: `ile`
         });
 

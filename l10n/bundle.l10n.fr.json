@@ -1189,6 +1189,8 @@
   "Sev.": "Sev.",
   "Signature": "Signature",
   "Size": "Taille",
+  "SQL Name": "Nom SQL",
+  "SQL Type": "Type SQL",
   "Size (KB)": "Taille (Ko)",
   "Some parameters are missing... ": "Certains paramètres sont manquants... ",
   "Source": "Source",

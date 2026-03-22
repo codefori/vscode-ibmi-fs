@@ -195,7 +195,7 @@ export namespace SaveFileActions {
             progress.report({ message: vscode.l10n.t("Copying to temporary stream file...") });
             const copyToStreamFile: CommandResult = await connection.runCommand(
               {
-                command: `CPYTOSTMF FROMMBR('${qsysPath}') TOSTMF('${tempRemotePath}') STMFOPT(*REPLACE)`,
+                command: `QSYS/CPYTOSTMF FROMMBR('${qsysPath}') TOSTMF('${tempRemotePath}') STMFOPT(*REPLACE)`,
                 environment: `ile`,
               },
             );
@@ -333,7 +333,7 @@ export namespace SaveFileActions {
             // Step 2: Copy from stream file to save file member
             progress.report({ message: vscode.l10n.t("Copying Save File...") });
             const copyFromStreamFile = await connection.runCommand({
-              command: `CPYFRMSTMF FROMSTMF('${rmtpath}') TOMBR('${qsysPath}') MBROPT(*REPLACE)`,
+              command: `QSYS/CPYFRMSTMF FROMSTMF('${rmtpath}') TOMBR('${qsysPath}') MBROPT(*REPLACE)`,
             });
 
             if (copyFromStreamFile.code !== 0) {
@@ -395,7 +395,7 @@ export namespace SaveFileActions {
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Save File {0}/{1}?", target.library, target.name), { modal: true }, vscode.l10n.t("Clear SAVF"))) {
         const clrsavf = await connection.runCommand({
-          command: `CLRSAVF FILE(${target.library}/${target.name})`,
+          command: `QSYS/CLRSAVF FILE(${target.library}/${target.name})`,
         });
 
         if (clrsavf.code !== 0) {
@@ -480,7 +480,7 @@ export namespace SaveFileActions {
             savcmd2;
           let cmd: string | undefined;
 
-          // Get the library name from save file info if not SAV command
+          // Get the library name from save file info if not QSYS/SAV command
           if (saveCmd !== "SAV") {
             const libResult = await connection.runSQL(
               `SELECT LIBRARY_NAME 
@@ -554,7 +554,7 @@ export namespace SaveFileActions {
               );
 
               if (path && tgtpath && objdif && option) {
-                cmd = `RST DEV('${getQSYSObjectPath(target.library, target.name, "FILE")}') OBJ(('${path}' *INCLUDE '${tgtpath}')) OPTION(${option}) ALWOBJDIF(${objdif.toString().replace(",", " ")})`;
+                cmd = `QSYS/RST DEV('${getQSYSObjectPath(target.library, target.name, "FILE")}') OBJ(('${path}' *INCLUDE '${tgtpath}')) OPTION(${option}) ALWOBJDIF(${objdif.toString().replace(",", " ")})`;
               } else {
                 result.successful = false;
                 result.error = vscode.l10n.t("Some parameters are missing... ");
@@ -624,7 +624,7 @@ export namespace SaveFileActions {
 
               if (lib && tgtlib && objdif && option && dbmbropt) {
                 cmd =
-                  "RSTLIB SAVLIB(" +
+                  "QSYS/RSTLIB SAVLIB(" +
                   lib.toUpperCase() +
                   ") DEV(*SAVF) SAVF(" +
                   target.library +
@@ -743,7 +743,7 @@ export namespace SaveFileActions {
                 dbmbropt
               ) {
                 cmd =
-                  "RSTOBJ OBJ(" +
+                  "QSYS/RSTOBJ OBJ(" +
                   object.toUpperCase() +
                   ") OBJTYPE(" +
                   objtype.toUpperCase() +
@@ -927,7 +927,7 @@ export namespace SaveFileActions {
               );
 
               if (path && tgtrls && compression) {
-                cmd = `SAV DEV('${getQSYSObjectPath(target.library, target.name, "FILE")}') OBJ(('${path}')) DTACPR(${compression}) TGTRLS(${tgtrls})`;
+                cmd = `QSYS/SAV DEV('${getQSYSObjectPath(target.library, target.name, "FILE")}') OBJ(('${path}')) DTACPR(${compression}) TGTRLS(${tgtrls})`;
               } else {
                 result.successful = false;
                 result.error = vscode.l10n.t("Some parameters are missing... ");
@@ -980,7 +980,7 @@ export namespace SaveFileActions {
 
               if (lib && spool && tgtrls && compression) {
                 cmd =
-                  "SAVLIB LIB(" +
+                  "QSYS/SAVLIB LIB(" +
                   lib.toUpperCase() +
                   ") DEV(*SAVF) SAVF(" +
                   target.library +
@@ -1072,7 +1072,7 @@ export namespace SaveFileActions {
 
               if (object && objtype && lib && spool && tgtrls && compression) {
                 cmd =
-                  "SAVOBJ OBJ(" +
+                  "QSYS/SAVOBJ OBJ(" +
                   object.toUpperCase() +
                   ") OBJTYPE(" +
                   objtype.toUpperCase() +
@@ -1293,7 +1293,7 @@ export class SaveFile extends Base {
 
       // Display save file contents
       const savf: CommandResult = await connection.runCommand({
-        command: `DSPSAVF FILE(${this.library}/${this.name})`,
+        command: `QSYS/DSPSAVF FILE(${this.library}/${this.name})`,
         environment: `ile`,
       });
 

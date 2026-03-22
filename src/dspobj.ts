@@ -62,11 +62,15 @@ export namespace DspobjActions {
     }
 
     const query = `
-      SELECT DISTINCT OBJOWNER,
+      SELECT DISTINCT 
+                x.OBJLONGNAME, 
+                x.SQL_OBJECT_TYPE, 
+                OBJOWNER,
                 OBJDEFINER,
-                TO_CHAR(OBJCREATED, 'yyyy-mm-dd HH24:mi') OBJCREATED,
                 OBJSIZE,
                 OBJTEXT,
+                CASE WHEN x.OBJTYPE='*LIB' THEN IASP_NAME else null end as ASPGRP,  
+                TO_CHAR(OBJCREATED, 'yyyy-mm-dd HH24:mi') OBJCREATED,
                 TO_CHAR(CHANGE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') CHANGE_TIMESTAMP,
                 TO_CHAR(LAST_USED_TIMESTAMP, 'yyyy-mm-dd HH24:mi') LAST_USED_TIMESTAMP,
                 DAYS_USED_COUNT,
@@ -242,9 +246,12 @@ export namespace DspobjActions {
 
       // Define columns for object statistics (detail table - Map format)
       const statsColumns = new Map<string, string>([
+        ['OBJLONGNAME', vscode.l10n.t('SQL Name')],
+        ['SQL_OBJECT_TYPE', vscode.l10n.t('SQL Type')],
         ['OBJOWNER', vscode.l10n.t('Owner')],
         ['OBJDEFINER', vscode.l10n.t('Definer')],
         ['OBJSIZE', vscode.l10n.t('Size')],
+        ['ASPGRP', vscode.l10n.t('ASPGRP')],
         ['OBJTEXT', vscode.l10n.t('Text')],
         ['OBJCREATED', vscode.l10n.t('Created')],
         ['CHANGE_TIMESTAMP', vscode.l10n.t('Changed')],

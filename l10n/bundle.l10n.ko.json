@@ -1189,6 +1189,8 @@
   "Sev.": "세브.",
   "Signature": "서명",
   "Size": "크기",
+  "SQL Name": "SQL 이름",
+  "SQL Type": "SQL 유형",
   "Size (KB)": "크기(KB)",
   "Some parameters are missing... ": "일부 매개변수가 누락되었습니다... ",
   "Source": "소스",
