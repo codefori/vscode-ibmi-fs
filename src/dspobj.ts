@@ -321,7 +321,6 @@ export namespace DspobjActions {
       const panelsHtml = Components.panels([
         {
           title: vscode.l10n.t("Information"),
-          badge: objectStats?.length || 0,
           content: table1
         },
         {
