@@ -3,7 +3,7 @@
   "displayName": "%displayName%",
   "description": "%description%",
   "l10n": "./l10n",
-  "version": "0.0.6-dev0",
+  "version": "0.0.7-dev0",
   "preview": true,
   "license": "MIT",
   "engines": {
@@ -259,6 +259,12 @@
         "title": "%command.RmvUsridxEntry.title%",
         "category": "IBM i FS",
         "icon": "$(trash)"
+      },
+      {
+        "command": "vscode-ibmi-fs.dspobj",
+        "title": "%command.dspobj.title%",
+        "category": "IBM i FS",
+        "icon": "$(info)"
       }
     ],
     "menus": {
@@ -397,9 +403,20 @@
           "command": "vscode-ibmi-fs.RmvUsridxEntry",
           "when": "resourceExtname == .USRIDX && activeCustomEditorId == vscode-ibmi-fs.editor",
           "group": "navigation@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.dspobj",
+          "when": "activeCustomEditorId == vscode-ibmi-fs.editor",
+          "group": "navigation@99"
         }
       ],
-      "view/item/context": [],
+      "view/item/context": [
+        {
+          "command": "vscode-ibmi-fs.dspobj",
+          "when": "viewItem =~ /^object/ && code-for-ibmi:connected",
+          "group": "navigation@1"
+        }
+      ],
       "commandPalette": [
         {
           "command": "vscode-ibmi-fs.downloadSavf",
@@ -508,6 +525,10 @@
         {
           "command": "vscode-ibmi-fs.RmvUsridxEntry",
           "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.dspobj",
+          "when": "code-for-ibmi:connected"
         }
       ]
     }

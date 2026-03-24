@@ -325,7 +325,7 @@ export function generateDetailTable(options: DetailTableOptions): string {
     
     // Handle code columns
     if (isCodeColumn) {
-      return `<code style="background: var(--vscode-textCodeBlock-background); padding: 4px 8px; border-radius: 4px; font-family: var(--vscode-editor-font-family); border: 1px solid var(--vscode-panel-border); display: inline-block; max-width: 100%; overflow-x: auto;">${escapeHtml(value)}</code>`;
+      return `<code style="background: var(--vscode-textCodeBlock-background); padding: 4px 8px; border-radius: 4px; font-family: var(--vscode-editor-font-family); border: 1px solid var(--vscode-panel-border); display: block; width: 100%; white-space: pre-wrap; word-break: break-all; overflow-wrap: break-word; box-sizing: border-box;">${escapeHtml(value)}</code>`;
     }
     
     return escapeHtml(value);
@@ -380,17 +380,17 @@ export function generateDetailTable(options: DetailTableOptions): string {
         width: 100%;
         min-width: 100%;
         border-radius: 6px;
-        overflow: hidden;
+        overflow: visible;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
-        table-layout: fixed;
       }
       
       .detail-table-container vscode-table-row {
         display: grid !important;
         grid-template-columns: 30% 70% !important;
         width: 100% !important;
-        min-height: 48px;
-        align-items: center;
+        min-height: 36px;
+        align-items: stretch;
+        position: relative;
       }
       
       .detail-table-container vscode-table-row:nth-child(even) {
@@ -407,29 +407,31 @@ export function generateDetailTable(options: DetailTableOptions): string {
       }
       
       .detail-table-container vscode-table-cell:first-child {
-        padding: 16px 20px;
+        padding: 12px 16px;
         font-weight: 600;
         color: var(--vscode-descriptionForeground);
         white-space: normal;
         word-wrap: break-word;
         background-color: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.05);
         border-right: 2px solid var(--vscode-panel-border);
-        min-height: 48px;
-        display: flex;
-        align-items: center;
+        min-height: 36px;
+        display: block;
+        height: auto;
       }
       
       .detail-table-container vscode-table-cell:last-child {
-        padding: 16px 20px;
+        padding: 12px 16px;
         word-break: break-word;
         white-space: normal;
         word-wrap: break-word;
         font-family: var(--vscode-font-family);
-        min-height: 48px;
-        display: flex;
-        align-items: center;
+        min-height: 36px;
+        display: block;
         min-width: 0;
-        overflow-x: auto;
+        overflow-wrap: break-word;
+        height: auto;
+        position: relative;
+        z-index: 1;
       }
       
       .detail-table-container code {
@@ -440,8 +442,11 @@ export function generateDetailTable(options: DetailTableOptions): string {
         border-radius: 4px;
         border: 1px solid var(--vscode-panel-border);
         max-width: 100%;
-        overflow-x: auto;
-        white-space: pre;
+        white-space: pre-wrap;
+        word-break: break-all;
+        overflow-wrap: break-word;
+        display: block;
+        width: 100%;
       }
       
       .detail-table-actions {

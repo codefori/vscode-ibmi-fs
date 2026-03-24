@@ -195,7 +195,7 @@ export namespace SaveFileActions {
             progress.report({ message: vscode.l10n.t("Copying to temporary stream file...") });
             const copyToStreamFile: CommandResult = await connection.runCommand(
               {
-                command: `CPYTOSTMF FROMMBR('${qsysPath}') TOSTMF('${tempRemotePath}') STMFOPT(*REPLACE)`,
+                command: `QSYS/CPYTOSTMF FROMMBR('${qsysPath}') TOSTMF('${tempRemotePath}') STMFOPT(*REPLACE)`,
                 environment: `ile`,
               },
             );
@@ -333,7 +333,7 @@ export namespace SaveFileActions {
             // Step 2: Copy from stream file to save file member
             progress.report({ message: vscode.l10n.t("Copying Save File...") });
             const copyFromStreamFile = await connection.runCommand({
-              command: `CPYFRMSTMF FROMSTMF('${rmtpath}') TOMBR('${qsysPath}') MBROPT(*REPLACE)`,
+              command: `QSYS/CPYFRMSTMF FROMSTMF('${rmtpath}') TOMBR('${qsysPath}') MBROPT(*REPLACE)`,
             });
 
             if (copyFromStreamFile.code !== 0) {
@@ -395,7 +395,7 @@ export namespace SaveFileActions {
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Save File {0}/{1}?", target.library, target.name), { modal: true }, vscode.l10n.t("Clear SAVF"))) {
         const clrsavf = await connection.runCommand({
-          command: `CLRSAVF FILE(${target.library}/${target.name})`,
+          command: `QSYS/CLRSAVF FILE(${target.library}/${target.name})`,
         });
 
         if (clrsavf.code !== 0) {
@@ -480,7 +480,7 @@ export namespace SaveFileActions {
             savcmd2;
           let cmd: string | undefined;
 
-          // Get the library name from save file info if not SAV command
+          // Get the library name from save file info if not QSYS/SAV command
           if (saveCmd !== "SAV") {
             const libResult = await connection.runSQL(
               `SELECT LIBRARY_NAME 
@@ -554,7 +554,7 @@ export namespace SaveFileActions {
               );
 
               if (path && tgtpath && objdif && option) {
-                cmd = `RST DEV('${getQSYSObjectPath(target.library, target.name, "FILE")}') OBJ(('${path}' *INCLUDE '${tgtpath}')) OPTION(${option}) ALWOBJDIF(${objdif.toString().replace(",", " ")})`;
+                cmd = `QSYS/RST DEV('${getQSYSObjectPath(target.library, target.name, "FILE")}') OBJ(('${path}' *INCLUDE '${tgtpath}')) OPTION(${option}) ALWOBJDIF(${objdif.toString().replace(",", " ")})`;
               } else {
                 result.successful = false;
                 result.error = vscode.l10n.t("Some parameters are missing... ");
@@ -624,7 +624,7 @@ export namespace SaveFileActions {
 
               if (lib && tgtlib && objdif && option && dbmbropt) {
                 cmd =
-                  "RSTLIB SAVLIB(" +
+                  "QSYS/RSTLIB SAVLIB(" +
                   lib.toUpperCase() +
                   ") DEV(*SAVF) SAVF(" +
                   target.library +
@@ -743,7 +743,7 @@ export namespace SaveFileActions {
                 dbmbropt
               ) {
                 cmd =
-                  "RSTOBJ OBJ(" +
+                  "QSYS/RSTOBJ OBJ(" +
                   object.toUpperCase() +
                   ") OBJTYPE(" +
                   objtype.toUpperCase() +
@@ -927,7 +927,7 @@ export namespace SaveFileActions {
               );
 
               if (path && tgtrls && compression) {
-                cmd = `SAV DEV('${getQSYSObjectPath(target.library, target.name, "FILE")}') OBJ(('${path}')) DTACPR(${compression}) TGTRLS(${tgtrls})`;
+                cmd = `QSYS/SAV DEV('${getQSYSObjectPath(target.library, target.name, "FILE")}') OBJ(('${path}')) DTACPR(${compression}) TGTRLS(${tgtrls})`;
               } else {
                 result.successful = false;
                 result.error = vscode.l10n.t("Some parameters are missing... ");
@@ -980,7 +980,7 @@ export namespace SaveFileActions {
 
               if (lib && spool && tgtrls && compression) {
                 cmd =
-                  "SAVLIB LIB(" +
+                  "QSYS/SAVLIB LIB(" +
                   lib.toUpperCase() +
                   ") DEV(*SAVF) SAVF(" +
                   target.library +
@@ -1072,7 +1072,7 @@ export namespace SaveFileActions {
 
               if (object && objtype && lib && spool && tgtrls && compression) {
                 cmd =
-                  "SAVOBJ OBJ(" +
+                  "QSYS/SAVOBJ OBJ(" +
                   object.toUpperCase() +
                   ") OBJTYPE(" +
                   objtype.toUpperCase() +
@@ -1293,7 +1293,7 @@ export class SaveFile extends Base {
 
       // Display save file contents
       const savf: CommandResult = await connection.runCommand({
-        command: `DSPSAVF FILE(${this.library}/${this.name})`,
+        command: `QSYS/DSPSAVF FILE(${this.library}/${this.name})`,
         environment: `ile`,
       });
 
@@ -1367,129 +1367,11 @@ export class SaveFile extends Base {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-      // Fetch objects with pagination
-      this.objects.length = 0;
-
-      // Get total count for objects
-      const objectsCountRows = await executeSqlIfExists(
-        connection,
-        `SELECT COUNT(*) as TOTAL
-          FROM TABLE (
-            QSYS2.SAVE_FILE_OBJECTS(
-              SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
-          )`,
-        'QSYS2',
-        'SAVE_FILE_OBJECTS',
-        'FUNCTION'
-      );
-
-      if (objectsCountRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
-        return;
-      }
-
-      this.objectsTotalItems = objectsCountRows.length > 0 ? Number(objectsCountRows[0].TOTAL) : 0;
-
-      // Calculate OFFSET for objects pagination
-      const objectsOffset = (this.objectsCurrentPage - 1) * this.objectsItemsPerPage;
-
-      // Fetch paginated objects
-      const objectsRows = await executeSqlIfExists(
-        connection,
-        `SELECT OBJECT_NAME,
-          OBJECT_TYPE,
-          OBJECT_ATTRIBUTE,
-          TEXT_DESCRIPTION,
-          to_char(SAVE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS SAVE_TIMESTAMP,
-          OBJECT_SIZE,
-          DATA_SAVED,
-          OBJECT_OWNER,
-          IASP_NAME
-          FROM TABLE (
-            QSYS2.SAVE_FILE_OBJECTS(
-              SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*ALL', DETAILED_INFO => 'NONE')
-          )
-          ORDER BY OBJECT_NAME
-          LIMIT ${this.objectsItemsPerPage} OFFSET ${objectsOffset}`,
-        'QSYS2',
-        'SAVE_FILE_OBJECTS',
-        'FUNCTION'
-      );
-
-      if (objectsRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
-        return;
-      }
-      this.objects.push(...objectsRows.map(this.toEntryObject));
-
-      // Fetch file members with pagination
-      this.members.length = 0;
-
-      // Get total count for members
-      const membersCountRows = await connection.runSQL(`
-        SELECT COUNT(*) as TOTAL
-        FROM TABLE (
-          QSYS2.SAVE_FILE_OBJECTS(
-            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
-        )
-        WHERE MEMBER_NAME IS NOT NULL`);
-
-      this.membersTotalItems = membersCountRows.length > 0 ? Number(membersCountRows[0].TOTAL) : 0;
-
-      // Calculate OFFSET for members pagination
-      const membersOffset = (this.membersCurrentPage - 1) * this.membersItemsPerPage;
-
-      // Fetch paginated members
-      const memberRows = await connection.runSQL(`
-        SELECT OBJECT_NAME,
-          TEXT_DESCRIPTION,
-          MEMBER_NAME
-        FROM TABLE (
-          QSYS2.SAVE_FILE_OBJECTS(
-            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*FILE', DETAILED_INFO => 'FILE')
-        )
-        WHERE MEMBER_NAME IS NOT NULL
-        ORDER BY OBJECT_NAME, MEMBER_NAME
-        LIMIT ${this.membersItemsPerPage} OFFSET ${membersOffset}`);
-      this.members.push(...memberRows.map(this.toEntryMember));
-
-      // Fetch spooled files with pagination
-      this.spooledFiles.length = 0;
-
-      // Get total count for spools
-      const spoolsCountRows = await connection.runSQL(`
-        SELECT COUNT(*) as TOTAL
-        FROM TABLE (
-          QSYS2.SAVE_FILE_OBJECTS(
-            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*OUTQ', DETAILED_INFO => 'OUTQ')
-        )
-        WHERE SPOOLED_FILE_NAME IS NOT NULL`);
-
-      this.spoolsTotalItems = spoolsCountRows.length > 0 ? Number(spoolsCountRows[0].TOTAL) : 0;
-
-      // Calculate OFFSET for spools pagination
-      const spoolsOffset = (this.spoolsCurrentPage - 1) * this.spoolsItemsPerPage;
-
-      // Fetch paginated spools
-      const spoolRows = await connection.runSQL(`
-        SELECT OBJECT_NAME,
-          TEXT_DESCRIPTION,
-          SPOOLED_FILE_NAME,
-          SPOOLED_FILE_NUMBER,
-          QUALIFIED_JOB_NAME,
-          JOB_NAME,
-          JOB_USER,
-          JOB_NUMBER,
-          SYSTEM_NAME,
-          to_char(CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS CREATE_TIMESTAMP
-        FROM TABLE (
-          QSYS2.SAVE_FILE_OBJECTS(
-            SAVE_FILE => '${this.name}', SAVE_FILE_LIBRARY => '${this.library}', OBJECT_TYPE_FILTER => '*OUTQ', DETAILED_INFO => 'OUTQ')
-        )
-        WHERE SPOOLED_FILE_NAME IS NOT NULL
-        ORDER BY OBJECT_NAME, SPOOLED_FILE_NAME
-        LIMIT ${this.spoolsItemsPerPage} OFFSET ${spoolsOffset}`);
-      this.spooledFiles.push(...spoolRows.map(this.toEntrySpool));
+      await Promise.all([
+        this.fetchObjects(connection),
+        this.fetchMembers(connection),
+        this.fetchSpools(connection)
+      ])
     } else {
       vscode.window.showErrorMessage(`Not connected to IBM i`);
       return false;
@@ -1498,17 +1380,18 @@ export class SaveFile extends Base {
 
   /**
    * Fetches only objects from the save file with pagination
+   * @param connection Optional IBM i connection. If not provided, will get a new connection
    */
-  private async fetchObjects() {
+  private async fetchObjects(connection?: any): Promise<boolean> {
     const ibmi = getInstance();
-    const connection = ibmi?.getConnection();
+    const conn = connection || ibmi?.getConnection();
 
-    if (connection) {
+    if (conn) {
       this.objects.length = 0;
 
       // Get total count for objects
       const objectsCountRows = await executeSqlIfExists(
-        connection,
+        conn,
         `SELECT COUNT(*) as TOTAL
           FROM TABLE (
             QSYS2.SAVE_FILE_OBJECTS(
@@ -1521,7 +1404,7 @@ export class SaveFile extends Base {
 
       if (objectsCountRows === null) {
         vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
-        return;
+        return false;
       }
 
       this.objectsTotalItems = objectsCountRows.length > 0 ? Number(objectsCountRows[0].TOTAL) : 0;
@@ -1531,7 +1414,7 @@ export class SaveFile extends Base {
 
       // Fetch paginated objects
       const objectsRows = await executeSqlIfExists(
-        connection,
+        conn,
         `SELECT OBJECT_NAME,
           OBJECT_TYPE,
           OBJECT_ATTRIBUTE,
@@ -1554,24 +1437,27 @@ export class SaveFile extends Base {
 
       if (objectsRows === null) {
         vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_OBJECTS"));
-        return;
+        return false;
       }
       this.objects.push(...objectsRows.map(this.toEntryObject));
+      return true;
     }
+    return false;
   }
 
   /**
    * Fetches only members from the save file with pagination
+   * @param connection Optional IBM i connection. If not provided, will get a new connection
    */
-  private async fetchMembers() {
+  private async fetchMembers(connection?: any): Promise<boolean> {
     const ibmi = getInstance();
-    const connection = ibmi?.getConnection();
+    const conn = connection || ibmi?.getConnection();
 
-    if (connection) {
+    if (conn) {
       this.members.length = 0;
 
       // Get total count for members
-      const membersCountRows = await connection.runSQL(`
+      const membersCountRows = await conn.runSQL(`
         SELECT COUNT(*) as TOTAL
         FROM TABLE (
           QSYS2.SAVE_FILE_OBJECTS(
@@ -1585,7 +1471,7 @@ export class SaveFile extends Base {
       const membersOffset = (this.membersCurrentPage - 1) * this.membersItemsPerPage;
 
       // Fetch paginated members
-      const memberRows = await connection.runSQL(`
+      const memberRows = await conn.runSQL(`
         SELECT OBJECT_NAME,
           TEXT_DESCRIPTION,
           MEMBER_NAME
@@ -1597,21 +1483,24 @@ export class SaveFile extends Base {
         ORDER BY OBJECT_NAME, MEMBER_NAME
         LIMIT ${this.membersItemsPerPage} OFFSET ${membersOffset}`);
       this.members.push(...memberRows.map(this.toEntryMember));
+      return true;
     }
+    return false;
   }
 
   /**
    * Fetches only spooled files from the save file with pagination
+   * @param connection Optional IBM i connection. If not provided, will get a new connection
    */
-  private async fetchSpools() {
+  private async fetchSpools(connection?: any): Promise<boolean> {
     const ibmi = getInstance();
-    const connection = ibmi?.getConnection();
+    const conn = connection || ibmi?.getConnection();
 
-    if (connection) {
+    if (conn) {
       this.spooledFiles.length = 0;
 
       // Get total count for spools
-      const spoolsCountRows = await connection.runSQL(`
+      const spoolsCountRows = await conn.runSQL(`
         SELECT COUNT(*) as TOTAL
         FROM TABLE (
           QSYS2.SAVE_FILE_OBJECTS(
@@ -1625,7 +1514,7 @@ export class SaveFile extends Base {
       const spoolsOffset = (this.spoolsCurrentPage - 1) * this.spoolsItemsPerPage;
 
       // Fetch paginated spools
-      const spoolRows = await connection.runSQL(`
+      const spoolRows = await conn.runSQL(`
         SELECT OBJECT_NAME,
           TEXT_DESCRIPTION,
           SPOOLED_FILE_NAME,
@@ -1644,7 +1533,9 @@ export class SaveFile extends Base {
         ORDER BY OBJECT_NAME, SPOOLED_FILE_NAME
         LIMIT ${this.spoolsItemsPerPage} OFFSET ${spoolsOffset}`);
       this.spooledFiles.push(...spoolRows.map(this.toEntrySpool));
+      return true;
     }
+    return false;
   }
 
   /**

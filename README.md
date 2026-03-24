@@ -292,6 +292,22 @@ Query definitions are objects created by Query/400 or Query Manager that define 
 
 ---
 
+### 🔧 Display Object information
+A generic action that provides comprehensive information about any IBM i object, similar to the WRKOBJ/DSPOBJD command.
+
+**Features:**
+- 📊 Display detailed object information (owner, definer, creation date, size, text description)
+- 🔒 View object locks with lock state, status, scope, and job information
+- 👥 View object authorizations for all users and groups
+- 📅 View usage statistics (last used timestamp, days used count)
+- 💾 View save and restore timestamps
+- 🔑 View authorization list information
+- 🎨 Multi-tab interface with Information, Locks, and Authorizations tabs
+- 🚀 Works with any IBM i object type (*PGM, *FILE, *DTAARA, etc.)
+- 📱 Available from Object Browser context menu and editor toolbar
+
+---
+
 ## Installation
 
 This extension requires the [Code for IBM i](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi) extension to be installed and connected to an IBM i system.

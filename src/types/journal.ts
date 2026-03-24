@@ -143,7 +143,7 @@ export namespace JournalActions {
       }
 
       const cmdrun: CommandResult = await connection.runCommand({
-        command: `CHGJRN JRN(${library}/${name}) JRNRCV(*GEN)`,
+        command: `QSYS/CHGJRN JRN(${library}/${name}) JRNRCV(*GEN)`,
         environment: `ile`
       });
 
@@ -206,8 +206,10 @@ export default class Jrn extends Base {
    * Fetch journal information and receiver chain
    */
   async fetch() {
-    await this.fetchInfo();
-    await this.fetchChain();
+    await Promise.all([
+      await this.fetchInfo(),
+      await this.fetchChain()
+    ])
   }
 
   /**

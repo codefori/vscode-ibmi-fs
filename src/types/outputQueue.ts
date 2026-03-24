@@ -142,7 +142,7 @@ export namespace OutputQueueActions {
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Output Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Clear OUTQ"))) {
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `CLROUTQ ${library}/${name}`,
+          command: `QSYS/CLROUTQ ${library}/${name}`,
           environment: `ile`
         });
 
@@ -185,7 +185,7 @@ export namespace OutputQueueActions {
 
         // Execute HLDOUTQ command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `HLDOUTQ OUTQ(${library}/${name})`,
+          command: `QSYS/HLDOUTQ OUTQ(${library}/${name})`,
           environment: `ile`
         });
 
@@ -227,7 +227,7 @@ export namespace OutputQueueActions {
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to release Output Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Release OUTQ"))) {
         // Execute RLSOUTQ command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `RLSOUTQ OUTQ(${library}/${name})`,
+          command: `QSYS/RLSOUTQ OUTQ(${library}/${name})`,
           environment: `ile`
         });
 
@@ -322,7 +322,7 @@ export namespace OutputQueueActions {
       if (connection) {
         // Execute ENDWTR command with immediate option
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `ENDWTR WTR(${name}) OPTION(*IMMED)`,
+          command: `QSYS/ENDWTR WTR(${name}) OPTION(*IMMED)`,
           environment: `ile`
         });
 
@@ -363,7 +363,7 @@ export namespace OutputQueueActions {
         // Choose command based on network type:
         // - STRRMTWTR for remote/network printers
         // - STRPRTWTR for local printer devices
-        let cmd = nettype && nettype !== undefined ? `STRRMTWTR OUTQ(${library}/${name})`:`STRPRTWTR DEV(${name})`;
+        let cmd = nettype && nettype !== undefined ? `QSYS/STRRMTWTR OUTQ(${library}/${name})`:`QSYS/STRPRTWTR DEV(${name})`;
         const cmdrun: CommandResult = await connection.runCommand({
           command: cmd,
           environment: `ile`
@@ -458,7 +458,7 @@ export namespace OutputQueueActions {
       const connection = ibmi?.getConnection();
       if (connection) {
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `DLTSPLF FILE(${item.spoolname}) JOB(${item.job}) SPLNBR(${item.nbr})`,
+          command: `QSYS/DLTSPLF FILE(${item.spoolname}) JOB(${item.job}) SPLNBR(${item.nbr})`,
           environment: `ile`
         });
 
@@ -613,8 +613,10 @@ export default class Outq extends Base {
    * Fetch output queue information and spooled files
    */
   async fetch() {
-    await this.fetchInfo();
-    await this.fetchSpools();
+    await Promise.all([
+      await this.fetchInfo(),
+      await this.fetchSpools()
+    ])
   }
 
   /**

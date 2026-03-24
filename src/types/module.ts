@@ -89,13 +89,14 @@ export class Module extends Base {
    * Fetch program information, modules, service programs, and exports
    */
   async fetch() {
-
-    await this.fetchBasic();
-    await this.fetchSize();
-    await this.fetchImpExports();
-    await this.fetchProcList();
-    await this.fetchSysObj();
-    await this.fetchCopyRight();
+    await Promise.all([
+      await this.fetchBasic(),
+      await this.fetchSize(),
+      await this.fetchImpExports(),
+      await this.fetchProcList(),
+      await this.fetchSysObj(),
+      await this.fetchCopyRight()
+    ])
   }
 
   /**
@@ -122,7 +123,7 @@ export class Module extends Base {
       this.columns = await getColumns(connection, 'QABNDMBA','QSYS');
 
       let cmdrun: CommandResult = await connection.runCommand({
-        command: `DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*BASIC) OUTPUT(*OUTFILE) OUTFILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
+        command: `QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*BASIC) OUTPUT(*OUTFILE) OUTFILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
 
@@ -198,7 +199,7 @@ export class Module extends Base {
         FROM ${connection.getConfig().tempLibrary}.${tmpfile}`);
 
       cmdrun = await connection.runCommand({
-        command: `DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
+        command: `QSYS/DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
     } else {
@@ -227,7 +228,7 @@ export class Module extends Base {
       this.columns2 = await getColumns(connection, 'QABNDMSI','QSYS');
 
       let cmdrun: CommandResult = await connection.runCommand({
-        command: `DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*SIZE) OUTPUT(*OUTFILE) OUTFILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
+        command: `QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*SIZE) OUTPUT(*OUTFILE) OUTFILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
 
@@ -277,7 +278,7 @@ export class Module extends Base {
         FROM ${connection.getConfig().tempLibrary}.${tmpfile}`);
 
       cmdrun = await connection.runCommand({
-        command: `DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
+        command: `QSYS/DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
     } else {
@@ -303,12 +304,12 @@ export class Module extends Base {
       const tmpfile2=generateRandomString(10);
 
       let cmdrun1: CommandResult = await connection.runCommand({
-        command: `DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*IMPORT) OUTPUT(*OUTFILE) OUTFILE(${connection.getConfig().tempLibrary}/${tmpfile1})`,
+        command: `QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*IMPORT) OUTPUT(*OUTFILE) OUTFILE(${connection.getConfig().tempLibrary}/${tmpfile1})`,
         environment: `ile`
       });
 
       let cmdrun2: CommandResult = await connection.runCommand({
-        command: `DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*EXPORT) OUTPUT(*OUTFILE) OUTFILE(${connection.getConfig().tempLibrary}/${tmpfile2})`,
+        command: `QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*EXPORT) OUTPUT(*OUTFILE) OUTFILE(${connection.getConfig().tempLibrary}/${tmpfile2})`,
         environment: `ile`
       });
 
@@ -344,11 +345,11 @@ export class Module extends Base {
       this.impexports.push(...entryRows.map(toExport));
       
       cmdrun1 = await connection.runCommand({
-        command: `DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile1})`,
+        command: `QSYS/DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile1})`,
         environment: `ile`
       });
       cmdrun1 = await connection.runCommand({
-        command: `DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile2})`,
+        command: `QSYS/DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile2})`,
         environment: `ile`
       });
     } else {
@@ -372,7 +373,7 @@ export class Module extends Base {
       const tmpfile=generateRandomString(10);
 
       let cmdrun: CommandResult = await connection.runCommand({
-        command: `DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*PROCLIST) OUTPUT(*OUTFILE) OUTFILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
+        command: `QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*PROCLIST) OUTPUT(*OUTFILE) OUTFILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
 
@@ -394,7 +395,7 @@ export class Module extends Base {
       this.procs.push(...entryRows.map(toEntry));
 
       cmdrun = await connection.runCommand({
-        command: `DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
+        command: `QSYS/DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
     } else {
@@ -417,7 +418,7 @@ export class Module extends Base {
       const tmpfile=generateRandomString(10);
 
       let cmdrun: CommandResult = await connection.runCommand({
-        command: `DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*REFSYSOBJ) OUTPUT(*OUTFILE) OUTFILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
+        command: `QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*REFSYSOBJ) OUTPUT(*OUTFILE) OUTFILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
 
@@ -436,7 +437,7 @@ export class Module extends Base {
       this.sysobj.push(...entryRows.map(toEntry2));
 
       cmdrun = await connection.runCommand({
-        command: `DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
+        command: `QSYS/DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
     } else {
@@ -458,7 +459,7 @@ export class Module extends Base {
       const tmpfile=generateRandomString(10);
 
       let cmdrun: CommandResult = await connection.runCommand({
-        command: `DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*COPYRIGHT) OUTPUT(*OUTFILE) OUTFILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
+        command: `QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*COPYRIGHT) OUTPUT(*OUTFILE) OUTFILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
 
@@ -475,7 +476,7 @@ export class Module extends Base {
       this.copyrights.push(...entryRows.map(toCopyRight));
 
       cmdrun = await connection.runCommand({
-        command: `DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
+        command: `QSYS/DLTF FILE(${connection.getConfig().tempLibrary}/${tmpfile})`,
         environment: `ile`
       });
     } else {

@@ -200,7 +200,7 @@ export namespace MessageQueueActions {
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Message Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Clear MSGQ"))) {
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `CLRMSGQ ${library}/${name}`,
+          command: `QSYS/CLRMSGQ ${library}/${name}`,
           environment: `ile`
         });
 

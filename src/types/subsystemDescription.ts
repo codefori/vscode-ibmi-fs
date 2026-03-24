@@ -115,7 +115,7 @@ export namespace SubsystemActions {
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to start {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Start SBSD"))) {
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `STRSBS SBSD(${library}/${name})`,
+          command: `QSYS/STRSBS SBSD(${library}/${name})`,
           environment: `ile`
         });
 
@@ -192,7 +192,7 @@ export namespace SubsystemActions {
       if (endOption) {
         if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to end {0}/{1} with option {2}?", library, name, endOption.label), { modal: true }, vscode.l10n.t("End SBSD"))) {
           const cmdrun: CommandResult = await connection.runCommand({
-            command: `ENDSBS SBS(${name}) OPTION(${endOption.value})`,
+            command: `QSYS/ENDSBS SBS(${name}) OPTION(${endOption.value})`,
             environment: `ile`
           });
 
@@ -231,7 +231,7 @@ export namespace SubsystemActions {
 
         // Execute ENDJOB command on IBM i
         const cmdrun: CommandResult = await connection.runCommand({
-          command: `ENDJOB JOB(${item.job}) OPTION(*IMMED)`,
+          command: `QSYS/ENDJOB JOB(${item.job}) OPTION(*IMMED)`,
           environment: `ile`
         });
 
@@ -401,20 +401,20 @@ export class Sbsd extends Base {
    * Fetch subsystem information, pools, entries, and active jobs
    */
   async fetch() {
-    await this.fetchInfo();
-    await this.fetchPools();
-    await this.fetchAjes();
-    await this.fetchWses();
-    await this.fetchPjes();
-    await this.fetchRtges();
-    
+
     this.jobqes.length=0;
     this.jobs.length=0;
 
-    if(this.sbs[0].STATUS==='ACTIVE'){
-      await this.fetchJobqes();
-      await this.fetchJobs();
-    }    
+    await Promise.all([
+      await this.fetchInfo(),
+      await this.fetchPools(),
+      await this.fetchAjes(),
+      await this.fetchWses(),
+      await this.fetchPjes(),
+      await this.fetchRtges(),
+      this.sbs[0].STATUS==='ACTIVE' ? this.fetchJobqes() : Promise.resolve(),
+      this.sbs[0].STATUS==='ACTIVE' ? this.fetchJobs() : Promise.resolve()
+    ])  
   }
 
   /**

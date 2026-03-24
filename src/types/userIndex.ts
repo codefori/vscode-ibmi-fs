@@ -440,8 +440,10 @@ export class Usridx extends Base {
    * Fetch user index information and entries
    */
   async fetch() {
-    await this.fetchInfo();
-    await this._fetchEntries();
+    await Promise.all([
+      await this.fetchInfo(),
+      await this.fetchEntries()
+    ])
   }
 
   /**
@@ -492,7 +494,7 @@ export class Usridx extends Base {
   /**
    * Fetch all entries from the user index
    */
-  private async _fetchEntries() {
+  private async fetchEntries() {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {

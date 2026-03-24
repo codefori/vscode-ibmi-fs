@@ -286,8 +286,10 @@ export class Dtaq extends Base {
    * Fetch data queue information and entries
    */
   async fetch() {
-    await this.fetchInfo();
-    await this._fetchEntries();
+    await Promise.all([
+      this.fetchInfo(),
+      this.fetchEntries()
+    ])
   }
 
   /**
@@ -373,7 +375,7 @@ export class Dtaq extends Base {
   /**
    * Fetch all entries/messages from the data queue
    */
-  private async _fetchEntries() {
+  private async fetchEntries() {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {

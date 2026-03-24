@@ -163,7 +163,7 @@ export namespace DataAreaActions {
           });
 
           if(start&&lenght&&newvalue){
-            cmd=`CHGDTAARA DTAARA(${library}/${name} (${start} ${lenght})) VALUE('${newvalue}')`;
+            cmd=`QSYS/CHGDTAARA DTAARA(${library}/${name} (${start} ${lenght})) VALUE('${newvalue}')`;
           } else {
             cmd='';
           }
@@ -179,7 +179,7 @@ export namespace DataAreaActions {
           });
 
           if(newvalue){
-            cmd=`CHGDTAARA DTAARA(${library}/${name}) VALUE('${newvalue}')`;
+            cmd=`QSYS/CHGDTAARA DTAARA(${library}/${name}) VALUE('${newvalue}')`;
           } else {
             cmd='';
           }
@@ -226,7 +226,7 @@ export namespace DataAreaActions {
         }
 
         if(newvalue){
-          cmd=`CHGDTAARA DTAARA(${library}/${name}) VALUE('${newvalue}')`;
+          cmd=`QSYS/CHGDTAARA DTAARA(${library}/${name}) VALUE('${newvalue}')`;
         } else {
           cmd='';
         }
