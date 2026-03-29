@@ -531,7 +531,15 @@
           "when": "code-for-ibmi:connected"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "vscode-ibmi-fs.dspobj",
+        "key": "ctrl+shift+d",
+        "mac": "cmd+shift+d",
+        "when": "code-for-ibmi:connected"
+      }
+    ]
   },
   "scripts": {
     "clean": "rimraf dist",

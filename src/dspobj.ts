@@ -41,6 +41,64 @@ export namespace DspobjActions {
           const name = (item as any).object?.name || item.name;
           const type = (item as any).object?.type || item.type;
           return openWrkobjWebview(library, name, type);
+        } else {
+          // Called from command palette or keyboard shortcut - prompt for parameters
+          const library = await vscode.window.showInputBox({
+            prompt: vscode.l10n.t("Enter library name"),
+            placeHolder: vscode.l10n.t("Library"),
+            validateInput: (value) => {
+              if (!value || value.trim().length === 0) {
+                return vscode.l10n.t("Library name is required");
+              }
+              if (value.length > 10) {
+                return vscode.l10n.t("Library name must be 10 characters or less");
+              }
+              return null;
+            }
+          });
+
+          if (!library) {
+            return false;
+          }
+
+          const name = await vscode.window.showInputBox({
+            prompt: vscode.l10n.t("Enter object name"),
+            placeHolder: vscode.l10n.t("Object name"),
+            validateInput: (value) => {
+              if (!value || value.trim().length === 0) {
+                return vscode.l10n.t("Object name is required");
+              }
+              if (value.length > 10) {
+                return vscode.l10n.t("Object name must be 10 characters or less");
+              }
+              return null;
+            }
+          });
+
+          if (!name) {
+            return false;
+          }
+
+          const type = await vscode.window.showInputBox({
+            prompt: vscode.l10n.t("Enter object type (e.g., *PGM, *FILE, *DTAARA)"),
+            placeHolder: vscode.l10n.t("*PGM"),
+            value: "*PGM",
+            validateInput: (value) => {
+              if (!value || value.trim().length === 0) {
+                return vscode.l10n.t("Object type is required");
+              }
+              if (!value.startsWith('*')) {
+                return vscode.l10n.t("Object type must start with *");
+              }
+              return null;
+            }
+          });
+
+          if (!type) {
+            return false;
+          }
+
+          return openWrkobjWebview(library.toUpperCase(), name.toUpperCase(), type.toUpperCase());
         }
       })
     );
