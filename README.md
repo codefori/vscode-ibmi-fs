@@ -292,7 +292,7 @@ Query definitions are objects created by Query/400 or Query Manager that define 
 
 ---
 
-### 🔧 Display Object information
+### 🔧 Display Object Information
 A generic action that provides comprehensive information about any IBM i object, similar to the WRKOBJ/DSPOBJD command.
 
 **Features:**
@@ -305,6 +305,9 @@ A generic action that provides comprehensive information about any IBM i object,
 - 🎨 Multi-tab interface with Information, Locks, and Authorizations tabs
 - 🚀 Works with any IBM i object type (*PGM, *FILE, *DTAARA, etc.)
 - 📱 Available from Object Browser context menu and editor toolbar
+- ⌨️ **Keyboard shortcut**: `Ctrl+Shift+D` (Windows/Linux) or `Cmd+Shift+D` (Mac)
+  - Prompts for library name, object name, and object type
+  - Quick access to object information without navigating the Object Browser
 
 ---
 
