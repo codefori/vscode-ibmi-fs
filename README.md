@@ -1,15 +1,14 @@
 # vscode-ibmi-fs
 
-<table style="border: none; border-collapse: collapse;">
-  <tr>
-    <td valign="top">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+  <div>
     This extension provides additional functionality not found in the base Code for IBM i extension for viewing and managing objects inside of the IBM i QSYS file system.
-    </td>
-    <td valign="top" align="right" width="256">
+  </div>
+  <div style="flex: 0 0 256px;">
       <img src="./icon.png" align="right" width="256" height="256">
-    </td>
-  </tr>
-</table>
+  </div>
+</div>
+
 ## Supported Object Types
 
 ### 📦 Save Files (SAVF)
