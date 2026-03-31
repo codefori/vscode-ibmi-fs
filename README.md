@@ -1,8 +1,11 @@
 # vscode-ibmi-fs
 
-<img src="./icon.png" align="right" width="256" height="256">
-
-This extension provides additional functionality not found in the base Code for IBM i extension for viewing and managing objects inside of the IBM i QSYS file system.
+<div style="display: flex; justify-content: space-between; align-items: flex-start;">
+  <div>
+    This extension provides additional functionality not found in the base Code for IBM i extension for viewing and managing objects inside of the IBM i QSYS file system.
+  </div>
+  <img src="./icon.png" align="right" width="256" height="256">
+</div>
 
 ## Supported Object Types
 
