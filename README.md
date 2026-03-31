@@ -1,6 +1,6 @@
 # vscode-ibmi-fs
 
-<table>
+<table style="border: none; border-collapse: collapse;">
   <tr>
     <td valign="top">
     This extension provides additional functionality not found in the base Code for IBM i extension for viewing and managing objects inside of the IBM i QSYS file system.
