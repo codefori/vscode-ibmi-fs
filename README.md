@@ -1,8 +1,8 @@
 # vscode-ibmi-fs
 
-<table style="border: none; border-collapse: collapse;">
-<tr>
-<td width="75%" valign="top" style="border: none;">
+<table style="border: 0; border-collapse: collapse; padding: 0; margin: 0; border: none;">
+<tr style="border: 0; border: none;">
+<td width="75%" valign="top" style="border: 0; padding: 0; border: none;">
 
 This extension provides additional functionality not found in the base Code for IBM i extension for viewing and managing objects inside of the IBM i QSYS file system.
 
@@ -42,7 +42,7 @@ The extension supports **22 different IBM i object types** with comprehensive vi
 > 📖 **For detailed information** about each object type, including all available features and actions, see [**SUPPORTED_OBJECTS.md**](SUPPORTED_OBJECTS.md)
 
 </td>
-<td width="25%" valign="top" style="border: none;">
+<td width="25%" valign="top" style="border: 0; padding: 0; border: none;">
 
 <img src="./icon.png" width="256" height="256">
 
