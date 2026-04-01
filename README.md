@@ -1,11 +1,10 @@
 # vscode-ibmi-fs
 
-<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
-  <div style="flex: 1;">
+<img src="./icon.png" align="right" width="256">
 
 This extension provides additional functionality not found in the base Code for IBM i extension for viewing and managing objects inside of the IBM i QSYS file system.
 
-## Supported Object Types
+### Supported Object Types
 
 The extension supports **22 different IBM i object types** with comprehensive viewing capabilities and interactive actions. Below is a summary table of all supported object types:
 
@@ -40,17 +39,11 @@ The extension supports **22 different IBM i object types** with comprehensive vi
 
 > 📖 **For detailed information** about each object type, including all available features and actions, see [**SUPPORTED_OBJECTS.md**](SUPPORTED_OBJECTS.md)
 
-  </div>
-  <div style="flex: 0 0 256px;">
-      <img src="./icon.png" align="right" width="256" height="256">
-  </div>
-</div>
-
 ---
 
-## Generic Actions
+### Generic Actions
 
-### 🔧 Display Object Information
+#### 🔧 Display Object Information
 
 A generic action available for **all object types** that provides comprehensive information similar to the WRKOBJ/DSPOBJD command.
 
@@ -67,26 +60,26 @@ A generic action available for **all object types** that provides comprehensive 
 
 ---
 
-## Installation
+### Installation
 
 This extension requires the [Code for IBM i](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi) extension to be installed and connected to an IBM i system.
 
-## Usage
+### Usage
 
 1. Connect to your IBM i system using Code for IBM i
 2. Navigate to the Object Browser
 3. Actions available inside the **Action Bar** (top right)
 
-## Requirements
+### Requirements
 
 - Code for IBM i extension
 - Active connection to an IBM i system
 
-## Localization (L10N)
+### Localization (L10N)
 
 This extension supports multiple languages through VSCode's built-in localization framework.
 
-### Supported Languages
+#### Supported Languages
 
 - 🇬🇧 **English** (default)
 - 🇮🇹 **Italian**
@@ -98,7 +91,7 @@ This extension supports multiple languages through VSCode's built-in localizatio
 - 🇧🇷 🇵🇹 **Brazilian Portuguese**
 - 🇨🇳 **Simplified and traditional Chinese**
 
-### Features
+#### Features
 
 - 🌍 **Automatic language detection** - The extension automatically uses your VSCode display language
 - 📝 **1200+ translated strings** including:
@@ -108,7 +101,7 @@ This extension supports multiple languages through VSCode's built-in localizatio
   - IBM i database column names
 - 🔄 **Dynamic translation** - All UI elements are translated in real-time
 
-### Adding New Languages
+#### Adding New Languages
 
 To contribute translations for a new language:
 
@@ -119,10 +112,10 @@ To contribute translations for a new language:
 
 Translation files use the standard VSCode L10N format where English text serves as the key.
 
-## Contributing
+### Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.
 
-## License
+### License
 
 MIT License - see LICENSE file for details
