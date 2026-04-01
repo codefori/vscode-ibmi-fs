@@ -1,6 +1,6 @@
 # vscode-ibmi-fs
 
-<table>
+<table border="0">
 <tr>
 <td width="75%" valign="top">
 
