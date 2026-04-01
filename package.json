@@ -1,5 +1,6 @@
 {
   "name": "vscode-ibmi-fs",
+  "icon": "icon.png",
   "displayName": "%displayName%",
   "description": "%description%",
   "l10n": "./l10n",
