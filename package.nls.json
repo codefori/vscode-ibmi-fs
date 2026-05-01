@@ -31,6 +31,8 @@
   "command.dspobjDetailed.title": "Display Object Information (Detailed)",
   "command.refreshObject.title": "Refresh Object",
   "command.showObjectActions.title": "Object Actions",
+  "command.refreshWrksplf.title": "Refresh Spooled Files",
+  "command.wrksplf.title": "Work with Spooled Files",
   "description": "File system provider for IBM i QSYS",
   "displayName": "IBM i FileSystem"
 }

@@ -31,6 +31,8 @@
   "command.dspobjDetailed.title": "Afficher les informations sur l'objet (Détaillé)",
   "command.refreshObject.title": "Actualiser l'objet",
   "command.showObjectActions.title": "Actions de l'objet",
+  "command.refreshWrksplf.title": "Actualiser les fichiers en attente",
+  "command.wrksplf.title": "Travailler avec les fichiers en attente",
   "description": "Fournisseur de système de fichiers pour IBM i QSYS",
   "displayName": "IBM i FileSystem"
 }

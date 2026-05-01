@@ -31,6 +31,8 @@
   "command.dspobjDetailed.title": "Visualizza informazioni oggetto (Dettagliato)",
   "command.refreshObject.title": "Aggiorna oggetto",
   "command.showObjectActions.title": "Azioni oggetto",
+  "command.refreshWrksplf.title": "Aggiorna Spooled Files",
+  "command.wrksplf.title": "Lavora con Spooled Files",
   "description": "Browser del file system per IBM i QSYS",
   "displayName": "IBM i FileSystem"
 }

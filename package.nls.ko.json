@@ -31,6 +31,8 @@
   "command.dspobjDetailed.title": "오브젝트 정보 표시 (상세)",
   "command.refreshObject.title": "오브젝트 새로 고침",
   "command.showObjectActions.title": "오브젝트 작업",
+  "command.refreshWrksplf.title": "스풀 파일 새로 고침",
+  "command.wrksplf.title": "스풀 파일 작업",
   "description": "IBM i 용 파일 시스템 공급자 QSYS",
   "displayName": "IBM i FileSystem"
 }

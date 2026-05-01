@@ -498,9 +498,9 @@ export default class Jobq extends Base {
           
           // Conditionally show Hold or Release button based on job status
           // If job is HELD, show Release button; otherwise show Hold button
-          return `${e.jobsts!=='HELD'?`<vscode-button appearance="primary" href="action:hldJob?entry=${arg}">${vscode.l10n.t("Hold")} ⏸️</vscode-button>`:
-            `<vscode-button appearance="primary" href="action:rlsJob?entry=${arg}">${vscode.l10n.t("Release")} ▶️</vscode-button>`}
-            <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")} ❌</vscode-button>`;
+          return `${e.jobsts!=='HELD'?`<vscode-button appearance="primary" href="action:hldJob?entry=${arg}">${vscode.l10n.t("Hold")}</vscode-button>`:
+            `<vscode-button appearance="primary" href="action:rlsJob?entry=${arg}">${vscode.l10n.t("Release")}</vscode-button>`}
+            <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>`;
         }
       }
     ];

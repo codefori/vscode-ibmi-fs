@@ -18,6 +18,8 @@ export interface FastTableColumn<T> {
   width?: string;
   /** Custom CSS class for cells (optional) */
   cellClass?: string;
+  /** If true, this column will be collapsible (hidden by default, shown in code format when expanded) */
+  collapsible?: boolean;
 }
 
 /**
@@ -100,7 +102,7 @@ export function getQSYSObjectPath(library: string, name: string, type: string, m
  */
 export function getProtected(connection: IBMi, lib: string) : boolean {
 
-  let isProtected=false;
+  let isProtected=true;
   let rule : ObjectFilters;
 
   connection.getConfig().objectFilters.forEach(element => {
@@ -559,7 +561,7 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     // Handle numeric values with formatting
     if (!isNaN(Number(strValue)) && strValue !== '') {
       const num = Number(strValue);
-      if (Number.isInteger(num) && num !== 0) {
+      if (Number.isInteger(num)) {
         return `<span style="font-family: var(--vscode-editor-font-family); color: var(--vscode-charts-blue);">${num.toLocaleString()}</span>`;
       }
     }
@@ -589,22 +591,50 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     return col.width;
   });
 
-  // Generate table rows with width styles
+  // Check if there are any collapsible columns
+  const hasCollapsibleColumns = columns.some(col => col.collapsible);
+  const collapsibleIndices = columns.map((col, idx) => col.collapsible ? idx : -1).filter(idx => idx !== -1);
+
+  // Store collapsible data for modal
+  const collapsibleData = hasCollapsibleColumns ? data.map((row, rowIndex) => {
+    return collapsibleIndices.map(colIdx => {
+      const col = columns[colIdx];
+      return {
+        title: col.title,
+        value: col.getValue(row)
+      };
+    });
+  }) : [];
+
+  // Generate table rows with width styles and collapsible support
   const rows = data.map((row, rowIndex) => {
-    const cells = columns.map((col, index) => {
+    const visibleCells = columns.map((col, index) => {
+      if (col.collapsible) {
+        // For collapsible columns, show a button to open modal
+        return `<vscode-table-cell style="width: ${columnsArray[index]}; text-align: center;">
+          <vscode-button appearance="secondary" class="show-modal-btn" data-row="${rowIndex}" aria-label="Show details">
+            +
+          </vscode-button>
+        </vscode-table-cell>`;
+      }
       const value = col.getValue(row);
       const cellClass = col.cellClass ? ` class="${col.cellClass}"` : '';
       const widthStyle = columnsArray[index] !== 'auto' ? ` style="width: ${columnsArray[index]};"` : '';
       return `<vscode-table-cell${cellClass}${widthStyle}>${formatFastValue(value)}</vscode-table-cell>`;
     }).join('\n        ');
     
-    return `<vscode-table-row>
-        ${cells}
+    return `<vscode-table-row class="main-row" data-row="${rowIndex}">
+        ${visibleCells}
       </vscode-table-row>`;
   }).join('\n      ');
 
-  // Generate table header with width styles
+  // Generate table header with width styles (skip collapsible columns)
   const headerCells = columns.map((col, index) => {
+    if (col.collapsible) {
+      // For collapsible columns, show empty header cell with just the width
+      const widthStyle = columnsArray[index] !== 'auto' ? ` style="width: ${columnsArray[index]};"` : '';
+      return `<vscode-table-header-cell${widthStyle}></vscode-table-header-cell>`;
+    }
     const widthStyle = columnsArray[index] !== 'auto' ? ` style="width: ${columnsArray[index]};"` : '';
     return `<vscode-table-header-cell${widthStyle}>${escapeHtml(col.title)}</vscode-table-header-cell>`;
   }).join('\n        ');
@@ -770,6 +800,100 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
     .hidden {
       display: none !important;
     }
+
+    /* Modal button styles */
+    .show-modal-btn {
+      background: transparent !important;
+      border: none !important;
+      padding: 4px !important;
+    }
+
+    .show-modal-btn:hover {
+      background: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.1) !important;
+    }
+
+    /* Modal styles */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(2px);
+    }
+
+    .modal-content {
+      position: relative;
+      background: var(--vscode-editor-background);
+      border: 1px solid var(--vscode-panel-border);
+      border-radius: 6px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      max-width: 90%;
+      max-height: 80%;
+      width: 800px;
+      display: flex;
+      flex-direction: column;
+      animation: modalFadeIn 0.2s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--vscode-panel-border);
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      font-size: 1.2em;
+      font-weight: 600;
+      color: var(--vscode-foreground);
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-body pre {
+      background: var(--vscode-textCodeBlock-background);
+      padding: 16px;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin: 0;
+      border: 1px solid rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.1);
+      font-family: var(--vscode-editor-font-family);
+      font-size: 0.95em;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
     
     ${customStyles}
   </style>
@@ -811,6 +935,22 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
           ${rows}
         </vscode-table-body>
       </vscode-table>
+
+      ${hasCollapsibleColumns ? `
+      <!-- Modal for collapsible content -->
+      <div id="collapsible-modal" class="modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 id="modal-title"></h3>
+            <vscode-button appearance="icon" id="modal-close" aria-label="Close">
+              <span class="codicon codicon-close"></span>
+            </vscode-button>
+          </div>
+          <div class="modal-body" id="modal-body"></div>
+        </div>
+      </div>
+      ` : ''}
 
       ${enablePagination ? `
       <div class="pagination-controls">
@@ -1007,6 +1147,66 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
 
     // Initial display update
     updatePaginationDisplay();
+
+    // Modal functionality for collapsible content
+    const collapsibleDataArray = ${JSON.stringify(collapsibleData)};
+    const modal = document.getElementById('collapsible-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+    const modalClose = document.getElementById('modal-close');
+    const modalOverlay = modal ? modal.querySelector('.modal-overlay') : null;
+
+    function openModal(rowIndex) {
+      if (!modal || !modalTitle || !modalBody) return;
+      
+      const data = collapsibleDataArray[rowIndex];
+      if (!data || data.length === 0) return;
+
+      // Set modal content
+      const content = data.map(item => \`
+        <div style="margin-bottom: 16px;">
+          <div style="font-weight: 600; margin-bottom: 8px; color: var(--vscode-foreground); font-size: 1em;">
+            \${item.title}:
+          </div>
+          <pre>\${item.value}</pre>
+        </div>
+      \`).join('');
+
+      modalTitle.textContent = data.length === 1 ? data[0].title : 'Details';
+      modalBody.innerHTML = content;
+      modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    // Show modal buttons
+    const showModalButtons = document.querySelectorAll('.show-modal-btn');
+    showModalButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rowIndex = parseInt(button.getAttribute('data-row'));
+        openModal(rowIndex);
+      });
+    });
+
+    // Close modal handlers
+    if (modalClose) {
+      modalClose.addEventListener('click', closeModal);
+    }
+    if (modalOverlay) {
+      modalOverlay.addEventListener('click', closeModal);
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
+        closeModal();
+      }
+    });
 
     // Custom script
     ${customScript}

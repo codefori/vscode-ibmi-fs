@@ -17,6 +17,7 @@ import { MessageQueueActions } from './types/messageQueue';
 import { FileActions } from './types/file';
 import { UserIndexActions } from './types/userIndex';
 import { DspobjActions } from './dspobj';
+import { WrksplfActions } from './views/wrksplf';
 import { DocumentManager } from './documentManager';
 
 /**
@@ -53,6 +54,7 @@ export async function activate(context: vscode.ExtensionContext) {
   FileActions.register(context);
   UserIndexActions.register(context);
   DspobjActions.register(context);
+  WrksplfActions.register(context);
 
   // Register refresh command
   context.subscriptions.push(
@@ -218,22 +220,17 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('vscode-ibmi-fs.showFsActionsMenu', async () => {
       const action = await vscode.window.showQuickPick(
         [
-          { label: 'WRKJOB', description: 'Work with Job' },
-          { label: 'DSPMSG QSYSOPR', description: 'Display System Operator Messages' },
-          { label: 'DSPOBJ', description: 'Display Object Information' },
-          { label: 'DSPOBJ Detailed', description: 'Display Object Information (single input)' }
+          { label: 'WRKJOB', description: 'Work with Job', command: 'vscode-ibmi-fs.wrkjob' },
+          { label: '$(output-view-icon) WRKSPLF', description: 'Work with Spooled Files', command: 'vscode-ibmi-fs.wrksplf' },
+          { label: '$(chat-editor-label-icon) DSPMSG QSYSOPR', description: 'Display System Operator Messages', command: 'vscode-ibmi-fs.dspmsgQsysopr' },
+          { label: '$(extensions-info-message) DSPOBJ', description: 'Display Object Information', command: 'vscode-ibmi-fs.dspobj' },
+          { label: '$(search-view-icon) DSPOBJ Detailed', description: 'Display Object Information (single input)', command: 'vscode-ibmi-fs.dspobjDetailed' }
         ],
         { placeHolder: 'Select an FS action' }
       );
 
-      if (action?.label === 'WRKJOB') {
-        vscode.commands.executeCommand('vscode-ibmi-fs.wrkjob');
-      } else if (action?.label === 'DSPMSG QSYSOPR') {
-        vscode.commands.executeCommand('vscode-ibmi-fs.dspmsgQsysopr');
-      } else if (action?.label === 'DSPOBJ') {
-        vscode.commands.executeCommand('vscode-ibmi-fs.dspobj');
-      } else if (action?.label === 'DSPOBJ Detailed') {
-        vscode.commands.executeCommand('vscode-ibmi-fs.dspobjDetailed');
+      if (action) {
+        vscode.commands.executeCommand(action.command);
       }
     })
   );

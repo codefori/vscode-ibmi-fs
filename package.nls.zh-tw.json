@@ -31,6 +31,8 @@
   "command.dspobjDetailed.title": "顯示物件資訊（詳細）",
   "command.refreshObject.title": "重新整理物件",
   "command.showObjectActions.title": "物件動作",
+  "command.refreshWrksplf.title": "重新整理多工緩衝檔案",
+  "command.wrksplf.title": "處理多工緩衝檔案",
   "description": "IBM i QSYS 檔案系統供應商",
   "displayName": "IBM i FileSystem"
 }

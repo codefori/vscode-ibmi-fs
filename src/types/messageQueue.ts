@@ -219,6 +219,37 @@ export namespace MessageQueueActions {
       return false;
     }
   };
+
+  /**
+   * Send a reply to an inquiry message
+   * @param library - Message queue library
+   * @param name - Message queue name
+   * @param msgkey - Message key
+   * @param replyText - Reply text from user
+   * @returns True if successful, false otherwise
+   */
+  export const sendReply = async (library: string, name: string, msgkey: string, replyText: string): Promise<boolean> => {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    
+    if (!connection) {
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
+      return false;
+    }
+
+    const cmdrun: CommandResult = await connection.runCommand({
+      command: `QSYS/SNDRPY MSGKEY(${msgkey}) MSGQ(${library}/${name}) RPY('${replyText}') RMV(*NO)`,
+      environment: `ile`
+    });
+
+    if (cmdrun.code === 0) {
+      vscode.window.showInformationMessage(vscode.l10n.t("Message Answered."));
+      return true;
+    } else {
+      vscode.window.showErrorMessage(vscode.l10n.t("Unable to answeree message:\n{0}", String(cmdrun.stderr)));
+      return false;
+    }
+  };
 }
 
 /**
@@ -239,6 +270,12 @@ interface Entry {
   job: string
   /** User that sent the message */
   user: string
+  /** Reply */
+  reply: string
+  /** Type */
+  msgtype: string
+  /** Message Key */
+  msgkey: string
 }
 
 /**
@@ -281,7 +318,7 @@ export default class Msgq extends Base {
       // Add search filter if present
       if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
         const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
-        whereClause += ` WHERE (
+        whereClause += ` AND (
           UPPER(MESSAGE_ID) LIKE '${searchPattern}' OR
           UPPER(MESSAGE_TEXT) LIKE '${searchPattern}' OR
           UPPER(MESSAGE_SECOND_LEVEL_TEXT) LIKE '${searchPattern}' OR
@@ -312,14 +349,23 @@ export default class Msgq extends Base {
       // Fetch paginated data
       const entryRows = await executeSqlIfExists(
         connection,
-        `SELECT MESSAGE_ID,
-          MESSAGE_TEXT,
-          SEVERITY,
-          to_char(MESSAGE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') as MESSAGE_TIMESTAMP,
-          FROM_USER,
-          FROM_JOB,
-          MESSAGE_SECOND_LEVEL_TEXT
-        FROM TABLE(QSYS2.MESSAGE_QUEUE_INFO(QUEUE_NAME => '${this.name}', QUEUE_LIBRARY => '${this.library}' )) x
+        `SELECT X.MESSAGE_ID,
+          X.MESSAGE_TEXT,
+          X.SEVERITY,
+          TO_CHAR(X.MESSAGE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS MESSAGE_TIMESTAMP,
+          X.FROM_USER,
+          X.FROM_JOB,
+          X.MESSAGE_SECOND_LEVEL_TEXT,
+          X.MESSAGE_KEY,
+          Y.MESSAGE_TEXT AS REPLY,
+          x.MESSAGE_TYPE
+        FROM TABLE (
+                QSYS2.MESSAGE_QUEUE_INFO(QUEUE_NAME => '${this.name}', QUEUE_LIBRARY => '${this.library}')
+            ) X
+            LEFT JOIN TABLE (
+                QSYS2.MESSAGE_QUEUE_INFO(QUEUE_NAME => '${this.name}', QUEUE_LIBRARY => '${this.library}')
+            ) Y ON Y.ASSOCIATED_MESSAGE_KEY=X.MESSAGE_KEY
+        WHERE X.MESSAGE_TYPE <> 'REPLY'
         ${whereClause}
         ORDER BY x.MESSAGE_TIMESTAMP DESC
         LIMIT ${this.itemsPerPage} OFFSET ${offset}`,
@@ -351,12 +397,25 @@ export default class Msgq extends Base {
     // Define table columns with widths
     const columns: FastTableColumn<Entry>[] = [
       { title: vscode.l10n.t("MSGID"), getValue: e => e.msgid, width: "0.5fr" },
-      { title: vscode.l10n.t("First Level"), getValue: e => e.msgtxt1, width: "1fr" },
-      { title: vscode.l10n.t("Second Level"), getValue: e => e.msgtxt2, width: "2fr" },
+      { title: vscode.l10n.t("First Level"), getValue: e => e.msgtxt1, width: "1fr"},
+      { title: vscode.l10n.t("Second Level"), getValue: e => e.msgtxt2.replaceAll('&N','\n').replaceAll('&B','\n\t'), width: "0.3fr", collapsible: true },
+      { title: vscode.l10n.t("Reply"), getValue: e => e.reply, width: "0.3fr"},
       { title: vscode.l10n.t("Sev."), getValue: e => String(e.severity), width: "0.2fr" },
       { title: vscode.l10n.t("Timestamp"), getValue: e => e.timestamp, width: "0.7fr" },
       { title: vscode.l10n.t("Job"), getValue: e => e.job, width: "1fr" },
-      { title: vscode.l10n.t("User"), getValue: e => e.user, width: "0.5fr" }
+      { title: vscode.l10n.t("User"), getValue: e => e.user, width: "0.5fr" },
+      {
+        title: vscode.l10n.t("Actions"),
+        getValue: e => {
+          // Show "Rispondi" button only for INQUIRY messages without a reply
+          if (e.msgtype === 'INQUIRY' && (!e.reply || e.reply === 'null' || e.reply.trim() === '')) {
+            const arg = encodeURIComponent(JSON.stringify({ msgkey: e.msgkey, msgid: e.msgid, msgtxt: e.msgtxt1 }));
+            return `<vscode-button appearance="primary" href="action:reply?entry=${arg}">${vscode.l10n.t("Reply")}</vscode-button>`;
+          }
+          return '&nbsp;';
+        },
+        width: "0.5fr"
+      }
     ];
 
     return generateFastTable({
@@ -390,17 +449,62 @@ export default class Msgq extends Base {
       severity: Number(row.SEVERITY),
       job: String(row.FROM_JOB),
       user: String(row.FROM_USER),
-      timestamp: String(row.MESSAGE_TIMESTAMP)
+      timestamp: String(row.MESSAGE_TIMESTAMP),
+      reply: String(row.REPLY),
+      msgtype: String(row.MESSAGE_TYPE),
+      msgkey: String(row.MESSAGE_KEY),
     };
   }
 
   /**
    * Handle user actions from the webview
    * @param data - Action data from the webview
-   * @returns Empty action result (no actions available)
+   * @returns Action result
    */
   async handleAction(data: any): Promise<HandleActionResult> {
-    // No actions to handle for message queues
+    // The message contains the href attribute from the clicked element
+    const href = data.href;
+    if (!href) {
+      return {};
+    }
+
+    // Parse the action URL
+    const uri = vscode.Uri.parse(href);
+    const params = new URLSearchParams(uri.query);
+    const entryJson = params.get("entry");
+
+    if (!entryJson) {
+      return {};
+    }
+
+    const entry = JSON.parse(decodeURIComponent(entryJson));
+
+    if (uri.path === "reply") {
+      // Ask user for reply text
+      const replyText = await vscode.window.showInputBox({
+        prompt: vscode.l10n.t("Enter reply for message {0}", entry.msgid),
+        placeHolder: vscode.l10n.t("Reply text..."),
+        value: '',
+        ignoreFocusOut: true
+      });
+      
+      if (replyText !== undefined && replyText.trim() !== '') {
+        // Call the action to send reply
+        const success = await MessageQueueActions.sendReply(
+          this.library,
+          this.name,
+          entry.msgkey,
+          replyText
+        );
+        
+        if (success) {
+          // Refresh the message queue data
+          await this.fetch();
+          return { rerender: true };
+        }
+      }
+    }
+    
     return {};
   }
 

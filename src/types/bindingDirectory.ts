@@ -403,7 +403,7 @@ function renderEntries(entries: Entry[], name: string) {
         // Encode entry as URL parameter for action handlers
         const arg = encodeURIComponent(JSON.stringify(e));
         
-        return `<vscode-button appearance="secondary" href="action:remove?entry=${arg}">${vscode.l10n.t("Remove")} ❌</vscode-button>`;
+        return `<vscode-button appearance="secondary" href="action:remove?entry=${arg}">${vscode.l10n.t("Remove")}</vscode-button>`;
       }
     }
   ];

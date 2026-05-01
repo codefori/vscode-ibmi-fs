@@ -31,6 +31,8 @@
   "command.dspobjDetailed.title": "Objektinformationen anzeigen (Detailliert)",
   "command.refreshObject.title": "Objekt aktualisieren",
   "command.showObjectActions.title": "Objektaktionen",
+  "command.refreshWrksplf.title": "Spooled-Dateien aktualisieren",
+  "command.wrksplf.title": "Mit Spooled-Dateien arbeiten",
   "description": "Dateisystemanbieter für IBM i QSYS",
   "displayName": "IBM i FileSystem"
 }

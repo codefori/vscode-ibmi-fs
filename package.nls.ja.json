@@ -31,6 +31,8 @@
   "command.dspobjDetailed.title": "オブジェクト情報を表示（詳細）",
   "command.refreshObject.title": "オブジェクトを更新",
   "command.showObjectActions.title": "オブジェクトアクション",
+  "command.refreshWrksplf.title": "スプールファイルを更新",
+  "command.wrksplf.title": "スプールファイルの操作",
   "description": "IBM i QSYS用ファイルシステムプロバイダ",
   "displayName": "IBM i FileSystem"
 }

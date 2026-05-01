@@ -31,6 +31,8 @@
   "command.dspobjDetailed.title": "Mostrar información del objeto (Detallado)",
   "command.refreshObject.title": "Actualizar objeto",
   "command.showObjectActions.title": "Acciones del objeto",
+  "command.refreshWrksplf.title": "Actualizar archivos en cola",
+  "command.wrksplf.title": "Trabajar con archivos en cola",
   "description": "Proveedor de sistemas de archivos para IBM i QSYS",
   "displayName": "IBM i FileSystem"
 }

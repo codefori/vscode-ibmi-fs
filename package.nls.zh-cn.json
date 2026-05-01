@@ -31,6 +31,8 @@
   "command.dspobjDetailed.title": "显示对象信息（详细）",
   "command.refreshObject.title": "刷新对象",
   "command.showObjectActions.title": "对象操作",
+  "command.refreshWrksplf.title": "刷新假脱机文件",
+  "command.wrksplf.title": "处理假脱机文件",
   "description": "IBM i QSYS 文件系统提供程序",
   "displayName": "IBM i FileSystem"
 }

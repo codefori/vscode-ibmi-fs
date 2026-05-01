@@ -739,9 +739,9 @@ export default class Outq extends Base {
         getValue: e => {
           // Encode spool entry as URL parameter for action handlers
           const arg = encodeURIComponent(JSON.stringify(e));
-          return `<vscode-button appearance="primary" href="action:openSpool?entry=${arg}">${vscode.l10n.t("Open")} 📄</vscode-button>
-                <vscode-button appearance="primary" href="action:genPdf?entry=${arg}">${vscode.l10n.t("Download")} ⬇️</vscode-button>
-                <vscode-button appearance="secondary" href="action:delPdf?entry=${arg}">${vscode.l10n.t("Delete")} ❌</vscode-button>`;
+          return `<vscode-button appearance="primary" href="action:openSpool?entry=${arg}">${vscode.l10n.t("Open")}</vscode-button>
+                <vscode-button appearance="primary" href="action:genPdf?entry=${arg}">${vscode.l10n.t("Download")}</vscode-button>
+                <vscode-button appearance="secondary" href="action:delPdf?entry=${arg}">${vscode.l10n.t("Delete")}</vscode-button>`;
         }
       }
     ];

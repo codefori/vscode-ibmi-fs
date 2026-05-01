@@ -300,6 +300,18 @@
         "title": "%command.showObjectActions.title%",
         "category": "IBM i FS",
         "icon": "$(menu)"
+      },
+      {
+        "command": "vscode-ibmi-fs.refreshWrksplf",
+        "title": "%command.refreshWrksplf.title%",
+        "category": "IBM i FS",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "vscode-ibmi-fs.wrksplf",
+        "title": "%command.wrksplf.title%",
+        "category": "FS Quick Start",
+        "icon": "$(output)"
       }
     ],
     "menus": {
@@ -453,6 +465,11 @@
           "command": "vscode-ibmi-fs.dspobj",
           "when": "activeCustomEditorId == vscode-ibmi-fs.editor",
           "group": "navigation@99"
+        },
+        {
+          "command": "vscode-ibmi-fs.refreshWrksplf",
+          "when": "activeWebviewPanelId == 'wrksplfView'",
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [
@@ -578,6 +595,14 @@
         {
           "command": "vscode-ibmi-fs.showObjectActions",
           "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.refreshWrksplf",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.wrksplf",
+          "when": "code-for-ibmi:connected"
         },
         {
           "command": "vscode-ibmi-fs.dspobj",

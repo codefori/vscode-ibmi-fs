@@ -1111,7 +1111,7 @@ function renderJobs(data: Job[]) {
       getValue: e => {
         // Encode job entry as URL parameter for action handlers
         const arg = encodeURIComponent(JSON.stringify(e));
-        return `<vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")} ❌</vscode-button>`;
+        return `<vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>`;
       }
     }
   ];
