@@ -437,5 +437,3 @@ export namespace SpoolOperations {
     }
   };
 }
-
-// Made with Bob

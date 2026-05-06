@@ -326,10 +326,32 @@
         "icon": "$(menu)"
       },
       {
+        "command": "vscode-ibmi-fs.wrkactjob",
+        "title": "%command.wrkactjob.title%",
+        "category": "FS Quick Start"
+      },
+      {
+        "command": "vscode-ibmi-fs.refreshWrkactjob",
+        "title": "%command.refreshWrkactjob.title%",
+        "category": "IBM i FS",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "vscode-ibmi-fs.wrksplf",
         "title": "%command.wrksplf.title%",
         "category": "FS Quick Start",
         "icon": "$(output)"
+      },
+      {
+        "command": "vscode-ibmi-fs.wrkusrjob",
+        "title": "%command.wrkusrjob.title%",
+        "category": "FS Quick Start"
+      },
+      {
+        "command": "vscode-ibmi-fs.refreshWrkusrjob",
+        "title": "%command.refreshWrkusrjob.title%",
+        "category": "IBM i FS",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -495,9 +517,19 @@
           "group": "navigation@1"
         },
         {
+          "command": "vscode-ibmi-fs.refreshWrkactjob",
+          "when": "activeWebviewPanelId == 'wrkactjobView'",
+          "group": "navigation@1"
+        },
+        {
           "command": "vscode-ibmi-fs.showWrkjobActions",
           "when": "activeWebviewPanelId == 'wrkjobView'",
           "group": "navigation@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.refreshWrkusrjob",
+          "when": "activeWebviewPanelId == 'wrkusrjobView'",
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [
@@ -635,6 +667,14 @@
         {
           "command": "vscode-ibmi-fs.dspobj",
           "when": "code-for-ibmi:connected"
+        },
+        {
+          "command": "vscode-ibmi-fs.wrkusrjob",
+          "when": "code-for-ibmi:connected"
+        },
+        {
+          "command": "vscode-ibmi-fs.refreshWrkusrjob",
+          "when": "never"
         }
       ]
     },

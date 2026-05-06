@@ -228,6 +228,16 @@ export namespace SubsystemActions {
   };
 
   /**
+   * Release an individual job in the subsystem
+   * Allows a previously held job to execute
+   * @param item - The job entry to release
+   * @returns True if successful, false otherwise
+   */
+  export const releaseJob = async (item: Job): Promise<boolean> => {
+    return JobOperations.releaseJob({ job: item.job });
+  };
+
+  /**
    * End (terminate) an individual job in the subsystem
    * This is a destructive operation that immediately stops the job
    * @param item - The job entry to end
@@ -361,6 +371,10 @@ interface Job {
   status: string
   /** Temporary storage */
   tmpstg: number
+  /** Elapsed CPU percentage */
+  elapsedCpuPct: number
+  /** Elapsed total disk I/O count */
+  elapsedIo: number
   /** CPU time */
   cpu: number
   /** I/O count */
@@ -696,10 +710,12 @@ export class Sbsd extends Base {
           FUNCTION_TYPE CONCAT '-' CONCAT "FUNCTION" "FUNCTION",
           JOB_STATUS,
           TEMPORARY_STORAGE,
+          ELAPSED_CPU_PERCENTAGE,
+          ELAPSED_TOTAL_DISK_IO_COUNT,
           CPU_TIME,
           TOTAL_DISK_IO_COUNT
         FROM TABLE (
-                QSYS2.ACTIVE_JOB_INFO(SUBSYSTEM_LIST_FILTER => '${this.name}', DETAILED_INFO => 'NONE', RESET_STATISTICS => 'YES')
+                QSYS2.ACTIVE_JOB_INFO(SUBSYSTEM_LIST_FILTER => '${this.name}', DETAILED_INFO => 'NONE', RESET_STATISTICS => 'NO')
             )
         WHERE JOB_TYPE <> 'SBS'`,
         'QSYS2',
@@ -778,6 +794,17 @@ export class Sbsd extends Base {
         if (entryJson) {
           const entry: Job = JSON.parse(decodeURIComponent(entryJson));
           if(await SubsystemActions.holdJob(entry)){
+            refetch=true;
+          }
+        }
+        break;
+
+      case "releaseJob":
+        // Release a specific job in the subsystem
+        entryJson = params.get("entry");
+        if (entryJson) {
+          const entry: Job = JSON.parse(decodeURIComponent(entryJson));
+          if(await SubsystemActions.releaseJob(entry)){
             refetch=true;
           }
         }
@@ -943,8 +970,10 @@ function toJob(row: Tools.DB2Row): Job {
     function: String(row.FUNCTION),
     status: String(row.JOB_STATUS),
     tmpstg: Number(row.TEMPORARY_STORAGE),
+    elapsedCpuPct: Number(row.ELAPSED_CPU_PERCENTAGE),
+    elapsedIo: Number(row.ELAPSED_TOTAL_DISK_IO_COUNT),
     cpu: Number(row.CPU_TIME),
-    io: Number(row.CPU_TIME)
+    io: Number(row.TOTAL_DISK_IO_COUNT)
   };
 }
 
@@ -1144,16 +1173,21 @@ function renderJobs(data: Job[]) {
     { title: vscode.l10n.t("Function"), width: "0.7fr", getValue: e => e.function },
     { title: vscode.l10n.t("Status"), width: "0.5fr", getValue: e => e.status },
     { title: vscode.l10n.t("Temp. Stg."), width: "0.5fr", getValue: e => String(e.tmpstg) },
-    { title: vscode.l10n.t("CPU"), width: "0.5fr", getValue: e => String(e.cpu) },
-    { title: vscode.l10n.t("I/O"), width: "0.5fr", getValue: e => String(e.io) },
+    { title: vscode.l10n.t("Elapsed CPU %"), width: "0.5fr", getValue: e => String(e.elapsedCpuPct) },
+    { title: vscode.l10n.t("Elapsed I/O"), width: "0.5fr", getValue: e => String(e.elapsedIo) },
+    { title: vscode.l10n.t("CPU Time"), width: "0.5fr", getValue: e => String(e.cpu) },
+    { title: vscode.l10n.t("Total I/O"), width: "0.5fr", getValue: e => String(e.io) },
     {
       title: vscode.l10n.t("Actions"),
       width: "2fr",
       getValue: e => {
         // Encode job entry as URL parameter for action handlers
         const arg = encodeURIComponent(JSON.stringify(e));
+        // Conditionally show Hold or Release button based on job status
+        // If job is HLD, show Release button; otherwise show Hold button
         return `<vscode-button appearance="primary" href="action:wrkJob?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>
-                <vscode-button appearance="secondary" href="action:holdJob?entry=${arg}">${vscode.l10n.t("Hold")}</vscode-button>
+                ${e.status !== 'HLD' ? `<vscode-button appearance="secondary" href="action:holdJob?entry=${arg}">${vscode.l10n.t("Hold")}</vscode-button>` :
+                  `<vscode-button appearance="secondary" href="action:releaseJob?entry=${arg}">${vscode.l10n.t("Release")}</vscode-button>`}
                 <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>`;
       }
     }

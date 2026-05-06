@@ -37,6 +37,10 @@
   "command.showWrkjobActions.title": "Job Actions",
   "command.wrksplf.title": "Work with Spooled Files",
   "command.wrkjob.title": "Work with Job",
+  "command.wrkactjob.title": "Work with Active Jobs",
+  "command.refreshWrkactjob.title": "Refresh Active Jobs",
+  "command.wrkusrjob.title": "Work with User Jobs",
+  "command.refreshWrkusrjob.title": "Refresh User Jobs",
   "description": "File system provider for IBM i QSYS",
   "displayName": "IBM i FileSystem"
 }

@@ -19,6 +19,8 @@ import { UserIndexActions } from './types/userIndex';
 import { DspobjActions } from './views/dspobj';
 import { WrksplfActions } from './views/wrksplf';
 import { WrkjobActions } from './views/wrkjob';
+import { WrkactjobActions } from './views/wrkactjob';
+import { WrkusrjobActions } from './views/wrkusrjob';
 import { DocumentManager } from './documentManager';
 
 /**
@@ -57,6 +59,8 @@ export async function activate(context: vscode.ExtensionContext) {
   DspobjActions.register(context);
   WrksplfActions.register(context);
   WrkjobActions.register(context);
+  WrkactjobActions.register(context);
+  WrkusrjobActions.register(context);
 
   // Register refresh command
   context.subscriptions.push(
@@ -228,6 +232,8 @@ export async function activate(context: vscode.ExtensionContext) {
           { label: `$(search-view-icon) DSPOBJ Detailed`, description: vscode.l10n.t(`Display Object Information (single input)`), command: `vscode-ibmi-fs.dspobjDetailed` },
           { label: `$(output-view-icon) WRKSPLF`, description: vscode.l10n.t(`Work with Spooled Files`), command: `vscode-ibmi-fs.wrksplf` },
           { label: `$(server-process) WRKJOB`, description: vscode.l10n.t(`Work with Job`), command: `vscode-ibmi-fs.wrkjob` },
+          { label: `$(list-tree) WRKACTJOB`, description: vscode.l10n.t(`Work with Active Jobs`), command: `vscode-ibmi-fs.wrkactjob` },
+          { label: `$(account) WRKUSRJOB`, description: vscode.l10n.t(`Work with User Jobs`), command: `vscode-ibmi-fs.wrkusrjob` },
 
         ],
         { placeHolder: vscode.l10n.t('Select an FS action') }

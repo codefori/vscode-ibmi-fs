@@ -327,14 +327,19 @@ export namespace WrkjobActions {
        MESSAGE_LOGGING_LEVEL CONCAT ' ' CONCAT MESSAGE_LOGGING_SEVERITY CONCAT ' ' CONCAT MESSAGE_LOGGING_TEXT
            AS MESSAGE_LOGGING_LEVEL,
        INQUIRY_MESSAGE_REPLY,
-       SPOOLED_FILE_ACTION
+       SPOOLED_FILE_ACTION,
+       TEMPORARY_STORAGE,
+        ELAPSED_CPU_PERCENTAGE,
+        ELAPSED_TOTAL_DISK_IO_COUNT,
+        CPU_TIME,
+        TOTAL_DISK_IO_COUNT
        FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', 
                                   JOB_USER_FILTER => '${jobUser}', 
                                   JOB_NAME_FILTER => '${jobNameOnly}')) p
        LEFT JOIN TABLE (
             QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => '${jobNameOnly}', 
                                   CURRENT_USER_LIST_FILTER => '${jobUser}', 
-                                  DETAILED_INFO => 'NONE')
+                                  DETAILED_INFO => 'NONE', RESET_STATISTICS => 'NO')
              ) X
              ON X.JOB_NAME = P.JOB_NAME
        WHERE P.JOB_NAME = '${jobName}'`,
@@ -616,7 +621,12 @@ export namespace WrkjobActions {
         ['DECIMAL_FORMAT', vscode.l10n.t('Decimal Format')],
         ['MESSAGE_LOGGING_LEVEL', vscode.l10n.t('Message Logging')],
         ['INQUIRY_MESSAGE_REPLY', vscode.l10n.t('Inquiry Message Reply')],
-        ['SPOOLED_FILE_ACTION', vscode.l10n.t('Spooled File Action')]
+        ['SPOOLED_FILE_ACTION', vscode.l10n.t('Spooled File Action')],
+        ['TEMPORARY_STORAGE', vscode.l10n.t('Temp. Stg.')],
+        ['ELAPSED_CPU_PERCENTAGE', vscode.l10n.t('Elapsed CPU %')],
+        ['ELAPSED_TOTAL_DISK_IO_COUNT', vscode.l10n.t('Elapsed I/O')],
+        ['CPU_TIME', vscode.l10n.t('CPU Time')],
+        ['TOTAL_DISK_IO_COUNT', vscode.l10n.t('Total I/O')]
       ]);
 
       // Create webview panel

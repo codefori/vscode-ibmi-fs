@@ -37,6 +37,10 @@
   "command.refreshWrkjob.title": "Aggiorna informazioni Job",
   "command.wrkjob.title": "Lavora con Job",
   "command.showWrkjobActions.title": "Azioni Job",
+  "command.wrkactjob.title": "Lavora con Job Attivi",
+  "command.refreshWrkactjob.title": "Aggiorna Job Attivi",
+  "command.wrkusrjob.title": "Lavora con Job Utente",
+  "command.refreshWrkusrjob.title": "Aggiorna Job Utente",
   "description": "Browser del file system per IBM i QSYS",
   "displayName": "IBM i FileSystem"
 }
