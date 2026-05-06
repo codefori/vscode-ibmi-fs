@@ -322,5 +322,3 @@ export namespace WrkusrjobActions {
     }
   };
 }
-
-// Made with Bob
