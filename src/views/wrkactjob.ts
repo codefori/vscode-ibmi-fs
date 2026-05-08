@@ -181,12 +181,15 @@ export namespace WrkactjobActions {
       );
 
       // Add refresh button to the webview toolbar
-      const refreshDisposable = vscode.commands.registerCommand('vscode-ibmi-fs.refreshWrkactjob', async () => {
+      const refreshDisposable = vscode.commands.registerCommand('vscode-ibmi-fs.refreshWrkactjob', async (isAutoRefresh: boolean = false) => {
         const newJobs = await fetchActiveJobs(searchTerm);
         if (newJobs) {
           activeJobs = newJobs;
           panel.webview.html = generatePage(generateTableHtml());
-          vscode.window.showInformationMessage(vscode.l10n.t('Active jobs refreshed successfully'));
+          // Show success message only for manual refresh
+          if (!isAutoRefresh) {
+            vscode.window.showInformationMessage(vscode.l10n.t('Active jobs refreshed successfully'));
+          }
         }
       });
 
@@ -223,7 +226,8 @@ export namespace WrkactjobActions {
             return `<vscode-button appearance="primary" href="action:wrkJob?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>
                   ${e.status !== 'HLD' ? `<vscode-button appearance="secondary" href="action:holdJob?entry=${arg}">${vscode.l10n.t("Hold")}</vscode-button>` :
                     `<vscode-button appearance="secondary" href="action:releaseJob?entry=${arg}">${vscode.l10n.t("Release")}</vscode-button>`}
-                  <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>`;
+                  <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>
+                  <vscode-button appearance="secondary" href="action:debugJob?entry=${arg}">${vscode.l10n.t("Debug")}</vscode-button>`;
           }
         }
       ];
@@ -312,6 +316,10 @@ export namespace WrkactjobActions {
             if (await JobOperations.endJob({ job: entry.job })) {
               refetch = true;
             }
+            break;
+
+          case "debugJob":
+            await JobOperations.debugJob({ job: entry.job });
             break;
         }
 

@@ -106,7 +106,7 @@ export function getProtected(connection: IBMi, lib: string) : boolean {
   let rule : ObjectFilters;
 
   connection.getConfig().objectFilters.forEach(element => {
-    if(element.library==lib){
+    if(element.library==lib||(element.library.endsWith('*')&&lib.startsWith(element.library.substring(0,element.library.length-1)))){
       if(rule){
         if((element.types[0]!=='*ALL'&&rule.types[0]==='*ALL')||(element.object!=='*'&&rule.object==='*')){
           rule=element;

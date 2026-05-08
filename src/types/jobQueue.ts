@@ -280,6 +280,16 @@ export namespace JobQueueActions {
   };
 
   /**
+   * Debug an individual job in the queue
+   * Attaches the debugger to the job
+   * @param item - The job entry to debug
+   * @returns True if successful, false otherwise
+   */
+  export const debugJob = async (item: Entry): Promise<boolean> => {
+    return JobOperations.debugJob({ job: item.job });
+  };
+
+  /**
    * Open Work with Job view for an individual job
    * Shows detailed information about the job in a webview
    * @param item - The job entry to view
@@ -512,7 +522,8 @@ export default class Jobq extends Base {
           return `<vscode-button appearance="primary" href="action:wrkJob?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>
                   ${e.jobsts!=='HELD'?`<vscode-button appearance="secondary" href="action:hldJob?entry=${arg}">${vscode.l10n.t("Hold")}</vscode-button>`:
             `<vscode-button appearance="secondary" href="action:rlsJob?entry=${arg}">${vscode.l10n.t("Release")}</vscode-button>`}
-                  <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>`;
+                  <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>
+                  <vscode-button appearance="secondary" href="action:debugJob?entry=${arg}">${vscode.l10n.t("Debug")}</vscode-button>`;
         }
       }
     ];
@@ -599,6 +610,16 @@ export default class Jobq extends Base {
           if(await JobQueueActions.endJob(entry)){
             refetch=true;
           }
+        }
+        break;
+
+      case "debugJob":
+        // Debug a specific job in the queue
+        entryJson = params.get("entry");
+        if (entryJson) {
+          const entry: Entry = JSON.parse(decodeURIComponent(entryJson));
+          await JobQueueActions.debugJob(entry);
+          // No refetch needed for debug action
         }
         break;
     }

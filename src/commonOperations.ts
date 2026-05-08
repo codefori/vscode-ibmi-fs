@@ -2,11 +2,11 @@
  * Common Operations Module
  *
  * This module provides shared functionality for managing IBM i jobs and spooled files.
- * These functions are used across different object types (Job Queues, Output Queues, 
+ * These functions are used across different object types (Job Queues, Output Queues,
  * Subsystem Descriptions, etc.) to avoid code duplication and maintain consistency.
  *
  * Key Features:
- * - Job operations: hold, release, end
+ * - Job operations: hold, release, end, debug
  * - Spool operations: delete, download as PDF
  * - Consistent error handling and user feedback
  * - Connection validation
@@ -19,6 +19,7 @@ import { CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from './ibmi';
 import { checkTableFunctionExists } from './tools';
 import { posix } from 'path';
+import { Config } from '@halcyontech/vscode-ibmi-types/api/configuration/config/VirtualConfig';
 
 /**
  * Interface representing a job identifier
@@ -203,6 +204,58 @@ export namespace JobOperations {
     } catch (error) {
       vscode.window.showErrorMessage(
         vscode.l10n.t("Error ending job: {0}", String(error))
+      );
+      return false;
+    }
+  };
+
+  /**
+   * Debug a job
+   * Attaches the debugger to an active job
+   * @param jobId - Job identifier containing the qualified job name
+   * @returns True if successful, false otherwise
+   */
+  export const debugJob = async (job: JobIdentifier): Promise<boolean> => {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    
+    if (!connection) {
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
+      return false;
+    }
+
+    try {
+
+      const dbgjob = job.job
+
+      // Start debug session
+      const debugConfig: vscode.DebugConfiguration = {
+        type: "IBMiDebug",
+        request: "attach",
+        name: `IBM i Debug: Attach to job ${dbgjob}`,
+        user: connection.currentUser.toUpperCase(),
+        password: "${command:AskForPassword}",
+        host: connection.currentHost,
+        port: connection.getConfig().debugPort,
+        jobId: dbgjob
+      };
+
+      const debugResult = await vscode.debug.startDebugging(undefined, debugConfig, undefined);
+
+      if (debugResult) {
+        vscode.window.showInformationMessage(
+          vscode.l10n.t("Debug session started for job {0}", dbgjob)
+        );
+        return true;
+      } else {
+        vscode.window.showErrorMessage(
+          vscode.l10n.t("Failed to start debug session for job {0}", dbgjob)
+        );
+        return false;
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        vscode.l10n.t("Error starting debug session: {0}", String(error))
       );
       return false;
     }

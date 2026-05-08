@@ -123,6 +123,13 @@ export namespace WrkjobActions {
             });
           }
           
+          // Add debug action for active jobs
+          if (jobStatus === 'ACTIVE') {
+            actions.push({
+              label: vscode.l10n.t("$(debug-alt) Debug Job"),
+            });
+          }
+          
           if (actions.length === 0) {
             vscode.window.showInformationMessage(vscode.l10n.t("No actions available for job {0} (status: {1})", jobName, jobStatus));
             return;
@@ -146,10 +153,12 @@ export namespace WrkjobActions {
             success = await JobOperations.releaseJob({ job: jobName });
           } else if (selected.label.includes("End")) {
             success = await JobOperations.endJob({ job: jobName });
+          } else if (selected.label.includes("Debug")) {
+            success = await JobOperations.debugJob({ job: jobName });
           }
           
-          // Refresh the webview if action was successful
-          if (success) {
+          // Refresh the webview if action was successful (except for debug)
+          if (success && !selected.label.includes("Debug")) {
             await vscode.commands.executeCommand('vscode-ibmi-fs.refreshWrkjob');
           }
         } catch (error) {
@@ -640,8 +649,12 @@ export namespace WrkjobActions {
         }
       );
 
+      // Auto-refresh configuration
+      const autoRefreshInterval = 30000; // 30 seconds
+      let autoRefreshTimer: NodeJS.Timeout | undefined;
+
       // Define refresh function for this panel
-      const refreshFunction = async () => {
+      const refreshFunction = async (isAutoRefresh: boolean = false) => {
         // First, tell the webview to save its current state with the restore flag
         // This must happen BEFORE we update the HTML
         await panel.webview.postMessage({
@@ -666,7 +679,10 @@ export namespace WrkjobActions {
           spools = newSpools;
           joblog = newJoblog;
           panel.webview.html = generatePage(generateContent());
-          vscode.window.showInformationMessage(vscode.l10n.t('Job information refreshed successfully'));
+          // Show success message only for manual refresh
+          if (!isAutoRefresh) {
+            vscode.window.showInformationMessage(vscode.l10n.t('Job information refreshed successfully'));
+          }
         }
       };
 
@@ -683,8 +699,38 @@ export namespace WrkjobActions {
       // Set as current active panel immediately
       currentActivePanel = jobName;
 
+      // Start auto-refresh timer
+      const startAutoRefresh = () => {
+        if (autoRefreshTimer) {
+          clearInterval(autoRefreshTimer);
+        }
+        autoRefreshTimer = setInterval(async () => {
+          try {
+            // Check current job status before auto-refresh
+            const currentJobInfo = await fetchJobInfo(jobName);
+            if (currentJobInfo && currentJobInfo.length > 0) {
+              const jobStatus = String(currentJobInfo[0].JOB_STATUS);
+              // Only auto-refresh if job status is not OUTQ
+              if (jobStatus !== 'OUTQ') {
+                await refreshFunction(true);
+              }
+            }
+          } catch (error) {
+            console.error('Auto-refresh error:', error);
+          }
+        }, autoRefreshInterval);
+      };
+
+      // Start auto-refresh
+      startAutoRefresh();
+
       // Clean up when panel is disposed
       panel.onDidDispose(() => {
+        // Clear auto-refresh timer
+        if (autoRefreshTimer) {
+          clearInterval(autoRefreshTimer);
+          autoRefreshTimer = undefined;
+        }
         activePanels.delete(jobName);
         if (currentActivePanel === jobName) {
           currentActivePanel = undefined;
