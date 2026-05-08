@@ -4,7 +4,7 @@
   "displayName": "%displayName%",
   "description": "%description%",
   "l10n": "./l10n",
-  "version": "0.0.7-dev0",
+  "version": "0.0.8-dev0",
   "preview": true,
   "license": "MIT",
   "engines": {
