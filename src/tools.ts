@@ -106,7 +106,7 @@ export function getProtected(connection: IBMi, lib: string) : boolean {
   let rule : ObjectFilters;
 
   connection.getConfig().objectFilters.forEach(element => {
-    if(element.library==lib){
+    if(element.library==lib||(element.library.endsWith('*')&&lib.startsWith(element.library.substring(0,element.library.length-1)))){
       if(rule){
         if((element.types[0]!=='*ALL'&&rule.types[0]==='*ALL')||(element.object!=='*'&&rule.object==='*')){
           rule=element;
@@ -610,12 +610,21 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
   const rows = data.map((row, rowIndex) => {
     const visibleCells = columns.map((col, index) => {
       if (col.collapsible) {
-        // For collapsible columns, show a button to open modal
-        return `<vscode-table-cell style="width: ${columnsArray[index]}; text-align: center;">
-          <vscode-button appearance="secondary" class="show-modal-btn" data-row="${rowIndex}" aria-label="Show details">
-            +
-          </vscode-button>
-        </vscode-table-cell>`;
+        // For collapsible columns, check if value is empty/null before showing button
+        const value = col.getValue(row);
+        const isEmpty = value === null || value === undefined || value === '' || String(value).trim() === '' || String(value) === 'null' || String(value) === 'undefined';
+        
+        if (isEmpty) {
+          // Show empty cell if no content
+          return `<vscode-table-cell style="width: ${columnsArray[index]}; text-align: center;"></vscode-table-cell>`;
+        } else {
+          // Show button to open modal if content exists
+          return `<vscode-table-cell style="width: ${columnsArray[index]}; text-align: center;">
+            <vscode-button appearance="secondary" class="show-modal-btn" data-row="${rowIndex}" aria-label="Show details">
+              +
+            </vscode-button>
+          </vscode-table-cell>`;
+        }
       }
       const value = col.getValue(row);
       const cellClass = col.cellClass ? ` class="${col.cellClass}"` : '';
@@ -1162,13 +1171,20 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
       const data = collapsibleDataArray[rowIndex];
       if (!data || data.length === 0) return;
 
+      // Helper function to escape HTML
+      const escapeHtml = (text) => {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      };
+
       // Set modal content
       const content = data.map(item => \`
         <div style="margin-bottom: 16px;">
           <div style="font-weight: 600; margin-bottom: 8px; color: var(--vscode-foreground); font-size: 1em;">
-            \${item.title}:
+            \${escapeHtml(item.title)}:
           </div>
-          <pre>\${item.value}</pre>
+          <pre>\${escapeHtml(item.value || '')}</pre>
         </div>
       \`).join('');
 

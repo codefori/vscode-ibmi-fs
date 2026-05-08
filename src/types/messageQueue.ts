@@ -398,7 +398,7 @@ export default class Msgq extends Base {
     const columns: FastTableColumn<Entry>[] = [
       { title: vscode.l10n.t("MSGID"), getValue: e => e.msgid, width: "0.5fr" },
       { title: vscode.l10n.t("First Level"), getValue: e => e.msgtxt1, width: "1fr"},
-      { title: vscode.l10n.t("Second Level"), getValue: e => e.msgtxt2.replaceAll('&N','\n').replaceAll('&B','\n\t'), width: "0.3fr", collapsible: true },
+      { title: vscode.l10n.t("Second Level"), getValue: e => e.msgtxt2.replaceAll('&N','\n').replaceAll('&B','\n\t').replaceAll('&P','\n\t'), width: "0.3fr", collapsible: true },
       { title: vscode.l10n.t("Reply"), getValue: e => e.reply, width: "0.3fr"},
       { title: vscode.l10n.t("Sev."), getValue: e => String(e.severity), width: "0.2fr" },
       { title: vscode.l10n.t("Timestamp"), getValue: e => e.timestamp, width: "0.7fr" },

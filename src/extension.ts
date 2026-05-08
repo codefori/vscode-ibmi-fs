@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import ObjectProvider from './objectProvider';
 import { DataQueueActions } from './types/dataQueue';
 import { SaveFileActions } from './types/saveFile';
-import { loadBase } from './ibmi';
+import { getInstance, loadBase } from './ibmi';
 import { DataAreaActions } from './types/dataArea';
 import { JobQueueActions } from './types/jobQueue';
 import { OutputQueueActions } from './types/outputQueue';
@@ -16,8 +16,11 @@ import { SubsystemActions } from './types/subsystemDescription';
 import { MessageQueueActions } from './types/messageQueue';
 import { FileActions } from './types/file';
 import { UserIndexActions } from './types/userIndex';
-import { DspobjActions } from './dspobj';
+import { DspobjActions } from './views/dspobj';
 import { WrksplfActions } from './views/wrksplf';
+import { WrkjobActions } from './views/wrkjob';
+import { WrkactjobActions } from './views/wrkactjob';
+import { WrkusrjobActions } from './views/wrkusrjob';
 import { DocumentManager } from './documentManager';
 
 /**
@@ -55,6 +58,9 @@ export async function activate(context: vscode.ExtensionContext) {
   UserIndexActions.register(context);
   DspobjActions.register(context);
   WrksplfActions.register(context);
+  WrkjobActions.register(context);
+  WrkactjobActions.register(context);
+  WrkusrjobActions.register(context);
 
   // Register refresh command
   context.subscriptions.push(
@@ -220,70 +226,22 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('vscode-ibmi-fs.showFsActionsMenu', async () => {
       const action = await vscode.window.showQuickPick(
         [
-          { label: 'WRKJOB', description: 'Work with Job', command: 'vscode-ibmi-fs.wrkjob' },
-          { label: '$(output-view-icon) WRKSPLF', description: 'Work with Spooled Files', command: 'vscode-ibmi-fs.wrksplf' },
-          { label: '$(chat-editor-label-icon) DSPMSG QSYSOPR', description: 'Display System Operator Messages', command: 'vscode-ibmi-fs.dspmsgQsysopr' },
-          { label: '$(extensions-info-message) DSPOBJ', description: 'Display Object Information', command: 'vscode-ibmi-fs.dspobj' },
-          { label: '$(search-view-icon) DSPOBJ Detailed', description: 'Display Object Information (single input)', command: 'vscode-ibmi-fs.dspobjDetailed' }
+          { label: `$(callhierarchy-incoming) DSPMSG`, description: vscode.l10n.t(`Display User's message`), command: `vscode-ibmi-fs.dspUsrMsg` },
+          { label: `$(chat-editor-label-icon) DSPMSG QSYSOPR`, description: vscode.l10n.t(`Display System Operator Messages`), command: `vscode-ibmi-fs.dspmsgQsysopr` },
+          { label: `$(extensions-info-message) DSPOBJ`, description: vscode.l10n.t(`Display Object Information`), command: `vscode-ibmi-fs.dspobj` },
+          { label: `$(search-view-icon) DSPOBJ Detailed`, description: vscode.l10n.t(`Display Object Information (single input)`), command: `vscode-ibmi-fs.dspobjDetailed` },
+          { label: `$(output-view-icon) WRKSPLF`, description: vscode.l10n.t(`Work with Spooled Files`), command: `vscode-ibmi-fs.wrksplf` },
+          { label: `$(server-process) WRKJOB`, description: vscode.l10n.t(`Work with Job`), command: `vscode-ibmi-fs.wrkjob` },
+          { label: `$(list-tree) WRKACTJOB`, description: vscode.l10n.t(`Work with Active Jobs`), command: `vscode-ibmi-fs.wrkactjob` },
+          { label: `$(account) WRKUSRJOB`, description: vscode.l10n.t(`Work with User Jobs`), command: `vscode-ibmi-fs.wrkusrjob` },
+
         ],
-        { placeHolder: 'Select an FS action' }
+        { placeHolder: vscode.l10n.t('Select an FS action') }
       );
 
       if (action) {
         vscode.commands.executeCommand(action.command);
       }
-    })
-  );
-
-  // WRKJOB Command - Example of read-only output with working search
-  context.subscriptions.push(
-    vscode.commands.registerCommand('vscode-ibmi-fs.wrkjob', async () => {
-      // Create the content
-      const output = [
-        '╔════════════════════════════════════════════════════════════╗',
-        '║           Work with Job - Example                         ║',
-        '╚════════════════════════════════════════════════════════════╝',
-        '',
-        'Hello world!',
-        '',
-        'This is an example of read-only display.',
-        'The content is static and cannot be modified.',
-        '',
-        '💡 Tip: Press Ctrl+F (Cmd+F on Mac) to search in the text',
-        '',
-        '────────────────────────────────────────────────────────────',
-        'Command output:',
-        '────────────────────────────────────────────────────────────',
-        '',
-        'Hello world!',
-        'This is a read-only tab.',
-        'You cannot modify this text.',
-        '',
-        'Try searching for the word "world" or "read-only".',
-        'The search function is fully enabled!',
-        '',
-        'You can also search for:',
-        '  - "hello"',
-        '  - "example"',
-        '  - "command"',
-        '  - any other word present in this document',
-        '',
-        '════════════════════════════════════════════════════════════',
-        'End of document',
-        '════════════════════════════════════════════════════════════'
-      ];
-
-      // Optional metadata
-      const metadata = {
-        'Command': 'WRKJOB',
-        'Date': new Date().toLocaleString('en-US'),
-        'Status': 'Completed'
-      };
-
-      // Show the read-only document
-      await DocumentManager.showOutput('WRKJOB - Output', output, metadata);
-      
-      vscode.window.showInformationMessage('Read-only tab opened! Use Ctrl+F to search in the text.');
     })
   );
 
@@ -298,6 +256,28 @@ export async function activate(context: vscode.ExtensionContext) {
         await vscode.commands.executeCommand('vscode.openWith', uri, 'vscode-ibmi-fs.editor');
       } catch (error) {
         vscode.window.showErrorMessage(vscode.l10n.t('Failed to open QSYSOPR: {0}', String(error)));
+      }
+    })
+  );
+
+  // DSPMSG Command - Opens the user's message queue
+  context.subscriptions.push(
+    vscode.commands.registerCommand('vscode-ibmi-fs.dspUsrMsg', async () => {
+      try {
+
+        const ibmi = getInstance();
+        const connection = ibmi?.getConnection();
+        if (!connection) {
+          throw new Error(vscode.l10n.t("Not connected to IBM i"));
+        }
+
+        // Create the URI for the user's message queue in QSYS library
+        const uri = vscode.Uri.parse(`member:/QUSRSYS/${connection.currentUser.toUpperCase()}.MSGQ`);
+        
+        // Open the file with the custom editor
+        await vscode.commands.executeCommand('vscode.openWith', uri, 'vscode-ibmi-fs.editor');
+      } catch (error) {
+        vscode.window.showErrorMessage(vscode.l10n.t(`Failed to open user's message queue: {0}`, String(error)));
       }
     })
   );

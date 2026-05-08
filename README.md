@@ -56,7 +56,25 @@ A generic action available for **all object types** that provides comprehensive 
 - 🔑 View authorization list information
 - 🎨 Multi-tab interface with Information, Locks, and Authorizations tabs
 - 📱 Available from Object Browser context menu and editor toolbar
-- ⌨️ **Keyboard shortcut**: `Ctrl+Shift+D` (Windows/Linux) or `Cmd+Shift+D` (Mac)
+
+---
+
+### FS Quick Start Menu
+
+Click on **"FS Quick Start"** in the status bar (bottom left) to access these commands:
+
+| Command | Description |
+|---------|-------------|
+| 📥 **DSPMSG** | Display User's message queue |
+| 💬 **DSPMSG QSYSOPR** | Display System Operator Messages |
+| 📋 **DSPOBJ** | Display Object Information (from context menu) |
+| 🔍 **DSPOBJ Detailed** | Display Object Information (single input prompt) |
+| 📄 **WRKSPLF** | Work with Spooled Files |
+| 💼 **WRKJOB** | Work with Job |
+| 🔄 **WRKACTJOB** | Work with Active Jobs |
+| 👥 **WRKUSRJOB** | Work with User Jobs |
+
+> 📖 **For detailed information** about all views and their features, see [**VIEWS.md**](VIEWS.md)
 
 ---
 
