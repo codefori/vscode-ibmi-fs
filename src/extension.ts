@@ -218,8 +218,38 @@ export async function activate(context: vscode.ExtensionContext) {
   fsActionsStatusBar.text = "$(tools) FS Quick Start";
   fsActionsStatusBar.tooltip = "IBM i FS Quick Start";
   fsActionsStatusBar.command = "vscode-ibmi-fs.showFsActionsMenu";
-  fsActionsStatusBar.show();
   context.subscriptions.push(fsActionsStatusBar);
+
+  // Function to update status bar visibility based on connection state
+  const updateFsActionsStatusBar = () => {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      fsActionsStatusBar.show();
+    } else {
+      fsActionsStatusBar.hide();
+    }
+  };
+
+  // Update initial visibility
+  updateFsActionsStatusBar();
+
+  // Periodically check connection state
+  const connectionCheckInterval = setInterval(() => {
+    updateFsActionsStatusBar();
+  }, 2000); // Check every 2 seconds
+
+  // Clean up interval when extension is deactivated
+  context.subscriptions.push({
+    dispose: () => clearInterval(connectionCheckInterval)
+  });
+
+  // Listen for extension changes (when Code for IBM i connects/disconnects)
+  context.subscriptions.push(
+    vscode.extensions.onDidChange(() => {
+      updateFsActionsStatusBar();
+    })
+  );
 
   // Command to show the FS Quick Start menu
   context.subscriptions.push(

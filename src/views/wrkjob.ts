@@ -169,6 +169,20 @@ export namespace WrkjobActions {
   };
 
   /**
+   * Interface representing a library list entry
+   */
+  interface LibraryEntry {
+    /** Library name */
+    library: string;
+    /** Library type (SYS, CUR, USR) */
+    type: string;
+    /** ASP name (optional) */
+    asp: string;
+    /** Library description */
+    description: string;
+  }
+
+  /**
    * Interface representing a call stack entry
    */
   interface StackEntry {
@@ -402,6 +416,63 @@ export namespace WrkjobActions {
   };
 
   /**
+   * Fetch library list
+   */
+  const fetchLibl = async (jobName: string): Promise<LibraryEntry[]> => {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    
+    if (!connection) {
+      return [];
+    }
+
+    const liblspl = await connection.runCommand({
+      command: `QSYS/DSPJOB JOB(${jobName}) OPTION(*LIBL)`,
+      environment: `ile`,
+    });
+
+    if (!liblspl || !liblspl.stdout) {
+      return [];
+    }
+
+    // Parse library list from spool output
+    // The output has fixed-width columns, so we parse by position
+    const lines = liblspl.stdout.split('\n');
+    const libraries: LibraryEntry[] = [];
+    
+    for (const line of lines) {
+      // Skip empty lines and lines that don't start with spaces (headers, etc.)
+      // Minimum length is 24 to include library name and type
+      if (line.length < 16 || !line.startsWith('    ')) {
+        continue;
+      }
+      
+      // Extract fields by position (fixed-width columns)
+      const library = line.substring(4, 14).trim();
+      const type = line.substring(16, 19).trim();
+      const asp = line.substring(27, 37).trim();
+      const description = line.substring(39, 90).trim();
+      
+      // Skip if library name is empty or starts with * (separator lines)
+      if (!library || library.startsWith('*')) {
+        continue;
+      }
+      
+      // Only include valid library types
+      if (type === 'SYS' || type === 'CUR' || type === 'USR') {
+        libraries.push({
+          library: library,
+          type: type,
+          asp: asp,
+          description: description
+        });
+      }
+    }
+
+    return libraries;
+  };
+
+  /**
    * Fetch locks
    */
   const fetchLocks = async (jobName: string): Promise<LockEntry[]> => {
@@ -593,12 +664,13 @@ export namespace WrkjobActions {
         return false;
       }
 
-      let [callStack, locks, openFiles, spools, joblog] = await Promise.all([
+      let [callStack, locks, openFiles, spools, joblog, libraries] = await Promise.all([
         fetchCallStack(jobName),
         fetchLocks(jobName),
         fetchOpenFiles(jobName),
         fetchSpools(jobName),
-        fetchJoblog(jobName)
+        fetchJoblog(jobName),
+        fetchLibl(jobName)
       ]);
 
       // Define columns for job info manually
@@ -670,6 +742,7 @@ export namespace WrkjobActions {
         const newOpenFiles = await fetchOpenFiles(jobName);
         const newSpools = await fetchSpools(jobName);
         const newJoblog = await fetchJoblog(jobName);
+        const newLibraries = await fetchLibl(jobName);
         
         if (newJobInfo && newCallStack && newLocks && newOpenFiles && newSpools && newJoblog) {
           jobInfo = newJobInfo;
@@ -678,6 +751,7 @@ export namespace WrkjobActions {
           openFiles = newOpenFiles;
           spools = newSpools;
           joblog = newJoblog;
+          libraries = newLibraries;
           panel.webview.html = generatePage(generateContent());
           // Show success message only for manual refresh
           if (!isAutoRefresh) {
@@ -783,6 +857,23 @@ export namespace WrkjobActions {
           emptyMessage: vscode.l10n.t("No call stack entries found.")
         });
 
+        // Library List tab
+        const libraryColumns: FastTableColumn<LibraryEntry>[] = [
+          { title: vscode.l10n.t("Library"), width: "1.5fr", getValue: e => e.library },
+          { title: vscode.l10n.t("Type"), width: "0.7fr", getValue: e => e.type },
+          { title: vscode.l10n.t("ASP"), width: "1fr", getValue: e => e.asp },
+          { title: vscode.l10n.t("Description"), width: "3fr", getValue: e => e.description }
+        ];
+
+        const libraryHtml = generateFastTable({
+          title: vscode.l10n.t("Library List"),
+          subtitle: vscode.l10n.t("Total libraries: {0}", String(libraries.length)),
+          columns: libraryColumns,
+          data: libraries,
+          stickyHeader: true,
+          emptyMessage: vscode.l10n.t("No libraries found.")
+        });
+
         // Locks tab
         const lockColumns: FastTableColumn<LockEntry>[] = [
           { title: vscode.l10n.t("Object"), width: "2fr", getValue: e => e.object },
@@ -870,8 +961,10 @@ export namespace WrkjobActions {
           tableId: 'joblog-table'
         });
 
-        // Statistics tab (combines call stack, locks, open files, spools)
+        // Statistics tab (combines library list, call stack, locks, open files, spools)
         const statisticsHtml = `
+          ${libraryHtml}
+          ${Components.divider()}
           ${stackHtml}
           ${Components.divider()}
           ${lockHtml}
@@ -968,6 +1061,7 @@ export namespace WrkjobActions {
           const newOpenFiles = await fetchOpenFiles(jobName);
           const newSpools = await fetchSpools(jobName);
           const newJoblog = await fetchJoblog(jobName);
+          const newLibraries = await fetchLibl(jobName);
           
           if (newJobInfo && newCallStack && newLocks && newOpenFiles && newSpools && newJoblog) {
             jobInfo = newJobInfo;
@@ -976,6 +1070,7 @@ export namespace WrkjobActions {
             openFiles = newOpenFiles;
             spools = newSpools;
             joblog = newJoblog;
+            libraries = newLibraries;
             panel.webview.html = generatePage(generateContent());
           }
         }

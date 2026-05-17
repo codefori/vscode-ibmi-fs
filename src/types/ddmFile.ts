@@ -60,7 +60,7 @@ export class DdmFile extends Base {
     if (connection) {
       // Display DDM file configuration
       const ddmf: CommandResult = await connection.runCommand({
-        command: `DSPDDMF FILE(${this.library}/${this.name})`,
+        command: `QSYS/DSPDDMF FILE(${this.library}/${this.name})`,
         environment: `ile`,
       });
 

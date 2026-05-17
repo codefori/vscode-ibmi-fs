@@ -395,8 +395,12 @@ export function generateDetailTable(options: DetailTableOptions): string {
         position: relative;
       }
       
+      .detail-table-container vscode-table-row:nth-child(odd) {
+        background-color: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.06);
+      }
+      
       .detail-table-container vscode-table-row:nth-child(even) {
-        background-color: var(--vscode-editor-background);
+        background-color: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.20);
       }
       
       .detail-table-container vscode-table-row:hover {
@@ -767,8 +771,12 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
       transition: background-color 0.2s ease, transform 0.1s ease;
     }
     
+    vscode-table-row:nth-child(odd) {
+      background-color: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.06);
+    }
+    
     vscode-table-row:nth-child(even) {
-      background-color: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.02);
+      background-color: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.20);
     }
     
     vscode-table-row:hover {
