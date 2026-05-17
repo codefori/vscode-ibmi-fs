@@ -240,7 +240,7 @@ export default class Cls extends Base {
             
             // Execute the SQL script to create the objects
             const runsql: CommandResult = await connection.runCommand({
-              command: `RUNSQLSTM SRCSTMF('${connection.getConfig().tempDir}/clsbuild.sql') COMMIT(*NONE)`,
+              command: `QSYS/RUNSQLSTM SRCSTMF('${connection.getConfig().tempDir}/clsbuild.sql') COMMIT(*NONE)`,
               environment: `ile`,
             });
 
