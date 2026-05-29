@@ -19,7 +19,6 @@ import { CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from './ibmi';
 import { checkTableFunctionExists } from './tools';
 import { posix } from 'path';
-import { Config } from '@halcyontech/vscode-ibmi-types/api/configuration/config/VirtualConfig';
 
 /**
  * Interface representing a job identifier

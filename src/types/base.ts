@@ -1,4 +1,4 @@
-import { CustomDocument, Uri, extensions } from "vscode";
+import { CustomDocument, Uri } from "vscode";
 import {} from "@halcyontech/vscode-ibmi-types/api/IBMi";
 
 /**

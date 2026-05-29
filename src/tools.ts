@@ -1,5 +1,4 @@
 import IBMi from '@halcyontech/vscode-ibmi-types/api/IBMi';
-import { getInstance } from "./ibmi";
 import { Components } from "./webviewToolkit";
 import { ObjectFilters } from '@halcyontech/vscode-ibmi-types';
 import * as vscode from 'vscode';

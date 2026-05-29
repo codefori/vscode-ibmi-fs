@@ -4,7 +4,7 @@
   "displayName": "%displayName%",
   "description": "%description%",
   "l10n": "./l10n",
-  "version": "0.0.8-dev0",
+  "version": "0.0.9-dev0",
   "preview": true,
   "license": "MIT",
   "engines": {
@@ -678,8 +678,7 @@
         }
       ]
     },
-    "keybindings": [
-    ]
+    "keybindings": []
   },
   "scripts": {
     "clean": "rimraf dist",
@@ -692,7 +691,7 @@
     "pseudo-nls": "npx @vscode/l10n-dev generate-pseudo -o ./l10n/ ./l10n/bundle.l10n.json ./package.nls.json"
   },
   "devDependencies": {
-    "@halcyontech/vscode-ibmi-types": "^2.17.2",
+    "@halcyontech/vscode-ibmi-types": "^3.0.6",
     "@types/node": "^20",
     "@types/vscode": "^1.90.0",
     "@vscode/l10n-dev": "^0.0.35",

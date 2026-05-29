@@ -16,13 +16,13 @@
  * @module userIndex
  */
 
-import { CommandResult, IBMiObject } from '@halcyontech/vscode-ibmi-types';
+import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected, checkProcedureExists, checkTableFunctionExists, checkViewExists, executeSqlIfExists } from "../tools";
+import { getColumns, generateDetailTable, FastTableColumn, generateFastTable, getProtected, executeSqlIfExists } from "../tools";
 import ObjectProvider from '../objectProvider';
 
 /**
