@@ -2,26 +2,26 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
-import ObjectProvider from './objectProvider';
-import { DataQueueActions } from './types/dataQueue';
-import { SaveFileActions } from './types/saveFile';
-import { getInstance, loadBase } from './ibmi';
-import { DataAreaActions } from './types/dataArea';
-import { JobQueueActions } from './types/jobQueue';
-import { OutputQueueActions } from './types/outputQueue';
-import { UserSpaceActions } from './types/userSpace';
-import { BindingDirectoryActions } from './types/bindingDirectory';
-import { JournalActions } from './types/journal';
-import { SubsystemActions } from './types/subsystemDescription';
-import { MessageQueueActions } from './types/messageQueue';
-import { FileActions } from './types/file';
-import { UserIndexActions } from './types/userIndex';
-import { DspobjActions } from './views/dspobj';
-import { WrksplfActions } from './views/wrksplf';
-import { WrkjobActions } from './views/wrkjob';
-import { WrkactjobActions } from './views/wrkactjob';
-import { WrkusrjobActions } from './views/wrkusrjob';
 import { DocumentManager } from './documentManager';
+import { getInstance, loadBase } from './ibmi';
+import ObjectProvider from './objectProvider';
+import { BindingDirectoryActions } from './types/bindingDirectory';
+import { DataAreaActions } from './types/dataArea';
+import { DataQueueActions } from './types/dataQueue';
+import { FileActions } from './types/file';
+import { JobQueueActions } from './types/jobQueue';
+import { JournalActions } from './types/journal';
+import { MessageQueueActions } from './types/messageQueue';
+import { OutputQueueActions } from './types/outputQueue';
+import { SaveFileActions } from './types/saveFile';
+import { SubsystemActions } from './types/subsystemDescription';
+import { UserIndexActions } from './types/userIndex';
+import { UserSpaceActions } from './types/userSpace';
+import { DspobjActions } from './views/dspobj';
+import { WrkactjobActions } from './views/wrkactjob';
+import { WrkjobActions } from './views/wrkjob';
+import { WrksplfActions } from './views/wrksplf';
+import { WrkusrjobActions } from './views/wrkusrjob';
 
 /**
  * Extension activation function
@@ -31,6 +31,8 @@ import { DocumentManager } from './documentManager';
 export async function activate(context: vscode.ExtensionContext) {
   // Load the base IBM i extension
   loadBase();
+
+  console.log("Testing")
 
   // Register the document manager
   DocumentManager.register(context);
