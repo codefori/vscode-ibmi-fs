@@ -5,7 +5,6 @@
   "description": "%description%",
   "l10n": "./l10n",
   "version": "1.0.1-dev.0",
-  "preview": true,
   "license": "MIT",
   "engines": {
     "vscode": "^1.90.0"
