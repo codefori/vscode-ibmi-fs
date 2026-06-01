@@ -1,0 +1,5 @@
+on: workflow_dispatch
+
+jobs:
+  call-prerelease-workflow:
+    uses: codefori/.github/.github/workflows/pr_build.yaml@main
