@@ -1,6 +1,6 @@
 on: workflow_dispatch
 
 jobs:
-  call-prerelease-workflow:
+  build-and-publish-prerelease:
     uses: codefori/.github/.github/workflows/prerelease.yaml@main
     secrets: inherit

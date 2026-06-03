@@ -3,6 +3,6 @@ on:
     types: [created]
 
 jobs:
-  call-prerelease-workflow:
+  build-and-publish-release:
     uses: codefori/.github/.github/workflows/release.yaml@main
     secrets: inherit
