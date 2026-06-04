@@ -16,11 +16,9 @@
  */
 
 import Base from "./base";
-import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
-import { Components } from "../webviewToolkit";
+import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable, getProtected, checkTableFunctionExists, checkProcedureExists, checkViewExists, executeSqlIfExists } from "../tools";
-import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
+import { getColumns, generateDetailTable, getProtected, executeSqlIfExists } from "../tools";
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
 

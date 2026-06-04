@@ -15,7 +15,7 @@
 
 import * as vscode from 'vscode';
 import { getInstance } from '../ibmi';
-import { FastTableColumn, generateFastTable, generateDetailTable, executeSqlIfExists, checkTableFunctionExists, getColumns } from "../tools";
+import { FastTableColumn, generateFastTable, generateDetailTable, executeSqlIfExists } from "../tools";
 import { generatePage, Components } from "../webviewToolkit";
 import { JobOperations, SpoolOperations } from '../commonOperations';
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
@@ -59,10 +59,30 @@ export namespace WrkjobActions {
     context.subscriptions.push(
       vscode.commands.registerCommand("vscode-ibmi-fs.wrkjob", async (jobName?: string) => {
         if (!jobName) {
+          const ibmi = getInstance();
+          const connection = ibmi?.getConnection();
+          if (!connection) {
+            throw new Error(vscode.l10n.t("Not connected to IBM i"));
+          }
+
+          const thejob = await executeSqlIfExists(
+            connection,
+            `select JOB_NAME AS JOBNAME from table(qsys2.active_job_info(job_name_filter => '*', detailed_info => 'NONE'))`,
+            'QSYS2',
+            'ACTIVE_JOB_INFO',
+            'FUNCTION'
+          );
+
+          if (thejob === null) {
+            vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "ACTIVE_JOB_INFO"));
+            return;
+          }
+
           // Prompt user for job name if not provided
           jobName = await vscode.window.showInputBox({
             placeHolder: vscode.l10n.t("000000/USER/MYJOB"),
             title: vscode.l10n.t("Enter job name (number/user/name)"),
+            value: thejob[0].JOBNAME,
             validateInput: (value) => {
               const parts = value.split('/');
               if (parts.length !== 3) {
@@ -429,6 +449,7 @@ export namespace WrkjobActions {
     const liblspl = await connection.runCommand({
       command: `QSYS/DSPJOB JOB(${jobName}) OPTION(*LIBL)`,
       environment: `ile`,
+      getSpooledFiles:true,
     });
 
     if (!liblspl || !liblspl.stdout) {
@@ -440,18 +461,13 @@ export namespace WrkjobActions {
     const lines = liblspl.stdout.split('\n');
     const libraries: LibraryEntry[] = [];
     
-    for (const line of lines) {
-      // Skip empty lines and lines that don't start with spaces (headers, etc.)
-      // Minimum length is 24 to include library name and type
-      if (line.length < 16 || !line.startsWith('    ')) {
-        continue;
-      }
+  for (const line of lines) {
       
       // Extract fields by position (fixed-width columns)
-      const library = line.substring(4, 14).trim();
-      const type = line.substring(16, 19).trim();
-      const asp = line.substring(27, 37).trim();
-      const description = line.substring(39, 90).trim();
+      const library = line.substring(3, 13).trim();
+      const type = line.substring(15, 18).trim();
+      const asp = line.substring(26, 36).trim();
+      const description = line.substring(38, 90).trim();
       
       // Skip if library name is empty or starts with * (separator lines)
       if (!library || library.startsWith('*')) {

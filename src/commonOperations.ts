@@ -19,7 +19,6 @@ import { CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from './ibmi';
 import { checkTableFunctionExists } from './tools';
 import { posix } from 'path';
-import { Config } from '@halcyontech/vscode-ibmi-types/api/configuration/config/VirtualConfig';
 
 /**
  * Interface representing a job identifier
@@ -352,7 +351,7 @@ export namespace SpoolOperations {
         // Execute CPYSPLF command to copy spool to stream file
         const result = await connection.runCommand({
           command: `QSYS/CPYSPLF FILE(${spoolId.spoolname}) JOB(${spoolId.job}) SPLNBR(${spoolId.nbr}) TOFILE(*TOSTMF) TOSTMF('${tempSourcePath}')
-            CPY OBJ('${tempSourcePath}') TOOBJ('${tempSourcePath}') TOCCSID(*PCASCII) DTAFMT(*TEXT) REPLACE(*YES)`,
+            QSYS/CPY OBJ('${tempSourcePath}') TOOBJ('${tempSourcePath}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`,
           environment: 'ile'
         });
 

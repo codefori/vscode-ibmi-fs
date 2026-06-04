@@ -18,13 +18,9 @@ import {
   CommandResult
 } from "@halcyontech/vscode-ibmi-types";
 import * as vscode from "vscode";
-import {
-  generateDetailTable,
-  getQSYSObjectPath,
-} from "../tools";
+import { generateDetailTable } from "../tools";
 import Base from "./base";
 import { getInstance } from "../ibmi";
-import path = require("path");
 
 /**
  * Regular expression for parsing DDM file header information from DSPDDMF output
@@ -62,6 +58,7 @@ export class DdmFile extends Base {
       const ddmf: CommandResult = await connection.runCommand({
         command: `QSYS/DSPDDMF FILE(${this.library}/${this.name})`,
         environment: `ile`,
+        getSpooledFiles:true,
       });
 
       if (ddmf.code === 0 && ddmf.stdout) {

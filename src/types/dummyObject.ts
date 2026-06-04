@@ -13,7 +13,6 @@
 
 import Base from "./base";
 import { getInstance } from "../ibmi";
-import { getColumns, generateDetailTable } from "../tools";
 import * as vscode from 'vscode';
 import { CommandResult } from "@halcyontech/vscode-ibmi-types";
 
@@ -110,14 +109,14 @@ export async function fetchQrydfn(library: string, object: string): Promise<stri
     let sql ='--SQL translation for *QRYDFN: '+library+'/'+object+'\n\n';
 
     let cmdrun: CommandResult = await connection.runCommand({
-      command: `CHKOBJ OBJ(${connection.getConfig().tempLibrary}/DUMMYSRCPF) OBJTYPE(*FILE)`,
+      command: `CHKOBJ OBJ(QTEMP/DUMMYSRCPF) OBJTYPE(*FILE)`,
       environment: `ile`
     });
 
     // Check command execution result
     if (cmdrun.code !== 0) {
       cmdrun = await connection.runCommand({
-        command: `CRTSRCPF FILE(${connection.getConfig().tempLibrary}/DUMMYSRCPF) RCDLEN(200)`,
+        command: `CRTSRCPF FILE(QTEMP/DUMMYSRCPF) RCDLEN(200)`,
         environment: `ile`
       });
       if (cmdrun.code !== 0) {
@@ -127,7 +126,7 @@ export async function fetchQrydfn(library: string, object: string): Promise<stri
     } 
     
     cmdrun = await connection.runCommand({
-      command: `RTVQMQRY QMQRY(${library}/${object}) SRCFILE(${connection.getConfig().tempLibrary}/DUMMYSRCPF) ALWQRYDFN(*YES)`,
+      command: `RTVQMQRY QMQRY(${library}/${object}) SRCFILE(QTEMP/DUMMYSRCPF) ALWQRYDFN(*YES)`,
       environment: `ile`
     });
 
@@ -137,12 +136,12 @@ export async function fetchQrydfn(library: string, object: string): Promise<stri
     }
 
     try{
-      await connection.runSQL(`CREATE ALIAS ${connection.getConfig().tempLibrary}.${object} FOR  ${connection.getConfig().tempLibrary}.DUMMYSRCPF(${object})`);
+      await connection.runSQL(`CREATE ALIAS QTEMP.${object} FOR  QTEMP.DUMMYSRCPF(${object})`);
       let qrydfn = await connection.runSQL(`select srcdta 
-          from ${connection.getConfig().tempLibrary}.${object} x 
+          from QTEMP.${object} x 
           where rrn(x) >= (
             select rrn(Y) 
-            from ${connection.getConfig().tempLibrary}.${object} Y 
+            from QTEMP.${object} Y 
             where srcdta like '%SELECT%'
           )`);
       for (const row of qrydfn) {
@@ -151,10 +150,10 @@ export async function fetchQrydfn(library: string, object: string): Promise<stri
       }
       
       cmdrun = await connection.runCommand({
-        command: `RMVM FILE(${connection.getConfig().tempLibrary}/DUMMYSRCPF) MBR(${object})`,
+        command: `RMVM FILE(QTEMP/DUMMYSRCPF) MBR(${object})`,
         environment: `ile`
       });
-      await connection.runSQL(`DROP ALIAS ${connection.getConfig().tempLibrary}.${object}`)
+      await connection.runSQL(`DROP ALIAS QTEMP.${object}`)
     } catch{
       vscode.window.showErrorMessage(vscode.l10n.t("Unable to create necessary objects for displaying query definitions."));
       return '';

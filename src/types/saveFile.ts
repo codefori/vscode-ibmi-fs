@@ -17,13 +17,12 @@
  * @module savefile
  */
 
-import {CommandResult, FilteredItem, IBMiObject} from "@halcyontech/vscode-ibmi-types";
-import { basename } from "path";
+import {CommandResult, IBMiObject} from "@halcyontech/vscode-ibmi-types";
 import * as vscode from "vscode";
-import { FastTableColumn, IBMI_OBJECT_NAME, generateDetailTable, generateFastTable, getProtected, getQSYSObjectPath, checkViewExists, checkTableFunctionExists, executeSqlIfExists } from "../tools";
+import { FastTableColumn, generateDetailTable, generateFastTable, getProtected, getQSYSObjectPath, executeSqlIfExists } from "../tools";
 import { Components } from "../webviewToolkit";
 import Base from "./base";
-import { getInstance, getVSCodeTools } from "../ibmi";
+import { getInstance } from "../ibmi";
 import { Tools } from "@halcyontech/vscode-ibmi-types/api/Tools";
 import path = require("path");
 import ObjectProvider from '../objectProvider';
@@ -1289,6 +1288,7 @@ export class SaveFile extends Base {
       const savf: CommandResult = await connection.runCommand({
         command: `QSYS/DSPSAVF FILE(${this.library}/${this.name})`,
         environment: `ile`,
+        getSpooledFiles:true,
       });
 
       if (savf.code === 0 && savf.stdout) {
