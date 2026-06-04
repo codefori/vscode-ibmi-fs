@@ -4,7 +4,7 @@
   "displayName": "%displayName%",
   "description": "%description%",
   "l10n": "./l10n",
-  "version": "1.0.2-dev.0",
+  "version": "1.0.2",
   "license": "MIT",
   "engines": {
     "vscode": "^1.90.0"
