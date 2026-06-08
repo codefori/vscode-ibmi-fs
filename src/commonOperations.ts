@@ -14,11 +14,11 @@
  * @module commonOperations
  */
 
-import * as vscode from 'vscode';
 import { CommandResult } from '@halcyontech/vscode-ibmi-types';
+import { posix } from 'path';
+import * as vscode from 'vscode';
 import { getInstance } from './ibmi';
 import { checkTableFunctionExists } from './tools';
-import { posix } from 'path';
 
 /**
  * Interface representing a job identifier
@@ -54,7 +54,7 @@ export namespace JobOperations {
   export const holdJob = async (jobId: JobIdentifier, showConfirmation: boolean = true): Promise<boolean> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
@@ -107,7 +107,7 @@ export namespace JobOperations {
   export const releaseJob = async (jobId: JobIdentifier, showConfirmation: boolean = true): Promise<boolean> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
@@ -165,7 +165,7 @@ export namespace JobOperations {
   ): Promise<boolean> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
@@ -217,7 +217,7 @@ export namespace JobOperations {
   export const debugJob = async (job: JobIdentifier): Promise<boolean> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
@@ -277,7 +277,7 @@ export namespace SpoolOperations {
   ): Promise<boolean> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
@@ -336,7 +336,7 @@ export namespace SpoolOperations {
   ): Promise<boolean> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
@@ -344,7 +344,7 @@ export namespace SpoolOperations {
 
     try {
       // Create a temporary directory and copy the spool file to it
-      return connection.withTempDirectory(async (tempDir) : Promise<boolean> => {
+      return connection.withTempDirectory(async (tempDir): Promise<boolean> => {
         // Generate temporary file path for the spool content
         const tempSourcePath = posix.join(tempDir, `spool.txt`);
 
@@ -355,7 +355,7 @@ export namespace SpoolOperations {
           environment: 'ile'
         });
 
-        if(result.code===0){
+        if (result.code === 0) {
           // Create URI for the temporary file and open it in VS Code as readonly
           const uri = vscode.Uri.parse(tempSourcePath).with({
             scheme: `streamfile`
@@ -364,7 +364,7 @@ export namespace SpoolOperations {
             preview: false,
             preserveFocus: false
           });
-          
+
           return true;
         } else {
           vscode.window.showErrorMessage(
@@ -394,7 +394,7 @@ export namespace SpoolOperations {
   ): Promise<boolean> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
@@ -433,9 +433,9 @@ export namespace SpoolOperations {
 
       try {
         const config = connection.getConfig();
-        const tempRemotePath = config.tempDir + '/' + 
-          spoolId.job.replaceAll("/", "_") + '_' + 
-          spoolId.spoolname + '_' + 
+        const tempRemotePath = connection.getTempDirectory() + '/' +
+          spoolId.job.replaceAll("/", "_") + '_' +
+          spoolId.spoolname + '_' +
           spoolId.nbr + '.pdf';
 
         // Generate PDF on IBM i
