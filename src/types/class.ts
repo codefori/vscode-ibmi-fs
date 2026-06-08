@@ -23,11 +23,11 @@
  * @module class
  */
 
-import Base from "./base";
-import { getInstance } from "../ibmi";
-import { generateDetailTable, checkProcedureExists, checkViewExists, checkTableFunctionExists } from "../tools";
-import * as vscode from 'vscode';
 import { CommandResult } from "@halcyontech/vscode-ibmi-types";
+import * as vscode from 'vscode';
+import { getInstance } from "../ibmi";
+import { checkProcedureExists, checkTableFunctionExists, checkViewExists, generateDetailTable } from "../tools";
+import Base from "./base";
 
 /**
  * Class (CLS) object class
@@ -70,22 +70,22 @@ export default class Cls extends Base {
       // Check if required SQL objects exist in the temporary library
       // We need: QWCRCLSI procedure, CLASS_INFO view, and CLASS_INFO function
       const tempLib = connection.getConfig().tempLibrary;
-      
+
       const procedureExists = await checkProcedureExists(connection, tempLib, 'QWCRCLSI');
       const viewExists = await checkViewExists(connection, tempLib, 'CLASS_INFO');
       const functionExists = await checkTableFunctionExists(connection, tempLib, 'CLASS_INFO');
-     
-     // If any of the 3 required objects are missing, create them all
-     if(!procedureExists || !viewExists || !functionExists){
-       try{
-         // Write SQL script to create the required objects
-          const content=connection.getContent();
-          if(content){
+
+      // If any of the 3 required objects are missing, create them all
+      if (!procedureExists || !viewExists || !functionExists) {
+        try {
+          // Write SQL script to create the required objects
+          const content = connection.getContent();
+          if (content) {
             // Create SQL script that defines:
             // 1. QWCRCLSI stored procedure (wrapper for QWCRCLSI API)
             // 2. CLASS_INFO table function (retrieves all classes)
             // 3. CLASS_INFO view (exposes the function results)
-            await content.writeStreamfileRaw(connection.getConfig().tempDir+'/clsbuild.sql',`
+            await content.writeStreamfileRaw(connection.getTempDirectory() + '/clsbuild.sql', `
               --
               -- Subject: Finding IBM i class objects and return the class attributes
               -- Author: Scott Forstie
@@ -128,13 +128,13 @@ export default class Cls extends Base {
               CREATE OR REPLACE FUNCTION ${connection.getConfig().tempLibrary}.class_info ()
                   RETURNS TABLE (
                       class_library VARCHAR(10) FOR SBCS DATA,
-                      class_name VARCHAR(10) FOR SBCS DATA, 
+                      class_name VARCHAR(10) FOR SBCS DATA,
                       text_description VARCHAR(50) FOR SBCS DATA,
-                      last_used date, 
-                      use_count INTEGER, 
+                      last_used date,
+                      use_count INTEGER,
                       run_priority INTEGER,
                       eligible_purge VARCHAR(4) FOR SBCS DATA,
-                      time_slice INTEGER, 
+                      time_slice INTEGER,
                       default_wait VARCHAR(11) FOR SBCS DATA,
                       maximum_cpu_time  VARCHAR(11) FOR SBCS DATA,
                       maximum_temporary_storage_allowed VARCHAR(11) FOR SBCS DATA,
@@ -237,10 +237,10 @@ export default class Cls extends Base {
                               ${connection.getConfig().tempLibrary}.class_info()
                           );
             `)
-            
+
             // Execute the SQL script to create the objects
             const runsql: CommandResult = await connection.runCommand({
-              command: `QSYS/RUNSQLSTM SRCSTMF('${connection.getConfig().tempDir}/clsbuild.sql') COMMIT(*NONE)`,
+              command: `QSYS/RUNSQLSTM SRCSTMF('${connection.getTempDirectory()}/clsbuild.sql') COMMIT(*NONE)`,
               environment: `ile`,
             });
 
@@ -250,7 +250,7 @@ export default class Cls extends Base {
             } else {
               // Clean up the temporary SQL script file
               await connection.runCommand({
-                command: `rm -f ${connection.getConfig().tempDir}/clsbuild.sql`,
+                command: `rm -f ${connection.getTempDirectory()}/clsbuild.sql`,
                 environment: `pase`,
               });
             }
@@ -267,7 +267,7 @@ export default class Cls extends Base {
 
       // Define column mappings for display
       // Maps database column names to user-friendly display labels
-      this.columns= new Map<string,string>([
+      this.columns = new Map<string, string>([
         ['TEXT_DESCRIPTION', vscode.l10n.t('Text')],
         ['LAST_USED_TIMESTAMP', vscode.l10n.t('Last used date')],
         ['USE_COUNT', vscode.l10n.t('Days used count')],
@@ -318,7 +318,7 @@ export default class Cls extends Base {
       subtitle: vscode.l10n.t('Class Information'),
       columns: this.columns,
       data: this.cls,
-      hideNullValues:true
+      hideNullValues: true
     });
   }
 

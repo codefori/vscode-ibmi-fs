@@ -17,15 +17,15 @@
  * @module savefile
  */
 
-import {CommandResult, IBMiObject} from "@halcyontech/vscode-ibmi-types";
+import { CommandResult, IBMiObject } from "@halcyontech/vscode-ibmi-types";
+import { Tools } from "@halcyontech/vscode-ibmi-types/api/Tools";
 import * as vscode from "vscode";
-import { FastTableColumn, generateDetailTable, generateFastTable, getProtected, getQSYSObjectPath, executeSqlIfExists } from "../tools";
+import { getInstance } from "../ibmi";
+import ObjectProvider from '../objectProvider';
+import { executeSqlIfExists, FastTableColumn, generateDetailTable, generateFastTable, getProtected, getQSYSObjectPath } from "../tools";
 import { Components } from "../webviewToolkit";
 import Base from "./base";
-import { getInstance } from "../ibmi";
-import { Tools } from "@halcyontech/vscode-ibmi-types/api/Tools";
 import path = require("path");
-import ObjectProvider from '../objectProvider';
 
 /**
  * Namespace containing all Save File related actions and commands
@@ -131,7 +131,7 @@ export namespace SaveFileActions {
   export const downloadSavf = async (target: IBMiObject | SaveFile) => {
     const library = target.library.toUpperCase();
     const name = target.name.toUpperCase();
-    
+
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
@@ -187,7 +187,7 @@ export namespace SaveFileActions {
             };
 
             const config = connection.getConfig();
-            const tempRemotePath = `${config.tempDir}/${library}_${name}.savf`;
+            const tempRemotePath = `${connection.getTempDirectory()}/${library}_${name}.savf`;
 
             // Step 1: Copy save file to temporary stream file
             progress.report({ message: vscode.l10n.t("Copying to temporary stream file...") });
@@ -238,7 +238,7 @@ export namespace SaveFileActions {
       }
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
-    } 
+    }
   };
 
   /**
@@ -253,7 +253,7 @@ export namespace SaveFileActions {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-      if(getProtected(connection,target.library)){
+      if (getProtected(connection, target.library)) {
         vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
@@ -302,7 +302,7 @@ export namespace SaveFileActions {
 
             let lclpath = saveFiles[0].path;
             let rmtpath = path.posix.join(
-              connection.getConfig().tempDir,
+              connection.getTempDirectory(),
               path.basename(lclpath),
             );
 
@@ -348,7 +348,7 @@ export namespace SaveFileActions {
               command: `rm -f ${rmtpath}`,
               environment: `pase`,
             });
-            
+
             return result;
           },
         );
@@ -370,7 +370,7 @@ export namespace SaveFileActions {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
     }
-      
+
   };
 
   /**
@@ -385,7 +385,7 @@ export namespace SaveFileActions {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-      if(getProtected(connection,target.library)){
+      if (getProtected(connection, target.library)) {
         vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
@@ -423,7 +423,7 @@ export namespace SaveFileActions {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-      if(getProtected(connection,target.library)){
+      if (getProtected(connection, target.library)) {
         vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
@@ -479,7 +479,7 @@ export namespace SaveFileActions {
           // Get the library name from save file info if not QSYS/SAV command
           if (saveCmd !== "SAV") {
             const libResult = await connection.runSQL(
-              `SELECT LIBRARY_NAME 
+              `SELECT LIBRARY_NAME
                 FROM QSYS2.SAVE_FILE_INFO WHERE
                 SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'`,
             );
@@ -833,7 +833,7 @@ export namespace SaveFileActions {
     const connection = ibmi?.getConnection();
 
     if (connection) {
-      if(getProtected(connection,target.library)){
+      if (getProtected(connection, target.library)) {
         vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
@@ -857,7 +857,7 @@ export namespace SaveFileActions {
         vscode.window.showErrorMessage(vscode.l10n.t("Save file {0}/{1} is not empty", target.library, target.name));
         return false;
       }
-      
+
       const result = await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
@@ -1288,7 +1288,7 @@ export class SaveFile extends Base {
       const savf: CommandResult = await connection.runCommand({
         command: `QSYS/DSPSAVF FILE(${this.library}/${this.name})`,
         environment: `ile`,
-        getSpooledFiles:true,
+        getSpooledFiles: true,
       });
 
       if (savf.code === 0 && savf.stdout) {
