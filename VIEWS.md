@@ -137,7 +137,7 @@ For each active job (except subsystem jobs):
 
 ### Overview
 
-Displays comprehensive information about a specific job, including job details, call stack, locks, open files, spool files, and job log. This is the most detailed view for job analysis and troubleshooting.
+Displays comprehensive information about a specific job, including job details, activation groups, call stack, locks, open files, spool files, and job log. This is the most detailed view for job analysis and troubleshooting.
 
 ### How to Access
 
@@ -189,7 +189,24 @@ Displays comprehensive job information:
 - **End Job** - End the job
 
 #### Job Statistics Tab
-Contains four sub-sections:
+Contains six sub-sections:
+
+##### Library List
+Shows the job library list:
+- **Library** - Library name
+- **Type** - Library type (SYS, CUR, USR)
+- **ASP** - ASP name
+- **Description** - Library description
+
+##### Activation Groups
+Shows all activation groups currently available:
+- **Group** - Activation group name
+- **Number** - Activation group number
+- **State** - Activation group state
+- **Library** - Program library
+- **Program** - Program name
+- **Type** - Program type
+- **In Use** - In-use indicator
 
 ##### Call Stack
 Shows the program call stack:
@@ -251,6 +268,7 @@ Displays all job log messages:
 **SQL Services Used:**
 - `QSYS2.JOB_INFO` - Job information
 - `QSYS2.ACTIVE_JOB_INFO` - Active job information
+- `QSYS2.ACTIVATION_GROUP_INFO` - Activation groups information
 - `QSYS2.STACK_INFO` - Call stack information
 - `QSYS2.JOB_LOCK_INFO` - Lock information
 - `QSYS2.OPEN_FILES` - Open files information
