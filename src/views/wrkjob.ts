@@ -261,6 +261,26 @@ export namespace WrkjobActions {
   }
 
   /**
+   * Interface representing an activation group entry
+   */
+  interface ActivationGroupEntry {
+    /** Activation group name */
+    group: string;
+    /** Activation group number */
+    number: number;
+    /** Group state */
+    state: string;
+    /** Program library */
+    library: string;
+    /** Program name */
+    program: string;
+    /** Program type */
+    programType: string;
+    /** In-use indicator */
+    inUse: string;
+  }
+
+  /**
    * Interface representing a spool file entry
    */
   interface SpoolEntry {
@@ -575,6 +595,47 @@ export namespace WrkjobActions {
   };
 
   /**
+   * Fetch activation groups
+   */
+  const fetchActivationGroups = async (jobName: string): Promise<ActivationGroupEntry[]> => {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+
+    if (!connection) {
+      return [];
+    }
+
+    const activationGroupRows = await executeSqlIfExists(
+      connection,
+      `SELECT ACTIVATION_GROUP_NAME AS GROUP_NAME,
+         ACTIVATION_GROUP_NUMBER AS GROUP_NUMBER,
+         STATE,
+         PROGRAM_LIBRARY,
+         PROGRAM,
+         PROGRAM_TYPE,
+         IN_USE
+       FROM TABLE(QSYS2.ACTIVATION_GROUP_INFO('${jobName}'))`,
+      'QSYS2',
+      'ACTIVATION_GROUP_INFO',
+      'FUNCTION'
+    );
+
+    if (activationGroupRows === null) {
+      return [];
+    }
+
+    return activationGroupRows.map((row: Tools.DB2Row): ActivationGroupEntry => ({
+      group: String(row.GROUP_NAME),
+      number: Number(row.GROUP_NUMBER),
+      state: String(row.STATE),
+      library: String(row.PROGRAM_LIBRARY),
+      program: String(row.PROGRAM),
+      programType: String(row.PROGRAM_TYPE),
+      inUse: String(row.IN_USE)
+    }));
+  };
+
+  /**
    * Fetch spools
    */
   const fetchSpools = async (jobName: string): Promise<SpoolEntry[]> => {
@@ -680,13 +741,14 @@ export namespace WrkjobActions {
         return false;
       }
 
-      let [callStack, locks, openFiles, spools, joblog, libraries] = await Promise.all([
+      let [callStack, locks, openFiles, spools, joblog, libraries, activationGroups] = await Promise.all([
         fetchCallStack(jobName),
         fetchLocks(jobName),
         fetchOpenFiles(jobName),
         fetchSpools(jobName),
         fetchJoblog(jobName),
-        fetchLibl(jobName)
+        fetchLibl(jobName),
+        fetchActivationGroups(jobName)
       ]);
 
       // Define columns for job info manually
@@ -759,6 +821,7 @@ export namespace WrkjobActions {
         const newSpools = await fetchSpools(jobName);
         const newJoblog = await fetchJoblog(jobName);
         const newLibraries = await fetchLibl(jobName);
+        const newActivationGroups = await fetchActivationGroups(jobName);
         
         if (newJobInfo && newCallStack && newLocks && newOpenFiles && newSpools && newJoblog) {
           jobInfo = newJobInfo;
@@ -768,6 +831,7 @@ export namespace WrkjobActions {
           spools = newSpools;
           joblog = newJoblog;
           libraries = newLibraries;
+          activationGroups = newActivationGroups;
           panel.webview.html = generatePage(generateContent());
           // Show success message only for manual refresh
           if (!isAutoRefresh) {
@@ -929,6 +993,26 @@ export namespace WrkjobActions {
           emptyMessage: vscode.l10n.t("No open files found.")
         });
 
+        // Activation groups tab section
+        const activationGroupColumns: FastTableColumn<ActivationGroupEntry>[] = [
+          { title: vscode.l10n.t("Group"), width: "1.5fr", getValue: e => e.group },
+          { title: vscode.l10n.t("Number"), width: "0.7fr", getValue: e => String(e.number) },
+          { title: vscode.l10n.t("State"), width: "0.8fr", getValue: e => e.state },
+          { title: vscode.l10n.t("Library"), width: "1fr", getValue: e => e.library },
+          { title: vscode.l10n.t("Program"), width: "1fr", getValue: e => e.program },
+          { title: vscode.l10n.t("Type"), width: "0.8fr", getValue: e => e.programType },
+          { title: vscode.l10n.t("In Use"), width: "0.8fr", getValue: e => e.inUse }
+        ];
+
+        const activationGroupHtml = generateFastTable({
+          title: vscode.l10n.t("Activation Groups"),
+          subtitle: vscode.l10n.t("Total groups: {0}", String(activationGroups.length)),
+          columns: activationGroupColumns,
+          data: activationGroups,
+          stickyHeader: true,
+          emptyMessage: vscode.l10n.t("No activation groups found.")
+        });
+
         // Spools tab
         const spoolColumns: FastTableColumn<SpoolEntry>[] = [
           { title: vscode.l10n.t("Name"), width: "1fr", getValue: e => e.spoolname },
@@ -980,6 +1064,8 @@ export namespace WrkjobActions {
         // Statistics tab (combines library list, call stack, locks, open files, spools)
         const statisticsHtml = `
           ${libraryHtml}
+          ${Components.divider()}
+          ${activationGroupHtml}
           ${Components.divider()}
           ${stackHtml}
           ${Components.divider()}
@@ -1078,6 +1164,7 @@ export namespace WrkjobActions {
           const newSpools = await fetchSpools(jobName);
           const newJoblog = await fetchJoblog(jobName);
           const newLibraries = await fetchLibl(jobName);
+          const newActivationGroups = await fetchActivationGroups(jobName);
           
           if (newJobInfo && newCallStack && newLocks && newOpenFiles && newSpools && newJoblog) {
             jobInfo = newJobInfo;
@@ -1087,6 +1174,7 @@ export namespace WrkjobActions {
             spools = newSpools;
             joblog = newJoblog;
             libraries = newLibraries;
+            activationGroups = newActivationGroups;
             panel.webview.html = generatePage(generateContent());
           }
         }
