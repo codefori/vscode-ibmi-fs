@@ -26,6 +26,7 @@ import { SaveFile } from './types/saveFile';
 import DummyObj, { fetchQrydfn } from './types/dummyObject';
 import Msgq from './types/messageQueue';
 import { Usridx } from './types/userIndex';
+import { getAutoRefreshInterval } from './config';
 
 
 /**
@@ -71,6 +72,73 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
       // Update HTML - the state is already saved with isSearchRestore flag
       entry.panel.webview.html = generatePage(entry.document.generateHTML());
     }
+  }
+
+  /**
+   * Refresh only the rows of a document's tables, leaving the page in place.
+   *
+   * Used by the auto-refresh timer, where nothing but the data changes: rebuilding the page
+   * every interval would steal focus from the search box and reset the active tab under the
+   * user. Commands that can also change the detail panels (CLRMSGQ and friends) must keep
+   * using {@link refreshDocument} instead.
+   *
+   * @param uri - The URI of the document to refresh
+   */
+  public static async refreshDocumentTables(uri: vscode.Uri): Promise<void> {
+    const key = uri.toString();
+    const entry = ObjectProvider._documentPanels.get(key);
+    if (!entry) {
+      return;
+    }
+
+    // A tick starting while the previous query is still running would stack overlapping
+    // fetches on a slow system until the connection is saturated.
+    if (ObjectProvider._refreshing.has(key)) {
+      return;
+    }
+    ObjectProvider._refreshing.add(key);
+
+    try {
+      await entry.document.fetch();
+      // Documents without generateTableUpdate fall back to a full page rebuild, which
+      // costs them the scroll position every interval — see applyUpdate.
+      await ObjectProvider.applyUpdate(entry.document, entry.panel);
+    } finally {
+      ObjectProvider._refreshing.delete(key);
+    }
+  }
+
+  /** URIs with a refresh in flight, keyed as in {@link _documentPanels}. */
+  private static readonly _refreshing = new Set<string>();
+
+  /**
+   * Push fresh data to an open panel, patching the table rows when the document supports it
+   * and rebuilding the page only when it doesn't.
+   *
+   * Patching is what keeps the search box's focus and the caret position, and leaves the
+   * active tab where the user put it. The rebuild branch has to announce itself first so the
+   * webview can stash the active tab (see `saveStateForRestore` in webviewToolkit.ts), which
+   * is why it needs the small delay the patching branch doesn't.
+   *
+   * @param document - The document holding the fresh data
+   * @param panel - The panel showing it
+   * @param tableId - Which table to patch, for documents hosting more than one
+   */
+  private static async applyUpdate(document: Base, panel: vscode.WebviewPanel, tableId?: string): Promise<void> {
+    const update = document.generateTableUpdate?.(tableId);
+    // A document hosting several tables returns one message per table; each one is filtered
+    // on its own tableId by the page, so the order doesn't matter.
+    const updates = update ? (Array.isArray(update) ? update : [update]) : [];
+    if (updates.length > 0) {
+      for (const message of updates) {
+        await panel.webview.postMessage(message);
+      }
+      return;
+    }
+
+    await panel.webview.postMessage({ command: 'saveStateForRestore' });
+    await new Promise(resolve => setTimeout(resolve, 100));
+    panel.webview.html = generatePage(document.generateHTML());
   }
 
   /**
@@ -168,15 +236,20 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
     // Register the document and panel
     ObjectProvider._documentPanels.set(document.uri.toString(), { document, panel: webviewPanel });
     
-    // Setup auto-refresh for Message Queues
-    if (document instanceof Msgq && (document as Msgq).autoRefresh) {
+    // Setup auto-refresh for the types that opt in (see Base.autoRefresh)
+    const autoRefreshInterval = getAutoRefreshInterval();
+    if (document.autoRefresh && autoRefreshInterval > 0) {
+      // No visibility check: custom editors are registered with retainContextWhenHidden,
+      // so a document left in a background tab keeps refreshing and is already up
+      // to date when the user comes back to it.
       const refreshTimer = setInterval(async () => {
-        // Check if panel is still visible and active
-        if (webviewPanel.visible) {
-          await ObjectProvider.refreshDocument(document.uri);
+        try {
+          await ObjectProvider.refreshDocumentTables(document.uri);
+        } catch (error) {
+          console.error(`Auto-refresh error for ${document.uri.toString()}:`, error);
         }
-      }, (document as Msgq).autoRefreshInterval);
-      
+      }, autoRefreshInterval);
+
       // Store the timer in the map
       const entry = ObjectProvider._documentPanels.get(document.uri.toString());
       if (entry) {
@@ -215,19 +288,18 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
       webviewPanel.webview.onDidReceiveMessage(async body => {
         // Handle search and pagination commands
         if (body.command === 'search' || body.command === 'paginate') {
-          // Check if this is a SaveFile with tableId (for multiple tables)
+          // Note: the page size deliberately isn't taken from the message. The webview echoes
+          // back the value baked into it when it was rendered, so honouring it would undo a
+          // change to `code-for-ibmi.tables.itemsPerPage` made while the tab was open.
           if (document instanceof SaveFile && body.tableId) {
             // SaveFile has separate properties for each table type (pagination only, no search)
             const prefix = body.tableId; // 'objects', 'members', or 'spools'
-            
+
             // Set the current table ID so fetchSearchData knows which table to update
             (document as any).currentTableId = body.tableId;
-            
+
             if (body.page !== undefined) {
               (document as any)[`${prefix}CurrentPage`] = body.page;
-            }
-            if (body.itemsPerPage !== undefined) {
-              (document as any)[`${prefix}ItemsPerPage`] = body.itemsPerPage;
             }
           } else {
             // Standard handling for single-table documents
@@ -237,19 +309,22 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
             if (body.page !== undefined) {
               (document as any).currentPage = body.page;
             }
-            if (body.itemsPerPage !== undefined) {
-              (document as any).itemsPerPage = body.itemsPerPage;
-            }
           }
-          
-          // Re-fetch only searchable data (avoids reloading all tabs in multi-tab documents)
-          await document.fetchSearchData();
-          
-          // Re-render the view (state already saved by search/pagination script in tools.ts)
-          webviewPanel.webview.html = generatePage(document.generateHTML());
+
+          try {
+            // Re-fetch only searchable data (avoids reloading all tabs in multi-tab documents)
+            await document.fetchSearchData();
+            await ObjectProvider.applyUpdate(document, webviewPanel, body.tableId);
+          } catch (error) {
+            // The webview spins its busy indicator until an answer arrives, so a failed query
+            // must still be answered — otherwise it spins until its own safety timeout.
+            console.error(`${body.command} error:`, error);
+            vscode.window.showErrorMessage(vscode.l10n.t("Failed to load data: {0}", String(error)));
+            await webviewPanel.webview.postMessage({ command: 'updateTableFailed', tableId: body.tableId });
+          }
           return;
         }
-        
+
         // Handle other actions
         const actionResult = await document.handleAction(body);
 
@@ -262,12 +337,7 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
         }
 
         if (actionResult.rerender) {
-          // For rerender after actions, we need to save state first
-          await webviewPanel.webview.postMessage({
-            command: 'saveStateForRestore'
-          });
-          await new Promise(resolve => setTimeout(resolve, 100));
-          webviewPanel.webview.html = generatePage(document.generateHTML());
+          await ObjectProvider.applyUpdate(document, webviewPanel, body.tableId);
         }
       });
     }

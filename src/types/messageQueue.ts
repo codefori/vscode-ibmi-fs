@@ -21,7 +21,7 @@ import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import { getProtected, executeSqlIfExists } from "../tools";
-import { generateFastTable, FastTableColumn } from "../ibmi";
+import { generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate } from "../ibmi";
 import * as vscode from 'vscode';
 import ObjectProvider from "../objectProvider";
 
@@ -253,6 +253,9 @@ export namespace MessageQueueActions {
   };
 }
 
+/** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
+const MSGQ_TABLE_ID = 'msgq-entries';
+
 /**
  * Interface representing a message queue entry
  */
@@ -292,10 +295,8 @@ export default class Msgq extends Base {
   selectClause: string | undefined;
   /** Array of message entries */
   private _entries: Entry[] = [];
-  /** Flag to enable auto-refresh every 30 seconds */
+  /** Messages arrive on their own, so the panel reloads itself. @see Base.autoRefresh */
   public autoRefresh: boolean = true;
-  /** Auto-refresh interval in milliseconds (30 seconds) */
-  public autoRefreshInterval: number = 30000;
 
   /**
    * Fetch message queue data
@@ -394,9 +395,13 @@ export default class Msgq extends Base {
    * Includes search bar and pagination controls
    * @returns HTML string
    */
-  generateHTML(): string {
-    // Define table columns with widths
-    const columns: FastTableColumn<Entry>[] = [
+  /**
+   * Column definitions for the messages table.
+   * Shared by the full render and the incremental update: if the two ever disagree, the
+   * patched rows no longer line up with the header still on screen.
+   */
+  private getColumns(): FastTableColumn<Entry>[] {
+    return [
       { title: vscode.l10n.t("MSGID"), getValue: e => e.msgid, width: "0.5fr" },
       { title: vscode.l10n.t("First Level"), getValue: e => e.msgtxt1, width: "1fr"},
       { title: vscode.l10n.t("Second Level"), getValue: e => e.msgtxt2.replaceAll('&N','\n').replaceAll('&B','\n\t').replaceAll('&P','\n\t'), width: "0.3fr", collapsible: true },
@@ -418,11 +423,24 @@ export default class Msgq extends Base {
         width: "0.5fr"
       }
     ];
+  }
 
+  /** Subtitle text, kept in one place so the update carries the same wording as the render. */
+  private getSubtitle(): string {
+    return vscode.l10n.t("Total Messages: {0}", String(this.totalItems));
+  }
+
+  /**
+   * Generate HTML for the message queue view
+   * Uses a fast table component for better performance with many messages
+   * Includes search bar and pagination controls
+   * @returns HTML string
+   */
+  generateHTML(): string {
     return generateFastTable({
       title: vscode.l10n.t("Message Queue: {0}/{1}", this.library, this.name),
-      subtitle: vscode.l10n.t("Total Messages: {0}", String(this.totalItems)),
-      columns: columns,
+      subtitle: this.getSubtitle(),
+      columns: this.getColumns(),
       data: this._entries,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t("No messages found in this message queue."),
@@ -433,7 +451,20 @@ export default class Msgq extends Base {
       itemsPerPage: this.itemsPerPage,
       totalItems: this.totalItems,
       currentPage: this.currentPage,
-      searchTerm: this.searchTerm
+      searchTerm: this.searchTerm,
+      tableId: MSGQ_TABLE_ID
+    });
+  }
+
+  /** @inheritdoc */
+  generateTableUpdate(): FastTableUpdate {
+    return generateFastTableUpdate({
+      columns: this.getColumns(),
+      data: this._entries,
+      totalItems: this.totalItems,
+      currentPage: this.currentPage,
+      subtitle: this.getSubtitle(),
+      tableId: MSGQ_TABLE_ID
     });
   }
 

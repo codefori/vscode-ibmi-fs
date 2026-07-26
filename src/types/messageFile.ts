@@ -20,9 +20,12 @@ import { CommandResult, IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import { executeSqlIfExists, getProtected } from "../tools";
-import { generateFastTable, FastTableColumn } from "../ibmi";
+import { generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate } from "../ibmi";
 import * as vscode from 'vscode';
 import ObjectProvider from "../objectProvider";
+
+/** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
+const MSGF_TABLE_ID = 'msgf-entries';
 
 export namespace MessageFileActions {
   export const register = (context: vscode.ExtensionContext) => {
@@ -277,9 +280,13 @@ export default class Msgf extends Base {
    * Uses a fast table component for better performance with many messages
    * @returns HTML string
    */
-  generateHTML(): string {    
-    // Define table columns with widths
-    const columns: FastTableColumn<Entry>[] = [
+  /**
+   * Column definitions for the messages table.
+   * Shared by the full render and the incremental update: if the two ever disagree, the
+   * patched rows no longer line up with the header still on screen.
+   */
+  private getColumns(): FastTableColumn<Entry>[] {
+    return [
       { title: vscode.l10n.t("MSGID"), getValue: e => e.msgid, width: "0.25fr" },
       { title: vscode.l10n.t("First Level"), getValue: e => e.msgtxt1, width: "1fr" },
       { title: vscode.l10n.t("Second Level"), getValue: e => e.msgtxt2.replaceAll('&N','\n').replaceAll('&B','\n\t').replaceAll('&P','\n\t'), width: "0.3fr", collapsible: true, showTitle: true },
@@ -298,7 +305,31 @@ export default class Msgf extends Base {
         }
       }
     ];
+  }
 
+  /** Subtitle text, kept in one place so the update carries the same wording as the render. */
+  private getSubtitle(): string {
+    return vscode.l10n.t("Total Messages: {0}", String(this.totalItems));
+  }
+
+  /** @inheritdoc */
+  generateTableUpdate(): FastTableUpdate {
+    return generateFastTableUpdate({
+      columns: this.getColumns(),
+      data: this._entries,
+      totalItems: this.totalItems,
+      currentPage: this.currentPage,
+      subtitle: this.getSubtitle(),
+      tableId: MSGF_TABLE_ID
+    });
+  }
+
+  /**
+   * Generate HTML for the message file view
+   * Uses a fast table component for better performance with many messages
+   * @returns HTML string
+   */
+  generateHTML(): string {
     const customStyles = `
       /* Custom styles for cells - specific to messagefile entries table */
       .messagefile-entries-table vscode-table-cell:first-child {
@@ -308,8 +339,8 @@ export default class Msgf extends Base {
 
     return `<div class="messagefile-entries-table">` + generateFastTable({
       title: vscode.l10n.t("Message File: {0}/{1}", this.library, this.name),
-      subtitle: vscode.l10n.t("Total Messages: {0}", String(this.totalItems)),
-      columns: columns,
+      subtitle: this.getSubtitle(),
+      columns: this.getColumns(),
       data: this._entries,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t("No messages found in this message file."),
@@ -320,7 +351,8 @@ export default class Msgf extends Base {
       itemsPerPage: this.itemsPerPage,
       totalItems: this.totalItems,
       currentPage: this.currentPage,
-      searchTerm: this.searchTerm
+      searchTerm: this.searchTerm,
+      tableId: MSGF_TABLE_ID
     }) + `</div>`;
   }
 

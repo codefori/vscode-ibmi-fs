@@ -10,9 +10,13 @@
 import * as vscode from 'vscode';
 import { getInstance } from '../ibmi';
 import { executeSqlIfExists, checkTableFunctionExists } from "../tools";
-import { FastTableColumn, generateFastTable } from "../ibmi";
+import { FastTableColumn, generateFastTable, generateFastTableUpdate } from "../ibmi";
 import { generatePage } from "../webviewToolkit";
 import { SpoolOperations } from '../commonOperations';
+import { getAutoRefreshInterval, getItemsPerPage } from '../config';
+
+/** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
+const SPOOL_TABLE_ID = 'wrksplf-spools';
 
 /**
  * Namespace containing actions for Work with Spooled Files
@@ -61,7 +65,7 @@ export namespace WrksplfActions {
    * @param itemsPerPage - Items per page
    * @returns Object with entries and total count, or null if error
    */
-  const fetchSpooledFiles = async (searchTerm: string = '', currentPage: number = 1, itemsPerPage: number = 50): Promise<{ entries: Entry[], totalItems: number } | null> => {
+  const fetchSpooledFiles = async (searchTerm: string = '', currentPage: number = 1, itemsPerPage: number = getItemsPerPage()): Promise<{ entries: Entry[], totalItems: number } | null> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     
@@ -181,7 +185,7 @@ export namespace WrksplfActions {
       // State for pagination and search
       let searchTerm = '';
       let currentPage = 1;
-      let itemsPerPage = 50;
+      let itemsPerPage = getItemsPerPage();
       let totalItems = 0;
 
       // Fetch spooled files data
@@ -206,20 +210,46 @@ export namespace WrksplfActions {
         }
       );
 
-      // Add refresh button to the webview toolbar
-      const refreshDisposable = vscode.commands.registerCommand('vscode-ibmi-fs.refreshWrksplf', async () => {
-        const newResult = await fetchSpooledFiles(searchTerm, currentPage, itemsPerPage);
-        if (newResult) {
-          spooledFiles = newResult.entries;
-          totalItems = newResult.totalItems;
-          panel.webview.html = generatePage(generateTableHtml());
-          vscode.window.showInformationMessage(vscode.l10n.t('Spooled files refreshed successfully'));
+      // Auto-refresh configuration, from `code-for-ibmi.views.autoRefreshInterval`
+      const autoRefreshInterval = getAutoRefreshInterval();
+      let autoRefreshTimer: NodeJS.Timeout | undefined;
+      // Guards against a tick starting while the previous query is still running, which on a
+      // slow system would stack overlapping fetches until the connection is saturated.
+      let refreshing = false;
+
+      const refresh = async (isAutoRefresh: boolean = false) => {
+        if (refreshing) {
+          return;
         }
+        refreshing = true;
+        try {
+          const newResult = await fetchSpooledFiles(searchTerm, currentPage, itemsPerPage);
+          if (newResult) {
+            spooledFiles = newResult.entries;
+            totalItems = newResult.totalItems;
+            await postTableUpdate();
+            // Show success message only for manual refresh
+            if (!isAutoRefresh) {
+              vscode.window.showInformationMessage(vscode.l10n.t('Spooled files refreshed successfully'));
+            }
+          }
+        } finally {
+          refreshing = false;
+        }
+      };
+
+      // Add refresh button to the webview toolbar
+      const refreshDisposable = vscode.commands.registerCommand('vscode-ibmi-fs.refreshWrksplf', async (isAutoRefresh: boolean = false) => {
+        await refresh(isAutoRefresh);
       });
 
-      // Clean up the command when panel is disposed
+      // Clean up the command and the timer when panel is disposed
       panel.onDidDispose(() => {
         refreshDisposable.dispose();
+        if (autoRefreshTimer) {
+          clearInterval(autoRefreshTimer);
+          autoRefreshTimer = undefined;
+        }
       });
 
       // Define columns for spooled files table
@@ -270,12 +300,40 @@ export namespace WrksplfActions {
           itemsPerPage: itemsPerPage,
           totalItems: totalItems,
           currentPage: currentPage,
-          searchTerm: searchTerm
+          searchTerm: searchTerm,
+          tableId: SPOOL_TABLE_ID
         }) + `</div>`;
+      };
+
+      /**
+       * Push the freshly fetched rows into the page already on screen.
+       * Reassigning `webview.html` instead would recreate the search box, taking keyboard
+       * focus away mid-typing and restoring the term as it was when the query started.
+       */
+      const postTableUpdate = async () => {
+        await panel.webview.postMessage(generateFastTableUpdate({
+          columns: spoolColumns,
+          data: spooledFiles,
+          totalItems: totalItems,
+          currentPage: currentPage,
+          subtitle: vscode.l10n.t("Total Spools: {0}", String(totalItems)),
+          tableId: SPOOL_TABLE_ID
+        }));
       };
 
       // Generate initial HTML
       panel.webview.html = generatePage(generateTableHtml());
+
+      // Start auto-refresh (disabled when the interval is 0)
+      if (autoRefreshInterval > 0) {
+        autoRefreshTimer = setInterval(async () => {
+          try {
+            await refresh(true);
+          } catch (error) {
+            console.error('Spooled files auto-refresh error:', error);
+          }
+        }, autoRefreshInterval);
+      }
 
       // Handle messages from the webview
       panel.webview.onDidReceiveMessage(async (message) => {
@@ -287,16 +345,23 @@ export namespace WrksplfActions {
           if (message.page !== undefined) {
             currentPage = message.page;
           }
-          if (message.itemsPerPage !== undefined) {
-            itemsPerPage = message.itemsPerPage;
-          }
+          // The page size deliberately isn't taken from the message: the webview echoes back
+          // the value baked into it when it was rendered, so honouring it would undo a change
+          // to `code-for-ibmi.tables.itemsPerPage` made while the tab was open.
 
-          // Re-fetch data with new parameters
-          const newResult = await fetchSpooledFiles(searchTerm, currentPage, itemsPerPage);
-          if (newResult) {
-            spooledFiles = newResult.entries;
-            totalItems = newResult.totalItems;
-            panel.webview.html = generatePage(generateTableHtml());
+          try {
+            const newResult = await fetchSpooledFiles(searchTerm, currentPage, itemsPerPage);
+            if (newResult) {
+              spooledFiles = newResult.entries;
+              totalItems = newResult.totalItems;
+            }
+            await postTableUpdate();
+          } catch (error) {
+            // The webview spins its busy indicator until an answer arrives, so a failed query
+            // must still be answered — otherwise it spins until its own safety timeout.
+            console.error(`Spooled files ${message.command} error:`, error);
+            vscode.window.showErrorMessage(vscode.l10n.t("Failed to load spooled files: {0}", String(error)));
+            await panel.webview.postMessage({ command: 'updateTableFailed', tableId: SPOOL_TABLE_ID });
           }
           return;
         }
@@ -348,7 +413,7 @@ export namespace WrksplfActions {
               if (newResult) {
                 spooledFiles = newResult.entries;
                 totalItems = newResult.totalItems;
-                panel.webview.html = generatePage(generateTableHtml());
+                await postTableUpdate();
               }
             }
             break;

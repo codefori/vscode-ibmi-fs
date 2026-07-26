@@ -23,7 +23,8 @@ import * as vscode from "vscode";
 import { getInstance } from "../ibmi";
 import ObjectProvider from '../objectProvider';
 import { executeSqlIfExists, getProtected, getQSYSObjectPath } from "../tools";
-import { FastTableColumn, generateDetailTable, generateFastTable } from "../ibmi";
+import { FastTableColumn, FastTableUpdate, generateDetailTable, generateFastTable, generateFastTableUpdate } from "../ibmi";
+import { getItemsPerPage } from "../config";
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import path = require("path");
@@ -1238,17 +1239,17 @@ export class SaveFile extends Base {
 
   // Pagination properties for objects
   private objectsCurrentPage: number = 1;
-  private objectsItemsPerPage: number = 50;
+  private objectsItemsPerPage: number = getItemsPerPage();
   private objectsTotalItems: number = 0;
 
   // Pagination properties for members
   private membersCurrentPage: number = 1;
-  private membersItemsPerPage: number = 50;
+  private membersItemsPerPage: number = getItemsPerPage();
   private membersTotalItems: number = 0;
 
   // Pagination properties for spooled files
   private spoolsCurrentPage: number = 1;
-  private spoolsItemsPerPage: number = 50;
+  private spoolsItemsPerPage: number = getItemsPerPage();
   private spoolsTotalItems: number = 0;
 
   // Track which table to update for pagination
@@ -1730,6 +1731,49 @@ export class SaveFile extends Base {
   }
 
   /**
+   * @inheritdoc
+   * Each of the three tabs keeps its own page and totals, so the caller has to say which
+   * one it is patching; an update for a tab is discarded by the other two.
+   */
+  generateTableUpdate(tableId?: string): FastTableUpdate | undefined {
+    switch (tableId) {
+      case 'objects':
+        return generateFastTableUpdate({
+          columns: objectColumns(),
+          data: this.objects,
+          totalItems: this.objectsTotalItems,
+          currentPage: this.objectsCurrentPage,
+          subtitle: objectsSubtitle(this.objectsTotalItems),
+          tableId
+        });
+
+      case 'members':
+        return generateFastTableUpdate({
+          columns: memberColumns(),
+          data: this.members,
+          totalItems: this.membersTotalItems,
+          currentPage: this.membersCurrentPage,
+          subtitle: membersSubtitle(this.membersTotalItems),
+          tableId
+        });
+
+      case 'spools':
+        return generateFastTableUpdate({
+          columns: spooledFileColumns(),
+          data: this.spooledFiles,
+          totalItems: this.spoolsTotalItems,
+          currentPage: this.spoolsCurrentPage,
+          subtitle: spoolsSubtitle(this.spoolsTotalItems),
+          tableId
+        });
+
+      default:
+        // No table named, so there is nothing to patch — the caller falls back to a rebuild.
+        return undefined;
+    }
+  }
+
+  /**
    * Handles user actions from the UI
    * @param data - Action data containing the action type
    * @returns Promise with rerender flag
@@ -1749,15 +1793,8 @@ export class SaveFile extends Base {
  * @param entries - Array of Object entries to display
  * @returns HTML string for the objects table
  */
-function renderObjects(
-  entries: Object[],
-  currentPage: number = 1,
-  itemsPerPage: number = 10,
-  totalItems: number = 0,
-  tableId: string = ''
-) {
-  // Define table columns with their properties
-  const columns: FastTableColumn<Object>[] = [
+function objectColumns(): FastTableColumn<Object>[] {
+  return [
     { title: vscode.l10n.t("Name"), width: "1fr", getValue: (e) => e.name },
     { title: vscode.l10n.t("Type"), width: "0.5fr", getValue: (e) => e.type },
     { title: vscode.l10n.t("Attribute"), width: "0.5fr", getValue: (e) => e.attribute },
@@ -1768,6 +1805,21 @@ function renderObjects(
     { title: vscode.l10n.t("Owner"), width: "0.7fr", getValue: (e) => e.owner },
     { title: vscode.l10n.t("iASP"), width: "0.7fr", getValue: (e) => e.iasp },
   ];
+}
+
+/** Subtitle for the objects table, shared by the render and the incremental update. */
+function objectsSubtitle(totalItems: number): string {
+  return vscode.l10n.t("Total Objects: {0}", String(totalItems));
+}
+
+function renderObjects(
+  entries: Object[],
+  currentPage: number = 1,
+  itemsPerPage: number = 10,
+  totalItems: number = 0,
+  tableId: string = ''
+) {
+  const columns = objectColumns();
 
   // Custom CSS styles for the objects table
   const customStyles = `
@@ -1782,7 +1834,7 @@ function renderObjects(
     `<div class="savf-object-table">` +
     generateFastTable({
       title: ``,
-      subtitle: vscode.l10n.t("Total Objects: {0}", String(totalItems)),
+      subtitle: objectsSubtitle(totalItems),
       columns: columns,
       data: entries,
       stickyHeader: true,
@@ -1803,6 +1855,19 @@ function renderObjects(
  * @param entries - Array of FileMember entries to display
  * @returns HTML string for the members table
  */
+function memberColumns(): FastTableColumn<FileMember>[] {
+  return [
+    { title: vscode.l10n.t("File Name"), width: "1fr", getValue: (e) => e.name },
+    { title: vscode.l10n.t("File Description"), width: "3fr", getValue: (e) => e.text },
+    { title: vscode.l10n.t("Member name"), width: "1fr", getValue: (e) => e.member },
+  ];
+}
+
+/** Subtitle for the members table, shared by the render and the incremental update. */
+function membersSubtitle(totalItems: number): string {
+  return vscode.l10n.t("Total Members: {0}", String(totalItems));
+}
+
 function renderMembers(
   entries: FileMember[],
   currentPage: number = 1,
@@ -1810,19 +1875,14 @@ function renderMembers(
   totalItems: number = 0,
   tableId: string = ''
 ) {
-  // Define table columns with their properties
-  const columns: FastTableColumn<FileMember>[] = [
-    { title: vscode.l10n.t("File Name"), width: "1fr", getValue: (e) => e.name },
-    { title: vscode.l10n.t("File Description"), width: "3fr", getValue: (e) => e.text },
-    { title: vscode.l10n.t("Member name"), width: "1fr", getValue: (e) => e.member },
-  ];
+  const columns = memberColumns();
 
   // Generate and return the complete table HTML
   return (
     `<div>` +
     generateFastTable({
       title: ``,
-      subtitle: vscode.l10n.t("Total Members: {0}", String(totalItems)),
+      subtitle: membersSubtitle(totalItems),
       columns: columns,
       data: entries,
       stickyHeader: true,
@@ -1842,15 +1902,8 @@ function renderMembers(
  * @param entries - Array of SpooledFile entries to display
  * @returns HTML string for the spooled files table
  */
-function renderSpooledFiles(
-  entries: SpooledFile[],
-  currentPage: number = 1,
-  itemsPerPage: number = 50,
-  totalItems: number = 0,
-  tableId: string = ''
-) {
-  // Define table columns with their properties
-  const columns: FastTableColumn<SpooledFile>[] = [
+function spooledFileColumns(): FastTableColumn<SpooledFile>[] {
+  return [
     { title: vscode.l10n.t("Outq Name"), width: "1fr", getValue: (e) => e.name },
     { title: vscode.l10n.t("Outq Description"), width: "3fr", getValue: (e) => e.text },
     { title: vscode.l10n.t("Spool name"), width: "1fr", getValue: (e) => e.spoolname },
@@ -1859,13 +1912,28 @@ function renderSpooledFiles(
     { title: vscode.l10n.t("System"), width: "1fr", getValue: (e) => e.system },
     { title: vscode.l10n.t("Creation"), width: "1fr", getValue: (e) => e.creation },
   ];
+}
+
+/** Subtitle for the spooled files table, shared by the render and the incremental update. */
+function spoolsSubtitle(totalItems: number): string {
+  return vscode.l10n.t("Total Spooled Files: {0}", String(totalItems));
+}
+
+function renderSpooledFiles(
+  entries: SpooledFile[],
+  currentPage: number = 1,
+  itemsPerPage: number = 50,
+  totalItems: number = 0,
+  tableId: string = ''
+) {
+  const columns = spooledFileColumns();
 
   // Generate and return the complete table HTML
   return (
     `<div>` +
     generateFastTable({
       title: ``,
-      subtitle: vscode.l10n.t("Total Spooled Files: {0}", String(totalItems)),
+      subtitle: spoolsSubtitle(totalItems),
       columns: columns,
       data: entries,
       stickyHeader: true,

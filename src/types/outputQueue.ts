@@ -21,7 +21,10 @@ import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
 import { getColumns, getProtected, executeSqlIfExists } from "../tools";
-import { generateDetailTable, generateFastTable, FastTableColumn } from "../ibmi";
+import { generateDetailTable, generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate } from "../ibmi";
+
+/** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
+const OUTQ_TABLE_ID = 'outq-entries';
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -524,6 +527,8 @@ export default class Outq extends Base {
   selectClause: string | undefined;
   /** Array of spooled file entries */
   private _entries: Entry[] = [];
+  /** Spools arrive and get printed on their own, so the panel reloads itself. @see Base.autoRefresh */
+  public autoRefresh: boolean = true;
 
   /**
    * Fetch output queue information and spooled files
@@ -722,9 +727,13 @@ export default class Outq extends Base {
    * @param entries - Array of spooled file entries to display
    * @returns HTML string for the table
    */
-  renderEntries(entries: Entry[]) {
-    // Define table columns with their properties
-    const columns: FastTableColumn<Entry>[] = [
+  /**
+   * Column definitions for the spooled files table.
+   * Shared by the full render and the incremental update: if the two ever disagree, the
+   * patched rows no longer line up with the header still on screen.
+   */
+  private getColumns(): FastTableColumn<Entry>[] {
+    return [
       { title: vscode.l10n.t("Name"), width: "1fr", getValue: e => e.spoolname },
       { title: vscode.l10n.t("Data"), width: "1fr", getValue: e => e.spooldta },
       { title: vscode.l10n.t("Status"), width: "0.5fr", getValue: e => e.spoolsts },
@@ -746,7 +755,26 @@ export default class Outq extends Base {
         }
       }
     ];
+  }
 
+  /** Subtitle text, kept in one place so the update carries the same wording as the render. */
+  private getSubtitle(): string {
+    return vscode.l10n.t("Total Spools: {0}", String(this.totalItems));
+  }
+
+  /** @inheritdoc */
+  generateTableUpdate(): FastTableUpdate {
+    return generateFastTableUpdate({
+      columns: this.getColumns(),
+      data: this._entries,
+      totalItems: this.totalItems,
+      currentPage: this.currentPage,
+      subtitle: this.getSubtitle(),
+      tableId: OUTQ_TABLE_ID
+    });
+  }
+
+  renderEntries(entries: Entry[]) {
     // Custom CSS styles for the output queue entries table
     const customStyles = `
         /* Highlight spool names with link color for better visibility */
@@ -758,8 +786,8 @@ export default class Outq extends Base {
     // Generate and return the complete table HTML
     return `<div class="outq-entries-table">` + generateFastTable({
       title: ``,
-      subtitle: vscode.l10n.t("Total Spools: {0}", String(this.totalItems)),
-      columns: columns,
+      subtitle: this.getSubtitle(),
+      columns: this.getColumns(),
       data: this._entries,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t("No spools found in this outq."),
@@ -770,7 +798,8 @@ export default class Outq extends Base {
       itemsPerPage: this.itemsPerPage,
       totalItems: this.totalItems,
       currentPage: this.currentPage,
-      searchTerm: this.searchTerm
+      searchTerm: this.searchTerm,
+      tableId: OUTQ_TABLE_ID
     }) + `</div>`;
   }
 

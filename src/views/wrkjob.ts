@@ -20,6 +20,8 @@ import { FastTableColumn, generateFastTable, generateDetailTable } from "../ibmi
 import { generatePage, Components } from "../webviewToolkit";
 import { JobOperations, SpoolOperations } from '../commonOperations';
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
+import { generateFastTableUpdate } from "../ibmi";
+import { getAutoRefreshInterval, getItemsPerPage } from '../config';
 
 /**
  * Namespace containing actions for Work with Job
@@ -37,6 +39,97 @@ export namespace WrkjobActions {
    * Currently active panel (last one that received focus)
    */
   let currentActivePanel: string | undefined;
+
+  /**
+   * Identifiers for the seven tables this view renders.
+   *
+   * Every table needs its own id: they share a page, so without one they would collide on
+   * element ids and, worse, an update could not say which table it is meant for. They are
+   * also what lets a refresh patch the rows in place rather than rebuild the page.
+   */
+  const TABLE_IDS = {
+    libraries: 'wrkjob-libraries',
+    activationGroups: 'wrkjob-activation-groups',
+    callStack: 'wrkjob-call-stack',
+    locks: 'wrkjob-locks',
+    openFiles: 'wrkjob-open-files',
+    spools: 'wrkjob-spools',
+    joblog: 'joblog-table'
+  } as const;
+
+  // Column definitions live at namespace scope so the full render and the incremental
+  // updates share them: if the two ever disagree, the patched rows stop lining up with the
+  // header still on screen.
+
+  const stackColumns = (): FastTableColumn<StackEntry>[] => [
+    { title: vscode.l10n.t("Position"), width: "0.5fr", getValue: e => String(e.position) },
+    { title: vscode.l10n.t("Program"), width: "2fr", getValue: e => e.program },
+    { title: vscode.l10n.t("Statement"), width: "1fr", getValue: e => String(e.statement) },
+    { title: vscode.l10n.t("Procedure"), width: "2fr", getValue: e => e.procedure }
+  ];
+
+  const libraryColumns = (): FastTableColumn<LibraryEntry>[] => [
+    { title: vscode.l10n.t("Library"), width: "1.5fr", getValue: e => e.library },
+    { title: vscode.l10n.t("Type"), width: "0.7fr", getValue: e => e.type },
+    { title: vscode.l10n.t("ASP"), width: "1fr", getValue: e => e.asp },
+    { title: vscode.l10n.t("Description"), width: "3fr", getValue: e => e.description }
+  ];
+
+  const lockColumns = (): FastTableColumn<LockEntry>[] => [
+    { title: vscode.l10n.t("Object"), width: "2fr", getValue: e => e.object },
+    { title: vscode.l10n.t("Type"), width: "1fr", getValue: e => e.type },
+    { title: vscode.l10n.t("State"), width: "1fr", getValue: e => e.state },
+    { title: vscode.l10n.t("Status"), width: "1fr", getValue: e => e.status },
+    { title: vscode.l10n.t("Scope"), width: "1fr", getValue: e => e.scope },
+    { title: vscode.l10n.t("Member Lock"), width: "1fr", getValue: e => e.memberLock }
+  ];
+
+  const fileColumns = (): FastTableColumn<OpenFileEntry>[] => [
+    { title: vscode.l10n.t("File"), width: "2fr", getValue: e => e.file },
+    { title: vscode.l10n.t("Member"), width: "1fr", getValue: e => e.member },
+    { title: vscode.l10n.t("Type"), width: "1fr", getValue: e => e.type },
+    { title: vscode.l10n.t("Option"), width: "1fr", getValue: e => e.option },
+    { title: vscode.l10n.t("Shared"), width: "0.5fr", getValue: e => String(e.sharedOpens) },
+    { title: vscode.l10n.t("Writes"), width: "0.5fr", getValue: e => String(e.writeCount) },
+    { title: vscode.l10n.t("Reads"), width: "0.5fr", getValue: e => String(e.readCount) }
+  ];
+
+  const activationGroupColumns = (): FastTableColumn<ActivationGroupEntry>[] => [
+    { title: vscode.l10n.t("Group"), width: "1.5fr", getValue: e => e.group },
+    { title: vscode.l10n.t("Number"), width: "0.7fr", getValue: e => String(e.number) },
+    { title: vscode.l10n.t("State"), width: "0.8fr", getValue: e => e.state },
+    { title: vscode.l10n.t("Library"), width: "1fr", getValue: e => e.library },
+    { title: vscode.l10n.t("Program"), width: "1fr", getValue: e => e.program },
+    { title: vscode.l10n.t("Type"), width: "0.8fr", getValue: e => e.programType },
+    { title: vscode.l10n.t("In Use"), width: "0.8fr", getValue: e => e.inUse }
+  ];
+
+  const spoolColumns = (): FastTableColumn<SpoolEntry>[] => [
+    { title: vscode.l10n.t("Name"), width: "1fr", getValue: e => e.spoolname },
+    { title: vscode.l10n.t("User Data"), width: "1fr", getValue: e => e.userdata },
+    { title: vscode.l10n.t("Status"), width: "0.7fr", getValue: e => e.status },
+    { title: vscode.l10n.t("Pages"), width: "0.5fr", getValue: e => String(e.pages) },
+    { title: vscode.l10n.t("Timestamp"), width: "1.2fr", getValue: e => e.timestamp },
+    {
+      title: vscode.l10n.t("Actions"),
+      width: "1.5fr",
+      getValue: e => {
+        const arg = encodeURIComponent(JSON.stringify(e));
+        return `<vscode-button appearance="primary" href="action:openSpool?entry=${arg}">${vscode.l10n.t("Open")}</vscode-button>
+                    <vscode-button appearance="primary" href="action:genPdf?entry=${arg}">${vscode.l10n.t("Download")}</vscode-button>
+                    <vscode-button appearance="secondary" href="action:delSpool?entry=${arg}">${vscode.l10n.t("Delete")}</vscode-button>`;
+      }
+    }
+  ];
+
+  const joblogColumns = (): FastTableColumn<JoblogEntry>[] => [
+    { title: vscode.l10n.t("MSGID"), width: "0.7fr", getValue: e => e.msgid },
+    { title: vscode.l10n.t("Message"), width: "2fr", getValue: e => e.msgtext },
+    { title: vscode.l10n.t("Second Level"), width: "0.3fr", getValue: e => e.msgtext2.replaceAll('&N','\n').replaceAll('&B','\n\t').replaceAll('&P','\n\t'), collapsible: true },
+    { title: vscode.l10n.t("Sev."), width: "0.3fr", getValue: e => String(e.severity) },
+    { title: vscode.l10n.t("From Program"), width: "1.5fr", getValue: e => e.fromProgram },
+    { title: vscode.l10n.t("Timestamp"), width: "1.2fr", getValue: e => e.timestamp }
+  ];
 
   /**
    * Register Work with Job commands with VS Code
@@ -689,7 +782,7 @@ export namespace WrkjobActions {
    * @param itemsPerPage - Number of messages per page
    * @returns The page of entries plus the total count matching the search
    */
-  const fetchJoblog = async (jobName: string, searchTerm: string = '', page: number = 1, itemsPerPage: number = 50): Promise<{ entries: JoblogEntry[]; total: number }> => {
+  const fetchJoblog = async (jobName: string, searchTerm: string = '', page: number = 1, itemsPerPage: number = getItemsPerPage()): Promise<{ entries: JoblogEntry[]; total: number }> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
 
@@ -775,7 +868,7 @@ export namespace WrkjobActions {
       // Server-side search/pagination state for the Job Log tab
       let joblogSearchTerm = '';
       let joblogPage = 1;
-      const joblogItemsPerPage = 50;
+      const joblogItemsPerPage = getItemsPerPage();
       let joblogTotal = 0;
 
       // Fetch all data
@@ -845,21 +938,80 @@ export namespace WrkjobActions {
         }
       );
 
-      // Auto-refresh configuration
-      const autoRefreshInterval = 30000; // 30 seconds
+      // Auto-refresh configuration, from `code-for-ibmi.views.autoRefreshInterval`
+      const autoRefreshInterval = getAutoRefreshInterval();
       let autoRefreshTimer: NodeJS.Timeout | undefined;
+
+      /**
+       * Subtitle text for each table, in one place so a render and an update never disagree
+       * on the wording or the counts.
+       */
+      const subtitles = {
+        callStack: () => vscode.l10n.t("Total entries: {0}", String(callStack.length)),
+        libraries: () => vscode.l10n.t("Total libraries: {0}", String(libraries.length)),
+        locks: () => vscode.l10n.t("Total locks: {0}", String(locks.length)),
+        openFiles: () => vscode.l10n.t("Total files: {0}", String(openFiles.length)),
+        activationGroups: () => vscode.l10n.t("Total groups: {0}", String(activationGroups.length)),
+        spools: () => vscode.l10n.t("Total spools: {0}", String(spools.length)),
+        joblog: () => vscode.l10n.t("Total messages: {0}", String(joblogTotal))
+      };
+
+      /**
+       * Push the freshly fetched rows into the page already on screen, one message per table.
+       *
+       * Reassigning `webview.html` instead would recreate the search box (taking keyboard
+       * focus away mid-typing) and reset the active tab under the user — which on a timer
+       * would happen every interval. The Job Info panel is deliberately not part of this:
+       * it isn't a table, so it only changes on a full rebuild.
+       */
+      const postTableUpdates = async () => {
+        await panel.webview.postMessage(generateFastTableUpdate({
+          columns: libraryColumns(), data: libraries,
+          totalItems: libraries.length, currentPage: 1,
+          subtitle: subtitles.libraries(), tableId: TABLE_IDS.libraries
+        }));
+        await panel.webview.postMessage(generateFastTableUpdate({
+          columns: activationGroupColumns(), data: activationGroups,
+          totalItems: activationGroups.length, currentPage: 1,
+          subtitle: subtitles.activationGroups(), tableId: TABLE_IDS.activationGroups
+        }));
+        await panel.webview.postMessage(generateFastTableUpdate({
+          columns: stackColumns(), data: callStack,
+          totalItems: callStack.length, currentPage: 1,
+          subtitle: subtitles.callStack(), tableId: TABLE_IDS.callStack
+        }));
+        await panel.webview.postMessage(generateFastTableUpdate({
+          columns: lockColumns(), data: locks,
+          totalItems: locks.length, currentPage: 1,
+          subtitle: subtitles.locks(), tableId: TABLE_IDS.locks
+        }));
+        await panel.webview.postMessage(generateFastTableUpdate({
+          columns: fileColumns(), data: openFiles,
+          totalItems: openFiles.length, currentPage: 1,
+          subtitle: subtitles.openFiles(), tableId: TABLE_IDS.openFiles
+        }));
+        await panel.webview.postMessage(generateFastTableUpdate({
+          columns: spoolColumns(), data: spools,
+          totalItems: spools.length, currentPage: 1,
+          subtitle: subtitles.spools(), tableId: TABLE_IDS.spools
+        }));
+        await postJoblogUpdate();
+      };
+
+      /** Patch just the Job Log table — the only one that searches and paginates. */
+      const postJoblogUpdate = async () => {
+        await panel.webview.postMessage(generateFastTableUpdate({
+          columns: joblogColumns(),
+          data: joblog,
+          totalItems: joblogTotal,
+          currentPage: joblogPage,
+          subtitle: subtitles.joblog(),
+          tableId: TABLE_IDS.joblog
+        }));
+      };
 
       // Define refresh function for this panel
       const refreshFunction = async (isAutoRefresh: boolean = false) => {
-        // First, tell the webview to save its current state with the restore flag
-        // This must happen BEFORE we update the HTML
-        await panel.webview.postMessage({
-          command: 'saveStateForRestore'
-        });
-        
-        // Give the webview time to process the message and save state
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
         const newJobInfo = await fetchJobInfo(jobName);
         const newCallStack = await fetchCallStack(jobName);
         const newLocks = await fetchLocks(jobName);
@@ -879,7 +1031,7 @@ export namespace WrkjobActions {
           joblogTotal = newJoblog.total;
           libraries = newLibraries;
           activationGroups = newActivationGroups;
-          panel.webview.html = generatePage(generateContent());
+          await postTableUpdates();
           // Show success message only for manual refresh
           if (!isAutoRefresh) {
             vscode.window.showInformationMessage(vscode.l10n.t('Job information refreshed successfully'));
@@ -904,6 +1056,9 @@ export namespace WrkjobActions {
       const startAutoRefresh = () => {
         if (autoRefreshTimer) {
           clearInterval(autoRefreshTimer);
+        }
+        if (autoRefreshInterval <= 0) {
+          return;
         }
         autoRefreshTimer = setInterval(async () => {
           try {
@@ -968,144 +1123,80 @@ export namespace WrkjobActions {
         }) + actionButtons;
 
         // Call Stack tab
-        const stackColumns: FastTableColumn<StackEntry>[] = [
-          { title: vscode.l10n.t("Position"), width: "0.5fr", getValue: e => String(e.position) },
-          { title: vscode.l10n.t("Program"), width: "2fr", getValue: e => e.program },
-          { title: vscode.l10n.t("Statement"), width: "1fr", getValue: e => String(e.statement) },
-          { title: vscode.l10n.t("Procedure"), width: "2fr", getValue: e => e.procedure }
-        ];
-
         const stackHtml = generateFastTable({
           title: vscode.l10n.t("Call Stack"),
-          subtitle: vscode.l10n.t("Total entries: {0}", String(callStack.length)),
-          columns: stackColumns,
+          subtitle: subtitles.callStack(),
+          columns: stackColumns(),
           data: callStack,
           stickyHeader: true,
-          emptyMessage: vscode.l10n.t("No call stack entries found.")
+          emptyMessage: vscode.l10n.t("No call stack entries found."),
+          tableId: TABLE_IDS.callStack
         });
 
         // Library List tab
-        const libraryColumns: FastTableColumn<LibraryEntry>[] = [
-          { title: vscode.l10n.t("Library"), width: "1.5fr", getValue: e => e.library },
-          { title: vscode.l10n.t("Type"), width: "0.7fr", getValue: e => e.type },
-          { title: vscode.l10n.t("ASP"), width: "1fr", getValue: e => e.asp },
-          { title: vscode.l10n.t("Description"), width: "3fr", getValue: e => e.description }
-        ];
-
         const libraryHtml = generateFastTable({
           title: vscode.l10n.t("Library List"),
-          subtitle: vscode.l10n.t("Total libraries: {0}", String(libraries.length)),
-          columns: libraryColumns,
+          subtitle: subtitles.libraries(),
+          columns: libraryColumns(),
           data: libraries,
           stickyHeader: true,
-          emptyMessage: vscode.l10n.t("No libraries found.")
+          emptyMessage: vscode.l10n.t("No libraries found."),
+          tableId: TABLE_IDS.libraries
         });
 
         // Locks tab
-        const lockColumns: FastTableColumn<LockEntry>[] = [
-          { title: vscode.l10n.t("Object"), width: "2fr", getValue: e => e.object },
-          { title: vscode.l10n.t("Type"), width: "1fr", getValue: e => e.type },
-          { title: vscode.l10n.t("State"), width: "1fr", getValue: e => e.state },
-          { title: vscode.l10n.t("Status"), width: "1fr", getValue: e => e.status },
-          { title: vscode.l10n.t("Scope"), width: "1fr", getValue: e => e.scope },
-          { title: vscode.l10n.t("Member Lock"), width: "1fr", getValue: e => e.memberLock }
-        ];
-
         const lockHtml = generateFastTable({
           title: vscode.l10n.t("Locks"),
-          subtitle: vscode.l10n.t("Total locks: {0}", String(locks.length)),
-          columns: lockColumns,
+          subtitle: subtitles.locks(),
+          columns: lockColumns(),
           data: locks,
           stickyHeader: true,
-          emptyMessage: vscode.l10n.t("No locks found.")
+          emptyMessage: vscode.l10n.t("No locks found."),
+          tableId: TABLE_IDS.locks
         });
 
         // Open Files tab
-        const fileColumns: FastTableColumn<OpenFileEntry>[] = [
-          { title: vscode.l10n.t("File"), width: "2fr", getValue: e => e.file },
-          { title: vscode.l10n.t("Member"), width: "1fr", getValue: e => e.member },
-          { title: vscode.l10n.t("Type"), width: "1fr", getValue: e => e.type },
-          { title: vscode.l10n.t("Option"), width: "1fr", getValue: e => e.option },
-          { title: vscode.l10n.t("Shared"), width: "0.5fr", getValue: e => String(e.sharedOpens) },
-          { title: vscode.l10n.t("Writes"), width: "0.5fr", getValue: e => String(e.writeCount) },
-          { title: vscode.l10n.t("Reads"), width: "0.5fr", getValue: e => String(e.readCount) }
-        ];
-
         const fileHtml = generateFastTable({
           title: vscode.l10n.t("Open Files"),
-          subtitle: vscode.l10n.t("Total files: {0}", String(openFiles.length)),
-          columns: fileColumns,
+          subtitle: subtitles.openFiles(),
+          columns: fileColumns(),
           data: openFiles,
           stickyHeader: true,
-          emptyMessage: vscode.l10n.t("No open files found.")
+          emptyMessage: vscode.l10n.t("No open files found."),
+          tableId: TABLE_IDS.openFiles
         });
 
         // Activation groups tab section
-        const activationGroupColumns: FastTableColumn<ActivationGroupEntry>[] = [
-          { title: vscode.l10n.t("Group"), width: "1.5fr", getValue: e => e.group },
-          { title: vscode.l10n.t("Number"), width: "0.7fr", getValue: e => String(e.number) },
-          { title: vscode.l10n.t("State"), width: "0.8fr", getValue: e => e.state },
-          { title: vscode.l10n.t("Library"), width: "1fr", getValue: e => e.library },
-          { title: vscode.l10n.t("Program"), width: "1fr", getValue: e => e.program },
-          { title: vscode.l10n.t("Type"), width: "0.8fr", getValue: e => e.programType },
-          { title: vscode.l10n.t("In Use"), width: "0.8fr", getValue: e => e.inUse }
-        ];
-
         const activationGroupHtml = generateFastTable({
           title: vscode.l10n.t("Activation Groups"),
-          subtitle: vscode.l10n.t("Total groups: {0}", String(activationGroups.length)),
-          columns: activationGroupColumns,
+          subtitle: subtitles.activationGroups(),
+          columns: activationGroupColumns(),
           data: activationGroups,
           stickyHeader: true,
-          emptyMessage: vscode.l10n.t("No activation groups found.")
+          emptyMessage: vscode.l10n.t("No activation groups found."),
+          tableId: TABLE_IDS.activationGroups
         });
 
         // Spools tab
-        const spoolColumns: FastTableColumn<SpoolEntry>[] = [
-          { title: vscode.l10n.t("Name"), width: "1fr", getValue: e => e.spoolname },
-          { title: vscode.l10n.t("User Data"), width: "1fr", getValue: e => e.userdata },
-          { title: vscode.l10n.t("Status"), width: "0.7fr", getValue: e => e.status },
-          { title: vscode.l10n.t("Pages"), width: "0.5fr", getValue: e => String(e.pages) },
-          { title: vscode.l10n.t("Timestamp"), width: "1.2fr", getValue: e => e.timestamp },
-          {
-            title: vscode.l10n.t("Actions"),
-            width: "1.5fr",
-            getValue: e => {
-              const arg = encodeURIComponent(JSON.stringify(e));
-              return `<vscode-button appearance="primary" href="action:openSpool?entry=${arg}">${vscode.l10n.t("Open")}</vscode-button>
-                    <vscode-button appearance="primary" href="action:genPdf?entry=${arg}">${vscode.l10n.t("Download")}</vscode-button>
-                    <vscode-button appearance="secondary" href="action:delSpool?entry=${arg}">${vscode.l10n.t("Delete")}</vscode-button>`;
-            }
-          }
-        ];
-
         const spoolHtml = generateFastTable({
           title: vscode.l10n.t("Spooled Files"),
-          subtitle: vscode.l10n.t("Total spools: {0}", String(spools.length)),
-          columns: spoolColumns,
+          subtitle: subtitles.spools(),
+          columns: spoolColumns(),
           data: spools,
           stickyHeader: true,
-          emptyMessage: vscode.l10n.t("No spooled files found.")
+          emptyMessage: vscode.l10n.t("No spooled files found."),
+          tableId: TABLE_IDS.spools
         });
 
         // Joblog tab
-        const joblogColumns: FastTableColumn<JoblogEntry>[] = [
-          { title: vscode.l10n.t("MSGID"), width: "0.7fr", getValue: e => e.msgid },
-          { title: vscode.l10n.t("Message"), width: "2fr", getValue: e => e.msgtext },
-          { title: vscode.l10n.t("Second Level"), width: "0.3fr", getValue: e => e.msgtext2.replaceAll('&N','\n').replaceAll('&B','\n\t').replaceAll('&P','\n\t'), collapsible: true },
-          { title: vscode.l10n.t("Sev."), width: "0.3fr", getValue: e => String(e.severity) },
-          { title: vscode.l10n.t("From Program"), width: "1.5fr", getValue: e => e.fromProgram },
-          { title: vscode.l10n.t("Timestamp"), width: "1.2fr", getValue: e => e.timestamp }
-        ];
-
         const joblogHtml = generateFastTable({
           title: vscode.l10n.t("Job Log"),
-          subtitle: vscode.l10n.t("Total messages: {0}", String(joblogTotal)),
-          columns: joblogColumns,
+          subtitle: subtitles.joblog(),
+          columns: joblogColumns(),
           data: joblog,
           stickyHeader: true,
           emptyMessage: vscode.l10n.t("No job log messages found."),
-          tableId: 'joblog-table',
+          tableId: TABLE_IDS.joblog,
           enableSearch: true,
           searchPlaceholder: vscode.l10n.t("Search messages..."),
           enablePagination: true,
@@ -1153,10 +1244,21 @@ export namespace WrkjobActions {
             joblogPage = Number(message.page);
           }
 
-          const result = await fetchJoblog(jobName, joblogSearchTerm, joblogPage, joblogItemsPerPage);
-          joblog = result.entries;
-          joblogTotal = result.total;
-          panel.webview.html = generatePage(generateContent());
+          // The page size deliberately isn't taken from the message: the webview echoes back
+          // the value baked into it when it was rendered, so honouring it would undo a change
+          // to `code-for-ibmi.tables.itemsPerPage` made while the tab was open.
+          try {
+            const result = await fetchJoblog(jobName, joblogSearchTerm, joblogPage, joblogItemsPerPage);
+            joblog = result.entries;
+            joblogTotal = result.total;
+            await postJoblogUpdate();
+          } catch (error) {
+            // The webview spins its busy indicator until an answer arrives, so a failed query
+            // must still be answered — otherwise it spins until its own safety timeout.
+            console.error(`Job log ${message.command} error:`, error);
+            vscode.window.showErrorMessage(vscode.l10n.t("Failed to load job log: {0}", String(error)));
+            await panel.webview.postMessage({ command: 'updateTableFailed', tableId: TABLE_IDS.joblog });
+          }
           return;
         }
 
@@ -1169,24 +1271,31 @@ export namespace WrkjobActions {
         const params = new URLSearchParams(uri.query);
         
         let refetch = false;
+        // Acting on the job itself changes the Job Info panel too — its status fields and the
+        // Hold/Release buttons that are drawn from that status. That panel isn't a table, so
+        // patching rows can't update it and the page has to be rebuilt.
+        let jobStateChanged = false;
 
         switch (uri.path) {
           // Job actions
           case "holdJob":
             if (await JobOperations.holdJob({ job: jobName })) {
               refetch = true;
+              jobStateChanged = true;
             }
             break;
 
           case "releaseJob":
             if (await JobOperations.releaseJob({ job: jobName })) {
               refetch = true;
+              jobStateChanged = true;
             }
             break;
 
           case "endJob":
             if (await JobOperations.endJob({ job: jobName })) {
               refetch = true;
+              jobStateChanged = true;
             }
             break;
 
@@ -1248,7 +1357,15 @@ export namespace WrkjobActions {
             joblogTotal = newJoblog.total;
             libraries = newLibraries;
             activationGroups = newActivationGroups;
-            panel.webview.html = generatePage(generateContent());
+
+            if (jobStateChanged) {
+              await panel.webview.postMessage({ command: 'saveStateForRestore' });
+              await new Promise(resolve => setTimeout(resolve, 100));
+              panel.webview.html = generatePage(generateContent());
+            } else {
+              // Only rows changed (a spooled file was deleted), so patch them in place.
+              await postTableUpdates();
+            }
           }
         }
       });

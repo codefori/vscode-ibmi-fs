@@ -43,6 +43,10 @@ export type FastTableOptions<T> = FrontendTables.FastTableOptions<T>;
 export type DetailTableOptions = FrontendTables.DetailTableOptions;
 /** Action button configuration for detail tables, re-exported from the base extension's frontendTables API */
 export type DetailTableAction = FrontendTables.DetailTableAction;
+/** Options for building an incremental table update, re-exported from the base extension's frontendTables API */
+export type FastTableUpdateOptions<T> = FrontendTables.FastTableUpdateOptions<T>;
+/** Message that replaces a live table's rows, re-exported from the base extension's frontendTables API */
+export type FastTableUpdate = FrontendTables.FastTableUpdate;
 
 /**
  * Generate an enhanced detail table (key-value pairs) via the base extension's frontendTables API
@@ -60,4 +64,19 @@ export function generateDetailTable(options: DetailTableOptions): string {
  */
 export function generateFastTable<T>(options: FastTableOptions<T>): string {
   return loadBase()!.frontendTables.generateFastTable(options);
+}
+
+/**
+ * Build the message that replaces the rows of a table already on screen, via the base
+ * extension's frontendTables API.
+ *
+ * Post this instead of reassigning `webview.html`: rebuilding the page recreates the search
+ * box (dropping keyboard focus and restoring the term as it was when the query started) and
+ * resets the active tab.
+ *
+ * @param options - The new data plus the pagination state it corresponds to
+ * @returns Message to pass to `webview.postMessage`
+ */
+export function generateFastTableUpdate<T>(options: FastTableUpdateOptions<T>): FastTableUpdate {
+  return loadBase()!.frontendTables.generateFastTableUpdate(options);
 }

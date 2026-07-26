@@ -19,11 +19,14 @@ import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
 import { getColumns, getProtected, executeSqlIfExists } from "../tools";
-import { generateDetailTable, generateFastTable, FastTableColumn } from "../ibmi";
+import { generateDetailTable, generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
 import { JobOperations } from '../commonOperations';
+
+/** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
+const JOBQ_TABLE_ID = 'jobq-entries';
 
 /**
  * Namespace containing actions for Job Queue objects
@@ -330,6 +333,8 @@ export default class Jobq extends Base {
   selectClause: string | undefined;
   /** Array of job entries in the queue */
   private _entries: Entry[] = [];
+  /** Jobs enter and leave the queue on their own, so the panel reloads itself. @see Base.autoRefresh */
+  public autoRefresh: boolean = true;
 
   /**
    * Fetch job queue information and jobs
@@ -503,9 +508,13 @@ export default class Jobq extends Base {
    * @param entries - Array of job entries to display
    * @returns HTML string for the table
    */
-  renderEntries(entries: Entry[]) {
-    // Define table columns with their properties
-    const columns: FastTableColumn<Entry>[] = [
+  /**
+   * Column definitions for the jobs table.
+   * Shared by the full render and the incremental update: if the two ever disagree, the
+   * patched rows no longer line up with the header still on screen.
+   */
+  private getColumns(): FastTableColumn<Entry>[] {
+    return [
       { title: vscode.l10n.t("Job"), width: "1fr", getValue: e => e.job },
       { title: vscode.l10n.t("Submitter job"), width: "1fr", getValue: e => e.submitter },
       { title: vscode.l10n.t("Job entered time"), width: "1fr", getValue: e => e.jobts },
@@ -528,7 +537,26 @@ export default class Jobq extends Base {
         }
       }
     ];
+  }
 
+  /** Subtitle text, kept in one place so the update carries the same wording as the render. */
+  private getSubtitle(): string {
+    return vscode.l10n.t("Total Jobs: {0}", String(this.totalItems));
+  }
+
+  /** @inheritdoc */
+  generateTableUpdate(): FastTableUpdate {
+    return generateFastTableUpdate({
+      columns: this.getColumns(),
+      data: this._entries,
+      totalItems: this.totalItems,
+      currentPage: this.currentPage,
+      subtitle: this.getSubtitle(),
+      tableId: JOBQ_TABLE_ID
+    });
+  }
+
+  renderEntries(entries: Entry[]) {
     // Custom CSS styles for the job queue entries table
     const customStyles = `
       /* Highlight job names with link color for better visibility */
@@ -540,8 +568,8 @@ export default class Jobq extends Base {
     // Generate and return the complete table HTML
     return `<div class="jobqueue-entries-table">` + generateFastTable({
       title: ``,
-      subtitle: vscode.l10n.t("Total Jobs: {0}", String(this.totalItems)),
-      columns: columns,
+      subtitle: this.getSubtitle(),
+      columns: this.getColumns(),
       data: this._entries,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t('No jobs found in this jobq.'),
@@ -552,7 +580,8 @@ export default class Jobq extends Base {
       itemsPerPage: this.itemsPerPage,
       totalItems: this.totalItems,
       currentPage: this.currentPage,
-      searchTerm: this.searchTerm
+      searchTerm: this.searchTerm,
+      tableId: JOBQ_TABLE_ID
     }) + `</div>`;
   }
 

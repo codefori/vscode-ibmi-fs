@@ -22,8 +22,18 @@ import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getColumns, getProtected, executeSqlIfExists } from "../tools";
-import { generateDetailTable, FastTableColumn, generateFastTable } from "../ibmi";
+import { generateDetailTable, FastTableColumn, generateFastTable, generateFastTableUpdate, FastTableUpdate } from "../ibmi";
 import ObjectProvider from '../objectProvider';
+
+/**
+ * Explicit ids so refreshes can target these tables; see FastTableUpdateOptions.tableId.
+ * The two message tabs show the same entries in different encodings, so they are separate
+ * tables and each needs its own id.
+ */
+const DTAQ_TABLE_IDS = {
+  messages: 'dtaq-messages',
+  messagesUtf8: 'dtaq-messages-utf8'
+} as const;
 
 /**
  * Namespace containing actions for Data Queue objects
@@ -257,6 +267,8 @@ export class Dtaq extends Base {
   private readonly _info: Record<string, string | boolean | number> = {};
   private readonly _entries: Entry[] = [];
   private _keyed = false;
+  /** Entries are enqueued and consumed on their own, so the panel reloads itself. @see Base.autoRefresh */
+  public autoRefresh: boolean = true;
   /** Column definitions for display */
   columns: Map<string, string> = new Map();
   selectClause: string | undefined;
@@ -421,6 +433,25 @@ export class Dtaq extends Base {
     ]);
   }
 
+  /** @inheritdoc */
+  generateTableUpdate(tableId?: string): FastTableUpdate[] {
+    // The two tabs render the same entries, so both are patched unless one is asked for
+    // by name. The tab badges keep the count they were rendered with — only rows are
+    // replaced — but the tables themselves stay in step with the queue.
+    const tables = [
+      { id: DTAQ_TABLE_IDS.messages, isUtf8: false },
+      { id: DTAQ_TABLE_IDS.messagesUtf8, isUtf8: true }
+    ].filter(table => !tableId || table.id === tableId);
+
+    return tables.map(table => generateFastTableUpdate({
+      columns: entryColumns(this._keyed, table.isUtf8),
+      data: this._entries,
+      totalItems: this._entries.length,
+      currentPage: 1,
+      tableId: table.id
+    }));
+  }
+
   /**
    * Handle user actions from the webview
    * @param data - Action data from the webview
@@ -474,7 +505,14 @@ function toEntry(row: Tools.DB2Row): Entry {
  * @param isUtf8 - Whether to display UTF8 or standard format
  * @returns HTML string for the entries table
  */
-function renderEntries(keyed: boolean, entries: Entry[], isUtf8: boolean) {
+/**
+ * Column definitions for a messages table.
+ * Shared by the full render and the incremental update: if the two ever disagree, the
+ * patched rows no longer line up with the header still on screen.
+ * @param keyed - Whether this is a keyed data queue
+ * @param isUtf8 - Whether to display UTF8 or standard format
+ */
+function entryColumns(keyed: boolean, isUtf8: boolean): FastTableColumn<Entry>[] {
   const columns: FastTableColumn<Entry>[] = [
     { title: vscode.l10n.t("Timestamp"), width: "0.5fr", getValue: e => e.timestamp },
     { title: vscode.l10n.t("User"), width: "0.5fr", getValue: e => e.senderUser },
@@ -489,6 +527,12 @@ function renderEntries(keyed: boolean, entries: Entry[], isUtf8: boolean) {
   if (keyed) {
     columns.push({ title: vscode.l10n.t("Key"), width: "1fr", getValue: e => e.key! });
   }
+
+  return columns;
+}
+
+function renderEntries(keyed: boolean, entries: Entry[], isUtf8: boolean) {
+  const columns = entryColumns(keyed, isUtf8);
 
   let customStyles = "";
 
@@ -509,6 +553,7 @@ function renderEntries(keyed: boolean, entries: Entry[], isUtf8: boolean) {
     stickyHeader: true,
     emptyMessage: vscode.l10n.t("No messages in this dtaq."),
     customStyles: customStyles,
+    tableId: isUtf8 ? DTAQ_TABLE_IDS.messagesUtf8 : DTAQ_TABLE_IDS.messages
   }) + `</div>`;
 
 }

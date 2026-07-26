@@ -10,9 +10,13 @@
 import * as vscode from 'vscode';
 import { getInstance } from '../ibmi';
 import { executeSqlIfExists, checkTableFunctionExists } from "../tools";
-import { FastTableColumn, generateFastTable } from "../ibmi";
+import { FastTableColumn, generateFastTable, generateFastTableUpdate } from "../ibmi";
 import { generatePage } from "../webviewToolkit";
 import { JobOperations } from '../commonOperations';
+import { getAutoRefreshInterval } from '../config';
+
+/** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
+const ACTJOB_TABLE_ID = 'wrkactjob-jobs';
 
 /**
  * Namespace containing actions for Work with Active Jobs
@@ -181,22 +185,45 @@ export namespace WrkactjobActions {
         }
       );
 
+      // Auto-refresh configuration, from `code-for-ibmi.views.autoRefreshInterval`
+      const autoRefreshInterval = getAutoRefreshInterval();
+      let autoRefreshTimer: NodeJS.Timeout | undefined;
+      // Guards against a tick starting while the previous query is still running, which on a
+      // slow system would stack overlapping fetches until the connection is saturated.
+      let refreshing = false;
+
+      const refresh = async (isAutoRefresh: boolean = false) => {
+        if (refreshing) {
+          return;
+        }
+        refreshing = true;
+        try {
+          const newJobs = await fetchActiveJobs(searchTerm);
+          if (newJobs) {
+            activeJobs = newJobs;
+            await postTableUpdate();
+            // Show success message only for manual refresh
+            if (!isAutoRefresh) {
+              vscode.window.showInformationMessage(vscode.l10n.t('Active jobs refreshed successfully'));
+            }
+          }
+        } finally {
+          refreshing = false;
+        }
+      };
+
       // Add refresh button to the webview toolbar
       const refreshDisposable = vscode.commands.registerCommand('vscode-ibmi-fs.refreshWrkactjob', async (isAutoRefresh: boolean = false) => {
-        const newJobs = await fetchActiveJobs(searchTerm);
-        if (newJobs) {
-          activeJobs = newJobs;
-          panel.webview.html = generatePage(generateTableHtml());
-          // Show success message only for manual refresh
-          if (!isAutoRefresh) {
-            vscode.window.showInformationMessage(vscode.l10n.t('Active jobs refreshed successfully'));
-          }
-        }
+        await refresh(isAutoRefresh);
       });
 
-      // Clean up the command when panel is disposed
+      // Clean up the command and the timer when panel is disposed
       panel.onDidDispose(() => {
         refreshDisposable.dispose();
+        if (autoRefreshTimer) {
+          clearInterval(autoRefreshTimer);
+          autoRefreshTimer = undefined;
+        }
       });
 
       // Define columns for active jobs table
@@ -253,12 +280,41 @@ export namespace WrkactjobActions {
           customStyles: customStyles,
           enableSearch: true,
           searchPlaceholder: vscode.l10n.t("Search jobs..."),
-          searchTerm: searchTerm
+          searchTerm: searchTerm,
+          tableId: ACTJOB_TABLE_ID
         }) + `</div>`;
+      };
+
+      /**
+       * Push the freshly fetched rows into the page already on screen.
+       * Reassigning `webview.html` instead would recreate the search box, taking keyboard
+       * focus away mid-typing and restoring the term as it was when the query started.
+       */
+      const postTableUpdate = async () => {
+        const rows = activeJobs || [];
+        await panel.webview.postMessage(generateFastTableUpdate({
+          columns: jobColumns,
+          data: rows,
+          totalItems: rows.length,
+          currentPage: 1,
+          subtitle: vscode.l10n.t("Total Active Jobs: {0}", String(rows.length)),
+          tableId: ACTJOB_TABLE_ID
+        }));
       };
 
       // Generate initial HTML
       panel.webview.html = generatePage(generateTableHtml());
+
+      // Start auto-refresh (disabled when the interval is 0)
+      if (autoRefreshInterval > 0) {
+        autoRefreshTimer = setInterval(async () => {
+          try {
+            await refresh(true);
+          } catch (error) {
+            console.error('Active jobs auto-refresh error:', error);
+          }
+        }, autoRefreshInterval);
+      }
 
       // Handle messages from the webview
       panel.webview.onDidReceiveMessage(async (message) => {
@@ -268,11 +324,18 @@ export namespace WrkactjobActions {
             searchTerm = message.searchTerm;
           }
 
-          // Re-fetch data with new search term
-          const newJobs = await fetchActiveJobs(searchTerm);
-          if (newJobs) {
-            activeJobs = newJobs;
-            panel.webview.html = generatePage(generateTableHtml());
+          try {
+            const newJobs = await fetchActiveJobs(searchTerm);
+            if (newJobs) {
+              activeJobs = newJobs;
+            }
+            await postTableUpdate();
+          } catch (error) {
+            // The webview spins its busy indicator until an answer arrives, so a failed query
+            // must still be answered — otherwise it spins until its own safety timeout.
+            console.error(`Active jobs search error:`, error);
+            vscode.window.showErrorMessage(vscode.l10n.t("Failed to load active jobs: {0}", String(error)));
+            await panel.webview.postMessage({ command: 'updateTableFailed', tableId: ACTJOB_TABLE_ID });
           }
           return;
         }
@@ -329,7 +392,7 @@ export namespace WrkactjobActions {
           const newJobs = await fetchActiveJobs(searchTerm);
           if (newJobs) {
             activeJobs = newJobs;
-            panel.webview.html = generatePage(generateTableHtml());
+            await postTableUpdate();
           }
         }
       });

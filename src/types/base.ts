@@ -1,5 +1,7 @@
 import { CustomDocument, Uri } from "vscode";
 import {} from "@halcyontech/vscode-ibmi-types/api/IBMi";
+import { getItemsPerPage } from "../config";
+import { FastTableUpdate } from "../ibmi";
 
 /**
  * Abstract base class for all IBM i object types
@@ -12,14 +14,26 @@ export default abstract class Base implements CustomDocument {
   /** Flag indicating if the webview should auto-close (used for text editor redirects) */
   public shouldAutoClose: boolean = false;
 
+  /**
+   * Whether the open panel should reload itself on a timer. Off by default: it only makes
+   * sense for objects whose contents change without the user doing anything (queues,
+   * subsystems), and every enabled document costs one query per interval.
+   *
+   * The interval itself comes from `code-for-ibmi.views.autoRefreshInterval` (see
+   * `ObjectProvider.resolveCustomEditor`), which also disables the refresh entirely when
+   * set to 0. Types implementing {@link generateTableUpdate} get their rows patched in
+   * place; the others have their page rebuilt, which is more disruptive.
+   */
+  public autoRefresh: boolean = false;
+
   /** Current search term for server-side filtering */
   protected searchTerm: string = '';
   
   /** Current page number for server-side pagination */
   protected currentPage: number = 1;
   
-  /** Items per page for server-side pagination */
-  protected itemsPerPage: number = 50;
+  /** Items per page for server-side pagination, from `code-for-ibmi.tables.itemsPerPage` */
+  protected itemsPerPage: number = getItemsPerPage();
   
   /** Total items count for server-side pagination */
   protected totalItems: number = 0;
@@ -63,6 +77,26 @@ export default abstract class Base implements CustomDocument {
    * @returns HTML string to be displayed in the webview
    */
   abstract generateHTML(): string;
+
+  /**
+   * Build the message that replaces the rows of a table already on screen, instead of
+   * rebuilding the whole page.
+   *
+   * Implemented only by the types that search or paginate server-side, or that auto-refresh;
+   * the ones that don't leave it undefined and `ObjectProvider` falls back to reassigning
+   * `webview.html`. Implementations must reuse the same column list as `generateHTML`, and
+   * pass the same `tableId` the table was rendered with — an update carrying any other id is
+   * discarded by every table on the page.
+   *
+   * Returning an array patches several tables at once, which is what a document hosting more
+   * than one needs on a refresh. Return undefined to ask for a full rebuild instead — the
+   * right answer when the page structure itself changed, since patching rows cannot make a
+   * missing tab appear.
+   *
+   * @param tableId - Which table to update; when omitted, every table the document hosts
+   * @returns The update message(s), or undefined to fall back to a rebuild
+   */
+  generateTableUpdate?(tableId?: string): FastTableUpdate | FastTableUpdate[] | undefined;
 
   /**
    * Handle user actions from the webview

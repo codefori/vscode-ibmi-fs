@@ -67,19 +67,34 @@ const footer = /*html*/`
 
     const vscode = acquireVsCodeApi();
 
-    // Handle click events on action links
-    for (const link of document.querySelectorAll('[href^="action:"]')) {
-      link.addEventListener('click', () => {
-        let data = {};
-        link.getAttributeNames().forEach(attr => {
-          data[attr] = link.getAttribute(attr);
-        });
+    // Handle click events on action links.
+    // Delegated on the document: tables replace their rows in place (see
+    // generateFastTableUpdate), so buttons bound one-by-one at load time would stop
+    // responding as soon as a search, a refresh or an action re-rendered the body.
+    document.addEventListener('click', (event) => {
+      const path = event.composedPath ? event.composedPath() : [event.target];
+      let link = null;
 
-        data.bindings = getBindings();
+      for (const node of path) {
+        if (node instanceof Element && node.getAttribute('href')?.startsWith('action:')) {
+          link = node;
+          break;
+        }
+      }
 
-        vscode.postMessage(data);
+      if (!link) {
+        return;
+      }
+
+      let data = {};
+      link.getAttributeNames().forEach(attr => {
+        data[attr] = link.getAttribute(attr);
       });
-    }
+
+      data.bindings = getBindings();
+
+      vscode.postMessage(data);
+    });
 
     // Handle change events on input elements
     for (const link of document.querySelectorAll('[change^="action:"]')) {
