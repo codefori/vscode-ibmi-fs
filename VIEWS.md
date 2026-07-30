@@ -283,12 +283,19 @@ Displays all job log messages:
 
 ### Overview
 
-Displays and manages all spooled files in the IBM i system. Provides comprehensive spool file management with search, pagination, and multiple actions.
+Displays and manages the spooled files of a user profile. Provides comprehensive spool file management with search, pagination, and multiple actions.
 
 ### Features
 
+#### User Prompt
+When the view is opened, a prompt asks which user profile to look at:
+- `*CURRENT` (default) - Spooled files of the connected user profile
+- A user profile name - Spooled files of that user
+
+The selected user is shown in the tab title and above the table.
+
 #### Spool File List Display
-Shows all spool files with the following information:
+Shows the spool files with the following information:
 - **Name** - Spooled file name
 - **Data** - User data
 - **Status** - Spool status (RDY, HLD, etc.)
@@ -340,12 +347,19 @@ For each spool file:
 
 ### Overview
 
-Displays all jobs in the system, both active and inactive. Provides a comprehensive view of all jobs with their current status and allows management of active jobs.
+Displays the jobs of a user profile, both active and inactive. Provides a comprehensive view of the jobs with their current status and allows management of active jobs.
 
 ### Features
 
+#### User Prompt
+When the view is opened, a prompt asks which user profile to look at:
+- `*CURRENT` (default) - Jobs of the connected user profile
+- A user profile name - Jobs of that user
+
+The selected user is shown in the tab title and above the table.
+
 #### Job List Display
-Shows all jobs with the following information:
+Shows the jobs with the following information:
 - **Job** - Job name (format: number/user/name)
 - **Job Status** - Overall job status (ACTIVE, OUTQ, JOBQ, etc.)
 - **Active Status** - Active job status (RUN, HLD, etc.) - only for active jobs

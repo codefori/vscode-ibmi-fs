@@ -273,6 +273,54 @@ export async function executeSqlIfExists(
 }
 
 /**
+ * Ask the user which user profile a view should be filtered on.
+ *
+ * Accepts a user profile name or the special value `*CURRENT` (the profile of the current
+ * connection); see {@link resolveUserFilter} for turning the answer into a value a QSYS2
+ * service can be given.
+ *
+ * @param title - Title shown on the input box
+ * @param defaultValue - Pre-filled value, `*CURRENT` unless stated otherwise
+ * @returns The uppercased user filter, or undefined when the user dismissed the prompt
+ */
+export async function promptForUserFilter(title: string, defaultValue: string = '*CURRENT'): Promise<string | undefined> {
+  const user = await vscode.window.showInputBox({
+    title,
+    prompt: vscode.l10n.t("User profile name, *CURRENT for the connected user"),
+    placeHolder: "*CURRENT",
+    value: defaultValue,
+    validateInput: (value) => {
+      const candidate = (value || '').trim().toUpperCase();
+      if (candidate.length === 0) {
+        return vscode.l10n.t("User is required");
+      }
+      if (candidate === '*CURRENT') {
+        return null;
+      }
+      if (!IBMI_OBJECT_NAME.test(candidate)) {
+        return vscode.l10n.t("Enter a valid user profile name, *CURRENT");
+      }
+      return null;
+    }
+  });
+
+  return user ? user.trim().toUpperCase() : undefined;
+}
+
+/**
+ * Turn a user filter coming from {@link promptForUserFilter} into the value to pass to a QSYS2
+ * service. `*CURRENT` is resolved here rather than handed over as-is because not every service
+ * accepts it as a special value, while every one of them accepts a plain user profile name.
+ * @param connection - IBM i connection instance
+ * @param userFilter - `*CURRENT` or a user profile name
+ * @returns The user profile name to filter on
+ */
+export function resolveUserFilter(connection: IBMi, userFilter: string): string {
+  const filter = userFilter.trim().toUpperCase();
+  return filter === '*CURRENT' ? connection.currentUser.toUpperCase() : filter;
+}
+
+/**
  * Validate and execute SQL with object existence check
  * This function checks if the required SQL objects exist before executing the query
  * @param ibmi - IBM i connection instance
