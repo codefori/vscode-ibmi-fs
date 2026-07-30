@@ -346,7 +346,7 @@ export namespace SpoolOperations {
       // Create a temporary directory and copy the spool file to it
       return connection.withTempDirectory(async (tempDir): Promise<boolean> => {
         // Generate temporary file path for the spool content
-        const tempSourcePath = posix.join(tempDir, `spool.txt`);
+        const tempSourcePath = posix.join(tempDir, `${spoolId.job.replaceAll('/', '-')}_${spoolId.spoolname}_${spoolId.nbr}.txt`);
 
         // Execute CPYSPLF command to copy spool to stream file
         const result = await connection.runCommand({
