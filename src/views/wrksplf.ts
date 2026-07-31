@@ -1,15 +1,16 @@
 /**
  * Work with Spooled Files (WRKSPLF) Action Module
  *
- * This module provides functionality to display all spooled files in the system.
- * It opens a webview with a table containing all spooled files with search and pagination.
+ * This module provides functionality to display the spooled files of a user profile.
+ * The user is asked for when the view is opened (`*CURRENT` by default) and it opens a webview
+ * with a table containing that user's spooled files with search and pagination.
  *
  * @module wrksplf
  */
 
 import * as vscode from 'vscode';
 import { getInstance } from '../ibmi';
-import { executeSqlIfExists, checkTableFunctionExists } from "../tools";
+import { executeSqlIfExists, checkTableFunctionExists, promptForUserFilter, resolveUserFilter } from "../tools";
 import { FastTableColumn, generateFastTable, generateFastTableUpdate } from "../ibmi";
 import { generatePage } from "../webviewToolkit";
 import { SpoolOperations } from '../commonOperations';
@@ -28,8 +29,15 @@ export namespace WrksplfActions {
    */
   export const register = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
-      vscode.commands.registerCommand("vscode-ibmi-fs.wrksplf", async () => {
-        return openWrksplfWebview();
+      vscode.commands.registerCommand("vscode-ibmi-fs.wrksplf", async (user?: string) => {
+        // Called without a user (menu, command palette): ask which profile to look at.
+        const userFilter = user ?? await promptForUserFilter(vscode.l10n.t("Work with Spooled Files"));
+
+        if (!userFilter) {
+          return false;
+        }
+
+        return openWrksplfWebview(userFilter.trim().toUpperCase());
       })
     );
   };
@@ -60,12 +68,13 @@ export namespace WrksplfActions {
 
   /**
    * Fetch spooled files from the system with pagination and search
+   * @param userFilter - `*CURRENT` or the user profile whose spools are wanted
    * @param searchTerm - Search term for filtering
    * @param currentPage - Current page number
    * @param itemsPerPage - Items per page
    * @returns Object with entries and total count, or null if error
    */
-  const fetchSpooledFiles = async (searchTerm: string = '', currentPage: number = 1, itemsPerPage: number = getItemsPerPage()): Promise<{ entries: Entry[], totalItems: number } | null> => {
+  const fetchSpooledFiles = async (userFilter: string = '*CURRENT', searchTerm: string = '', currentPage: number = 1, itemsPerPage: number = getItemsPerPage()): Promise<{ entries: Entry[], totalItems: number } | null> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     
@@ -80,6 +89,11 @@ export namespace WrksplfActions {
       vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "TABLE FUNCTION", "QSYS2", "SPOOLED_FILE_INFO"));
       return null;
     }
+
+    // `*CURRENT` is resolved to the connected profile: SPOOLED_FILE_INFO does accept it, but
+    // resolving it here keeps the name shown in the title and the rows returned in agreement.
+    const userName = resolveUserFilter(connection, userFilter);
+    const userParameter = `USER_NAME => '${userName}'`;
 
     // Build WHERE clause for search
     let whereClause = '1=1';
@@ -97,7 +111,7 @@ export namespace WrksplfActions {
     // Get total count for pagination
     const countQuery = `
       SELECT COUNT(*) as TOTAL
-      FROM TABLE(QSYS2.SPOOLED_FILE_INFO())
+      FROM TABLE(QSYS2.SPOOLED_FILE_INFO(${userParameter}))
       WHERE ${whereClause}
     `;
 
@@ -132,7 +146,7 @@ export namespace WrksplfActions {
              TOTAL_PAGES,
              QUALIFIED_JOB_NAME AS JOB_NAME,
              SPOOLED_FILE_NUMBER AS FILE_NUMBER
-      FROM TABLE(QSYS2.SPOOLED_FILE_INFO())
+      FROM TABLE(QSYS2.SPOOLED_FILE_INFO(${userParameter}))
       WHERE ${whereClause}
       ORDER BY CREATION_TIMESTAMP DESC
       LIMIT ${itemsPerPage} OFFSET ${offset}
@@ -170,9 +184,10 @@ export namespace WrksplfActions {
 
   /**
    * Open the Work with Spooled Files webview
+   * @param userFilter - `*CURRENT` or the user profile whose spools are wanted
    * @returns True if successful, false otherwise
    */
-  const openWrksplfWebview = async (): Promise<boolean> => {
+  const openWrksplfWebview = async (userFilter: string = '*CURRENT'): Promise<boolean> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     
@@ -189,7 +204,7 @@ export namespace WrksplfActions {
       let totalItems = 0;
 
       // Fetch spooled files data
-      const result = await fetchSpooledFiles(searchTerm, currentPage, itemsPerPage);
+      const result = await fetchSpooledFiles(userFilter, searchTerm, currentPage, itemsPerPage);
 
       // Check if fetch failed
       if (result === null) {
@@ -199,10 +214,13 @@ export namespace WrksplfActions {
       let spooledFiles = result.entries;
       totalItems = result.totalItems;
 
+      // Shown in the panel tab and above the table so the profile in force is never a guess
+      const viewTitle = vscode.l10n.t("Work with Spooled Files - {0}", userFilter);
+
       // Create webview panel
       const panel = vscode.window.createWebviewPanel(
         'wrksplfView',
-        vscode.l10n.t("Work with Spooled Files"),
+        viewTitle,
         vscode.ViewColumn.One,
         {
           enableScripts: true,
@@ -223,7 +241,7 @@ export namespace WrksplfActions {
         }
         refreshing = true;
         try {
-          const newResult = await fetchSpooledFiles(searchTerm, currentPage, itemsPerPage);
+          const newResult = await fetchSpooledFiles(userFilter, searchTerm, currentPage, itemsPerPage);
           if (newResult) {
             spooledFiles = newResult.entries;
             totalItems = newResult.totalItems;
@@ -287,7 +305,7 @@ export namespace WrksplfActions {
       // Function to generate the table HTML
       const generateTableHtml = () => {
         return `<div class="spool-files-table">` + generateFastTable({
-          title: vscode.l10n.t("Work with Spooled Files"),
+          title: viewTitle,
           subtitle: vscode.l10n.t("Total Spools: {0}", String(totalItems)),
           columns: spoolColumns,
           data: spooledFiles,
@@ -350,7 +368,7 @@ export namespace WrksplfActions {
           // to `code-for-ibmi.tables.itemsPerPage` made while the tab was open.
 
           try {
-            const newResult = await fetchSpooledFiles(searchTerm, currentPage, itemsPerPage);
+            const newResult = await fetchSpooledFiles(userFilter, searchTerm, currentPage, itemsPerPage);
             if (newResult) {
               spooledFiles = newResult.entries;
               totalItems = newResult.totalItems;
@@ -409,7 +427,7 @@ export namespace WrksplfActions {
             
             if (deleted) {
               // Refresh the view with current search/pagination settings
-              const newResult = await fetchSpooledFiles(searchTerm, currentPage, itemsPerPage);
+              const newResult = await fetchSpooledFiles(userFilter, searchTerm, currentPage, itemsPerPage);
               if (newResult) {
                 spooledFiles = newResult.entries;
                 totalItems = newResult.totalItems;

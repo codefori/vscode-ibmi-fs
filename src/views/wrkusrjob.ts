@@ -1,15 +1,16 @@
 /**
  * Work with User Jobs (WRKUSRJOB) Action Module
  *
- * This module provides functionality to display all jobs (active and inactive) in the system.
- * It opens a webview with a table containing all jobs with conditional actions based on status.
+ * This module provides functionality to display the jobs (active and inactive) of a user profile.
+ * The user is asked for when the view is opened (`*CURRENT` by default) and it opens a webview
+ * with a table containing that user's jobs with conditional actions based on status.
  *
  * @module wrkusrjob
  */
 
 import * as vscode from 'vscode';
 import { getInstance } from '../ibmi';
-import { executeSqlIfExists, checkTableFunctionExists } from "../tools";
+import { executeSqlIfExists, checkTableFunctionExists, promptForUserFilter, resolveUserFilter } from "../tools";
 import { FastTableColumn, generateFastTable, generateFastTableUpdate } from "../ibmi";
 import { generatePage } from "../webviewToolkit";
 import { JobOperations } from '../commonOperations';
@@ -28,8 +29,15 @@ export namespace WrkusrjobActions {
    */
   export const register = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
-      vscode.commands.registerCommand("vscode-ibmi-fs.wrkusrjob", async () => {
-        return openWrkusrjobWebview();
+      vscode.commands.registerCommand("vscode-ibmi-fs.wrkusrjob", async (user?: string) => {
+        // Called without a user (menu, command palette): ask which profile to look at.
+        const userFilter = user ?? await promptForUserFilter(vscode.l10n.t("Work with User Jobs"));
+
+        if (!userFilter) {
+          return false;
+        }
+
+        return openWrkusrjobWebview(userFilter.trim().toUpperCase());
       })
     );
   };
@@ -56,10 +64,11 @@ export namespace WrkusrjobActions {
 
   /**
    * Fetch user jobs from the system with search filtering
+   * @param userFilter - `*CURRENT` or the user profile whose jobs are wanted
    * @param searchTerm - Search term for filtering
    * @returns Array of user job entries, or null if error
    */
-  const fetchUserJobs = async (searchTerm: string = ''): Promise<Entry[] | null> => {
+  const fetchUserJobs = async (userFilter: string = '*CURRENT', searchTerm: string = ''): Promise<Entry[] | null> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     
@@ -74,6 +83,10 @@ export namespace WrkusrjobActions {
       vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "TABLE FUNCTION", "QSYS2", "JOB_INFO"));
       return null;
     }
+
+    // JOB_INFO only documents *ALL and a user name for JOB_USER_FILTER, so *CURRENT is turned
+    // into the connected profile before it reaches the service.
+    const userName = resolveUserFilter(connection, userFilter);
 
     // Build WHERE clause for search
     let whereClause = '1=1';
@@ -99,7 +112,7 @@ export namespace WrkusrjobActions {
              JI.COMPLETION_STATUS,
              AJ.FUNCTION_TYPE CONCAT '-' CONCAT AJ."FUNCTION" "FUNCTION"
       FROM TABLE (
-               QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL')
+               QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', JOB_USER_FILTER => '${userName}')
            ) JI
            LEFT JOIN TABLE (
                    QSYS2.ACTIVE_JOB_INFO(DETAILED_INFO => 'NONE')
@@ -139,9 +152,10 @@ export namespace WrkusrjobActions {
 
   /**
    * Open the Work with User Jobs webview
+   * @param userFilter - `*CURRENT` or the user profile whose jobs are wanted
    * @returns True if successful, false otherwise
    */
-  const openWrkusrjobWebview = async (): Promise<boolean> => {
+  const openWrkusrjobWebview = async (userFilter: string = '*CURRENT'): Promise<boolean> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     
@@ -155,17 +169,20 @@ export namespace WrkusrjobActions {
       let searchTerm = '';
 
       // Fetch user jobs data
-      let userJobs = await fetchUserJobs(searchTerm);
+      let userJobs = await fetchUserJobs(userFilter, searchTerm);
 
       // Check if fetch failed
       if (userJobs === null) {
         return false;
       }
 
+      // Shown in the panel tab and above the table so the profile in force is never a guess
+      const viewTitle = vscode.l10n.t("Work with User Jobs - {0}", userFilter);
+
       // Create webview panel
       const panel = vscode.window.createWebviewPanel(
         'wrkusrjobView',
-        vscode.l10n.t("Work with User Jobs"),
+        viewTitle,
         vscode.ViewColumn.One,
         {
           enableScripts: true,
@@ -186,7 +203,7 @@ export namespace WrkusrjobActions {
         }
         refreshing = true;
         try {
-          const newJobs = await fetchUserJobs(searchTerm);
+          const newJobs = await fetchUserJobs(userFilter, searchTerm);
           if (newJobs) {
             userJobs = newJobs;
             await postTableUpdate();
@@ -260,7 +277,7 @@ export namespace WrkusrjobActions {
       // Function to generate the table HTML
       const generateTableHtml = () => {
         return `<div class="user-jobs-table">` + generateFastTable({
-          title: vscode.l10n.t("Work with User Jobs"),
+          title: viewTitle,
           subtitle: vscode.l10n.t("Total Jobs: {0}", String(userJobs?.length || 0)),
           columns: jobColumns,
           data: userJobs || [],
@@ -314,7 +331,7 @@ export namespace WrkusrjobActions {
           }
 
           try {
-            const newJobs = await fetchUserJobs(searchTerm);
+            const newJobs = await fetchUserJobs(userFilter, searchTerm);
             if (newJobs) {
               userJobs = newJobs;
             }
@@ -374,7 +391,7 @@ export namespace WrkusrjobActions {
 
         // Refresh the view if needed
         if (refetch) {
-          const newJobs = await fetchUserJobs(searchTerm);
+          const newJobs = await fetchUserJobs(userFilter, searchTerm);
           if (newJobs) {
             userJobs = newJobs;
             await postTableUpdate();
