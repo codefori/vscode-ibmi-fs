@@ -115,6 +115,8 @@ interface Member {
 interface Column {
   /** Column name */
   name: string
+  /** Short column name (system) */
+  shortName: string
   /** Ordinal position in the table */
   position: number
   /** Data type of the column */
@@ -308,6 +310,7 @@ export default class File extends Base {
       const entryRows = await executeSqlIfExists(
         connection,
         `SELECT COLUMN_NAME,
+            SYSTEM_COLUMN_NAME,
             ORDINAL_POSITION,
             DATA_TYPE,
             LENGTH,
@@ -764,6 +767,7 @@ export default class File extends Base {
   private toColumn(row: Tools.DB2Row): Column {
     return {
       name: String(row.COLUMN_NAME),
+      shortName: String(row.SYSTEM_COLUMN_NAME),
       position: Number(row.ORDINAL_POSITION),
       datatype: String(row.DATA_TYPE),
       length: Number(row.LENGTH),
@@ -856,6 +860,7 @@ export default class File extends Base {
     // Define table columns with their properties
     const columns: FastTableColumn<Column>[] = [
       { title: vscode.l10n.t("Column name"), width: "1fr", getValue: e => e.name  },
+      { title: vscode.l10n.t("Short name"), width: "0.7fr", getValue: e => e.shortName !== e.name ? e.shortName : '' },
       { title: vscode.l10n.t("Position"), width: "0.3fr", getValue: e => e.position },
       { title: vscode.l10n.t("Data type"), width: "0.7fr", getValue: e => e.datatype },
       { title: vscode.l10n.t("Length"), width: "0.5fr", getValue: e => e.length },
