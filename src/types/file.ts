@@ -336,8 +336,8 @@ export default class File extends Base {
             COLUMN_DEFAULT,
             COLUMN_TEXT
           FROM QSYS2.SYSCOLUMNS
-          WHERE TABLE_NAME = '${this.name}'
-                AND TABLE_SCHEMA = '${this.library}'`,
+          WHERE SYSTEM_TABLE_NAME = '${this.name}'
+                AND SYSTEM_TABLE_SCHEMA = '${this.library}'`,
         'QSYS2',
         'SYSCOLUMNS',
         'VIEW'
@@ -512,8 +512,8 @@ export default class File extends Base {
           DATA_SIZE,
           TEXT_DESCRIPTION
         FROM QSYS2.SYSMEMBERSTAT
-        WHERE TABLE_SCHEMA = '${this.library}'
-              AND TABLE_NAME = '${this.name}'`,
+        WHERE SYSTEM_TABLE_SCHEMA = '${this.library}'
+              AND SYSTEM_TABLE_NAME = '${this.name}'`,
         'QSYS2',
         'SYSMEMBERSTAT',
         'VIEW'
