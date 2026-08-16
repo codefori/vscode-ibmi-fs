@@ -1193,6 +1193,7 @@
   "SEVERITY": "Gravedad",
   "Shared": "Compartido",
   "SHARED_ACTIVATION_GROUP": "Grupo de Activación Compartido",
+  "Short name": "Nombre corto",
   "SIALI": "Componente alias (bytes)",
   "SIALIL": "Límite de componentes alias",
   "SIASP": "Espacio asociado (bytes)",
