@@ -42,6 +42,12 @@
   "command.wrkjob.title": "작업 관리",
   "command.wrksplf.title": "스풀 파일 관리",
   "command.wrkusrjob.title": "사용자 작업 관리",
+  "command.configureFsQuickStartMenu.title": "FS 퀵 스타트 메뉴 구성",
+  "config.quickStartMenu.description": "FS 퀵 스타트 메뉴에 표시되는 항목을 사용자 지정합니다. 기본 제공 메뉴를 사용하려면 비워 두세요. 설정하면 이 목록이 기본 항목을 완전히 대체합니다. 각 항목에는 `label`과 `command` ID(기본 제공 또는 확장에서 제공하는 모든 VS Code 명령)가 필요하며, 선택적으로 `description`과 `icon`(codicon 이름, 예: `server-process`)을 포함할 수 있습니다.",
+  "config.quickStartMenu.items.label": "이 메뉴 항목에 표시되는 텍스트입니다.",
+  "config.quickStartMenu.items.description": "레이블 옆에 표시되는 선택적 보조 텍스트입니다.",
+  "config.quickStartMenu.items.icon": "선택적 codicon 이름(`$()` 제외), 예: `server-process`.",
+  "config.quickStartMenu.items.command": "이 항목을 선택했을 때 실행되는 명령 ID입니다.",
   "description": "IBM i용 파일 시스템",
   "displayName": "IBM i FS"
 }

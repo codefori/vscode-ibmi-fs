@@ -42,6 +42,12 @@
   "command.wrkjob.title": "ジョブを操作",
   "command.wrksplf.title": "スプール・ファイルを操作",
   "command.wrkusrjob.title": "ユーザー・ジョブを操作",
+  "command.configureFsQuickStartMenu.title": "FS クイックスタートメニューを設定",
+  "config.quickStartMenu.description": "FS クイックスタートメニューに表示される項目をカスタマイズします。組み込みのデフォルトメニューを使用する場合は空のままにしてください。設定すると、このリストはデフォルトの項目を完全に置き換えます。各項目には `label` と `command` の ID（組み込みまたは拡張機能が提供する任意の VS Code コマンド）が必要で、任意で `description` と `icon`（codicon 名。例: `server-process`）を指定できます。",
+  "config.quickStartMenu.items.label": "このメニュー項目に表示されるテキスト。",
+  "config.quickStartMenu.items.description": "ラベルの横に表示される任意の補足テキスト。",
+  "config.quickStartMenu.items.icon": "任意の codicon 名（`$()` は不要）。例: `server-process`。",
+  "config.quickStartMenu.items.command": "この項目を選択したときに実行されるコマンド ID。",
   "description": "IBM i 用ファイル・システム",
   "displayName": "IBM i FS"
 }

@@ -42,6 +42,12 @@
   "command.wrkjob.title": "Travailler avec un travail",
   "command.wrksplf.title": "Travailler avec les fichiers spoulés",
   "command.wrkusrjob.title": "Travailler avec les travaux utilisateur",
+  "command.configureFsQuickStartMenu.title": "Configurer le menu de démarrage rapide FS",
+  "config.quickStartMenu.description": "Personnalisez les entrées affichées dans le menu de démarrage rapide FS. Laissez vide pour utiliser le menu par défaut intégré. Si défini, cette liste remplace entièrement les entrées par défaut : chaque entrée nécessite un `label` et un identifiant de `command` (toute commande VS Code intégrée ou fournie), et peut éventuellement inclure une `description` et une `icon` (nom d'un codicon, par ex. `server-process`).",
+  "config.quickStartMenu.items.label": "Texte affiché pour cette entrée de menu.",
+  "config.quickStartMenu.items.description": "Texte secondaire facultatif affiché à côté du libellé.",
+  "config.quickStartMenu.items.icon": "Nom de codicon facultatif (sans `$()`), par ex. `server-process`.",
+  "config.quickStartMenu.items.command": "Identifiant de commande exécuté lors de la sélection de cette entrée.",
   "description": "Système de fichiers pour IBM i",
   "displayName": "IBM i FS"
 }

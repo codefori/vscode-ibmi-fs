@@ -42,6 +42,12 @@
   "command.wrkjob.title": "处理作业",
   "command.wrksplf.title": "处理 Spool 文件",
   "command.wrkusrjob.title": "处理用户作业",
+  "command.configureFsQuickStartMenu.title": "配置 FS 快速入门菜单",
+  "config.quickStartMenu.description": "自定义 FS 快速入门菜单中显示的条目。留空则使用内置的默认菜单。设置后，此列表将完全替换默认条目：每个条目都需要一个 `label` 和一个 `command` ID（任意内置或扩展提供的 VS Code 命令），并可以选择包含 `description` 和 `icon`（codicon 名称，例如 `server-process`）。",
+  "config.quickStartMenu.items.label": "此菜单项显示的文本。",
+  "config.quickStartMenu.items.description": "显示在标签旁边的可选辅助文本。",
+  "config.quickStartMenu.items.icon": "可选的 codicon 名称（不含 `$()`），例如 `server-process`。",
+  "config.quickStartMenu.items.command": "选择此项时执行的命令 ID。",
   "description": "IBM i 文件系统",
   "displayName": "IBM i FS"
 }

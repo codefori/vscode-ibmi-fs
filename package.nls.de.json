@@ -42,6 +42,12 @@
   "command.wrkjob.title": "Mit Job arbeiten",
   "command.wrksplf.title": "Mit Spool‑Dateien arbeiten",
   "command.wrkusrjob.title": "Mit Benutzerjobs arbeiten",
+  "command.configureFsQuickStartMenu.title": "FS-Schnellstart-Menü konfigurieren",
+  "config.quickStartMenu.description": "Passen Sie die im FS-Schnellstart-Menü angezeigten Einträge an. Leer lassen, um das integrierte Standardmenü zu verwenden. Wenn festgelegt, ersetzt diese Liste die Standardeinträge vollständig: Jeder Eintrag benötigt ein `label` und eine `command`-ID (ein beliebiger integrierter oder bereitgestellter VS-Code-Befehl) und kann optional eine `description` und ein `icon` (ein Codicon-Name, z. B. `server-process`) enthalten.",
+  "config.quickStartMenu.items.label": "Angezeigter Text für diesen Menüeintrag.",
+  "config.quickStartMenu.items.description": "Optionaler Zusatztext neben dem Label.",
+  "config.quickStartMenu.items.icon": "Optionaler Codicon-Name (ohne `$()`), z. B. `server-process`.",
+  "config.quickStartMenu.items.command": "Befehls-ID, die beim Auswählen dieses Eintrags ausgeführt wird.",
   "description": "Dateisystem für IBM i",
   "displayName": "IBM i FS"
 }

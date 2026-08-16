@@ -42,6 +42,12 @@
   "command.wrkjob.title": "Trabalhar com trabalho",
   "command.wrksplf.title": "Trabalhar com arquivos spool",
   "command.wrkusrjob.title": "Trabalhar com trabalhos do usuário",
+  "command.configureFsQuickStartMenu.title": "Configurar o menu de Início Rápido do FS",
+  "config.quickStartMenu.description": "Personalize as entradas exibidas no menu de Início Rápido do FS. Deixe em branco para usar o menu padrão integrado. Quando definida, esta lista substitui completamente as entradas padrão: cada entrada precisa de um `label` e um id de `command` (qualquer comando do VS Code integrado ou fornecido por extensão), podendo opcionalmente incluir uma `description` e um `icon` (nome de um codicon, por exemplo, `server-process`).",
+  "config.quickStartMenu.items.label": "Texto exibido para esta entrada de menu.",
+  "config.quickStartMenu.items.description": "Texto secundário opcional exibido ao lado do rótulo.",
+  "config.quickStartMenu.items.icon": "Nome de codicon opcional (sem `$()`), por exemplo, `server-process`.",
+  "config.quickStartMenu.items.command": "Id do comando executado ao selecionar esta entrada.",
   "description": "Sistema de arquivos para IBM i",
   "displayName": "IBM i FS"
 }

@@ -283,6 +283,54 @@
         "category": "FS Quick Start"
       },
       {
+        "command": "vscode-ibmi-fs.configureFsQuickStartMenu",
+        "title": "%command.configureFsQuickStartMenu.title%",
+        "category": "FS Quick Start",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "vscode-ibmi-fs.addQuickStartMenuItem",
+        "title": "%command.addQuickStartMenuItem.title%",
+        "category": "FS Quick Start",
+        "icon": "$(add)"
+      },
+      {
+        "command": "vscode-ibmi-fs.editQuickStartMenuItem",
+        "title": "%command.editQuickStartMenuItem.title%",
+        "category": "FS Quick Start",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "vscode-ibmi-fs.removeQuickStartMenuItem",
+        "title": "%command.removeQuickStartMenuItem.title%",
+        "category": "FS Quick Start",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "vscode-ibmi-fs.moveQuickStartMenuItemUp",
+        "title": "%command.moveQuickStartMenuItemUp.title%",
+        "category": "FS Quick Start",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "vscode-ibmi-fs.moveQuickStartMenuItemDown",
+        "title": "%command.moveQuickStartMenuItemDown.title%",
+        "category": "FS Quick Start",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "vscode-ibmi-fs.resetQuickStartMenu",
+        "title": "%command.resetQuickStartMenu.title%",
+        "category": "FS Quick Start",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "vscode-ibmi-fs.openQuickStartMenuSettings",
+        "title": "%command.openQuickStartMenuSettings.title%",
+        "category": "FS Quick Start",
+        "icon": "$(settings-gear)"
+      },
+      {
         "command": "vscode-ibmi-fs.dspmsgQsysopr",
         "title": "%command.dspmsgQsysopr.title%",
         "category": "FS Quick Start",
@@ -692,7 +740,50 @@
         }
       ]
     },
-    "keybindings": []
+    "keybindings": [],
+    "configuration": {
+      "title": "IBM i FS",
+      "properties": {
+        "vscode-ibmi-fs.quickStartMenu": {
+          "type": "array",
+          "scope": "window",
+          "default": [],
+          "markdownDescription": "%config.quickStartMenu.description%",
+          "items": {
+            "type": "object",
+            "required": [
+              "label",
+              "command"
+            ],
+            "properties": {
+              "label": {
+                "type": "string",
+                "markdownDescription": "%config.quickStartMenu.items.label%"
+              },
+              "description": {
+                "type": "string",
+                "markdownDescription": "%config.quickStartMenu.items.description%"
+              },
+              "icon": {
+                "type": "string",
+                "markdownDescription": "%config.quickStartMenu.items.icon%"
+              },
+              "command": {
+                "type": "string",
+                "markdownDescription": "%config.quickStartMenu.items.command%"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "markdownDescription": "%config.quickStartMenu.items.args%"
+              }
+            }
+          }
+        }
+      }
+    }
   },
   "scripts": {
     "clean": "rimraf dist",
