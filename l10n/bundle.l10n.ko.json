@@ -861,6 +861,7 @@
   "No AJE for this subsystem.": "이 하위 시스템에는 AJE가 없습니다.",
   "No authorizations found": "권한을 찾을 수 없습니다",
   "No call stack entries found.": "호출 스택 항목이 없습니다.",
+  "No columns found": "열을 찾을 수 없습니다",
   "No copyright information in this module.": "이 모듈에는 저작권 정보가 없습니다.",
   "No data in this Usridx.": "이 Usridx에 데이터가 없습니다.",
   "No dependent objects found": "종속 객체가 발견되지 않았습니다",
