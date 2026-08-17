@@ -878,7 +878,7 @@ export default class File extends Base {
       columns: columns,
       data: this.fileColumns,
       stickyHeader: true,
-      emptyMessage: vscode.l10n.t('No members objects found'),
+      emptyMessage: vscode.l10n.t('No columns found'),
     }) + ``;
   }
 
