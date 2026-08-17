@@ -861,6 +861,7 @@
   "No AJE for this subsystem.": "このサブシステムにはAJEはありません。",
   "No authorizations found": "権限が見つかりません",
   "No call stack entries found.": "コール・スタックのエントリがありません。",
+  "No columns found": "列が見つかりません",
   "No copyright information in this module.": "このモジュールには著作権情報がありません。",
   "No data in this Usridx.": "このUsridxにデータがありません。",
   "No dependent objects found": "依存オブジェクトが見つかりませんでした",
