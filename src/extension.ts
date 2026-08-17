@@ -120,7 +120,8 @@ function getContributedCommands(extensionId: string): QuickStartExtensionCommand
 
 /**
  * Lists installed extensions that contribute at least one command, with
- * IBM i-related extensions surfaced first for convenience.
+ * HalcyonTech Ltd and other IBM i-related extensions surfaced first for
+ * convenience.
  */
 function getExtensionsWithCommands(): QuickStartExtensionEntry[] {
   return vscode.extensions.all
@@ -131,10 +132,24 @@ function getExtensionsWithCommands(): QuickStartExtensionEntry[] {
     }))
     .filter(entry => entry.commandCount > 0)
     .sort((a, b) => {
-      const aPinned = /ibmi/i.test(a.id) ? 0 : 1;
-      const bPinned = /ibmi/i.test(b.id) ? 0 : 1;
+      const aPinned = getPinRank(a.id);
+      const bPinned = getPinRank(b.id);
       return aPinned !== bPinned ? aPinned - bPinned : a.label.localeCompare(b.label);
     });
+}
+
+/**
+ * Sort rank used to surface HalcyonTech Ltd extensions first, followed by
+ * other IBM i-related extensions, then everything else alphabetically.
+ */
+function getPinRank(extensionId: string): number {
+  if (/^halcyontechltd\./i.test(extensionId)) {
+    return 0;
+  }
+  if (/ibmi/i.test(extensionId)) {
+    return 1;
+  }
+  return 2;
 }
 
 /**
