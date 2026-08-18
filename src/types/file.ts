@@ -199,7 +199,12 @@ export default class File extends Base {
 
       this.stats=false;
 
-      if (this.objtype === 'TABLE' || this.objtype === 'VIEW') {
+      if (this.objtype === 'INDEX') {
+        await Promise.all([
+          this.fetchInfoIndex(),
+          this.fetchStatsIndex()
+        ])
+      } else {
         await Promise.all([
           this.fetchInfoFile(),
           this.fetchColumns(),
@@ -207,11 +212,6 @@ export default class File extends Base {
           this.objtype !== 'VIEW' ? this.fetchStatsFile() : Promise.resolve(),
           this.objtype !== 'VIEW' ? this.fetchMembers() : Promise.resolve(),
           this.objtype !== 'VIEW' ? this.fetchDependency() : Promise.resolve(),
-        ])
-      } else {
-        await Promise.all([
-          this.fetchInfoIndex(),
-          this.fetchStatsIndex()
         ])
       }
     } else {
@@ -670,7 +670,7 @@ export default class File extends Base {
       panels.push({ title: vscode.l10n.t("View info"), content: this.renderViewPanel() })
     }
 
-    if(this.stats) {
+    if(this.stats && this.stats.length > 0) {
       panels.push({ title: vscode.l10n.t("Statistics"), content: this.renderStatsPanel() })
     }
 
@@ -696,6 +696,10 @@ export default class File extends Base {
    * @private
    */
   private renderMainPanel(): string {
+    if (!this.file || this.file.length === 0) {
+      return `<p>${vscode.l10n.t('No SQL information available for this object.')}</p>`;
+    }
+
     // Generate the detail table with file information
     return generateDetailTable({
       title: vscode.l10n.t("File: {0}/{1}", this.library, this.name),
