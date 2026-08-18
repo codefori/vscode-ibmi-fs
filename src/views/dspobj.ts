@@ -32,7 +32,7 @@ export namespace DspobjActions {
             const library = parts[1];
             const nameWithExt = parts[2];
             const name = nameWithExt.substring(0, nameWithExt.lastIndexOf('.'));
-            const type = '*'+parts[2].split('.')[1];
+            const type = '*' + parts[2].split('.')[1];
             return openWrkobjWebview(library, name, type);
           }
         } else if (item) {
@@ -115,38 +115,65 @@ export namespace DspobjActions {
   const fetchObjectStatistics = async (library: string, name: string, type: string): Promise<any[] | null> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       throw new Error(vscode.l10n.t("Not connected to IBM i"));
     }
-
+    // Fixed ASP_NAME issue
+    // changed Journaled = NO to 'NOT JOURNALED' to avoid frontendTables auto-formatting it as a red "X NO" indicator.
+    // that red `X NO` needs to be fixed in the core vscode-ibmi code (ibmi.ts)
     const query = `
-      SELECT DISTINCT 
-                x.OBJLONGNAME, 
-                x.SQL_OBJECT_TYPE, 
-                OBJOWNER,
-                OBJDEFINER,
-                OBJSIZE,
-                OBJTEXT,
-                CASE WHEN x.OBJTYPE='*LIB' THEN IASP_NAME else null end as ASPGRP,  
-                TO_CHAR(OBJCREATED, 'yyyy-mm-dd HH24:mi') OBJCREATED,
-                TO_CHAR(CHANGE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') CHANGE_TIMESTAMP,
-                TO_CHAR(LAST_USED_TIMESTAMP, 'yyyy-mm-dd HH24:mi') LAST_USED_TIMESTAMP,
+      SELECT DISTINCT
+                x.OBJLONGNAME,
+                x.SQL_OBJECT_TYPE,
+                x.OBJOWNER,
+                x.OBJDEFINER,
+                x.OBJSIZE,
+                x.OBJTEXT,
+                CASE
+                  WHEN x.OBJTYPE = '*LIB' THEN LIBX.IASP_NAME
+                  ELSE null
+                END AS ASPGRP,
+                TO_CHAR(x.OBJCREATED, 'yyyy-mm-dd HH24:mi') OBJCREATED,
+                TO_CHAR(x.CHANGE_TIMESTAMP, 'yyyy-mm-dd HH24:mi')
+                  CHANGE_TIMESTAMP,
+                TO_CHAR(x.LAST_USED_TIMESTAMP, 'yyyy-mm-dd HH24:mi')
+                  LAST_USED_TIMESTAMP,
                 DAYS_USED_COUNT,
-                TO_CHAR(SAVE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') SAVE_TIMESTAMP,
+                TO_CHAR(x.SAVE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') SAVE_TIMESTAMP,
                 X.SAVE_DEVICE,
                 X.SAVE_VOLUME,
                 X.SAVE_SEQUENCE_NUMBER,
-                TO_CHAR(RESTORE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') RESTORE_TIMESTAMP,
-                CASE WHEN JOURNALED = 'YES' THEN JOURNALED CONCAT ' ' CONCAT JOURNAL_LIBRARY CONCAT '/' CONCAT JOURNAL_NAME ELSE 'NO' END AS JOURNALED,
-                AUTHORIZATION_LIST
+                TO_CHAR(x.RESTORE_TIMESTAMP, 'yyyy-mm-dd HH24:mi')
+                  RESTORE_TIMESTAMP,
+                CASE
+                  WHEN
+                    X.JOURNALED = 'YES'
+                    THEN
+                      X.JOURNALED CONCAT ' ' CONCAT X.JOURNAL_LIBRARY CONCAT
+                        '/' CONCAT X.JOURNAL_NAME
+                  ELSE 'NOT JOURNALED'
+                END AS JOURNAL_STATUS,
+                Y.AUTHORIZATION_LIST
       FROM TABLE (
                QSYS2.OBJECT_STATISTICS('${library}', '${type}', '${name}')
            ) X
-           INNER JOIN QSYS2.OBJECT_PRIVILEGES Y
-               ON X.OBJNAME = Y.SYSTEM_OBJECT_NAME
-                   AND X.OBJTYPE = Y.OBJECT_TYPE
-                   AND X.OBJLIB = Y.SYSTEM_OBJECT_SCHEMA
+           , LATERAL (
+         SELECT *
+           FROM TABLE (
+               QSYS2.OBJECT_PRIVILEGES(X.OBJLIB, X.OBJNAME, X.OBJTYPE)
+             )
+       ) Y,
+       LATERAL (
+         SELECT *
+           FROM TABLE (
+               QSYS2.LIBRARY_INFO(
+                 CASE
+                   WHEN X.OBJTYPE = '*LIB' THEN x.OBJNAME
+                   ELSE X.OBJLIB
+                 END, DETAILED_INFO => 'NO')
+             ) LIBINFO
+       ) LIBX
     `;
 
     const result = await executeSqlIfExists(
@@ -177,7 +204,7 @@ export namespace DspobjActions {
   const fetchObjectLocks = async (library: string, name: string, type: string): Promise<any[] | null> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       throw new Error(vscode.l10n.t("Not connected to IBM i"));
     }
@@ -187,10 +214,17 @@ export namespace DspobjActions {
              LOCK_STATUS,
              LOCK_SCOPE,
              JOB_NAME
-      FROM QSYS2.OBJECT_LOCK_INFO
-      WHERE SYSTEM_OBJECT_SCHEMA = '${library}'
-            AND SYSTEM_OBJECT_NAME = '${name}'
-            AND OBJECT_TYPE='${type}'
+        FROM TABLE (QSYS2.LIBRARY_INFO('${library}', DETAILED_INFO => 'NO')) X,
+       LATERAL (
+         SELECT *
+           FROM TABLE (
+               QSYS2.OBJECT_LOCK_INFO(
+                    LIBRARY_NAME=>'${library}',
+                    OBJECT_NAME => '${name}',
+                    OBJECT_TYPE => '${type}',
+                    IASP_NUMBER => COALESCE(X.IASP_NUMBER, 0))
+             ) LOCKS
+       ) L
     `;
 
     const result = await executeSqlIfExists(
@@ -221,13 +255,13 @@ export namespace DspobjActions {
   const fetchObjectPrivileges = async (library: string, name: string, type: string): Promise<any[] | null> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       throw new Error(vscode.l10n.t("Not connected to IBM i"));
     }
 
     const query = `
-      SELECT AUTHORIZATION_NAME,
+      SELECT AUTHORIZATION_USER as AUTHORIZATION_NAME,
              OBJECT_AUTHORITY,
              OBJECT_OPERATIONAL,
              OBJECT_MANAGEMENT,
@@ -239,10 +273,10 @@ export namespace DspobjActions {
              DATA_UPDATE,
              DATA_DELETE,
              DATA_EXECUTE
-      FROM QSYS2.OBJECT_PRIVILEGES
-      WHERE SYSTEM_OBJECT_SCHEMA = '${library}'
-            AND SYSTEM_OBJECT_NAME = '${name}'
-            AND OBJECT_TYPE='${type}'
+      FROM TABLE(QSYS2.OBJECT_PRIVILEGES(
+              SYSTEM_OBJECT_SCHEMA => '${library}',
+              SYSTEM_OBJECT_NAME => '${name}',
+              OBJECT_TYPE => '${type}'))
     `;
 
     const result = await executeSqlIfExists(
@@ -254,6 +288,7 @@ export namespace DspobjActions {
     );
 
     if (result === null) {
+      console.log(`Privileges: ${query}\n`);
       vscode.window.showErrorMessage(
         vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OBJECT_PRIVILEGES")
       );
@@ -272,7 +307,7 @@ export namespace DspobjActions {
   const openWrkobjWebview = async (library: string, name: string, type: string): Promise<boolean> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
@@ -303,6 +338,8 @@ export namespace DspobjActions {
         }
       );
 
+      const journaledLabel = vscode.l10n.t('Journaled');
+
       // Define columns for object statistics (detail table - Map format)
       const statsColumns = new Map<string, string>([
         ['OBJLONGNAME', vscode.l10n.t('SQL Name')],
@@ -321,7 +358,7 @@ export namespace DspobjActions {
         ['SAVE_VOLUME', vscode.l10n.t('Save Volume')],
         ['SAVE_SEQUENCE_NUMBER', vscode.l10n.t('Save Sequence')],
         ['RESTORE_TIMESTAMP', vscode.l10n.t('Restored')],
-        ['JOURNALED', vscode.l10n.t('Journaled')],
+        ['JOURNAL_STATUS', journaledLabel],
         ['AUTHORIZATION_LIST', vscode.l10n.t('Auth List')]
       ]);
 
@@ -413,7 +450,7 @@ export namespace DspobjActions {
    */
   function generateWebviewHtml(content: string): string {
     const webToolKit = require("@vscode-elements/elements/dist/bundled.js");
-    
+
     return `<!DOCTYPE html>
     <html lang="it">
       <head>
@@ -434,18 +471,18 @@ export namespace DspobjActions {
       </body>
       <script defer>
         const vscode = acquireVsCodeApi();
-        
+
         // Save and restore active tab
         (function() {
           const tabs = document.querySelector('vscode-tabs');
           if (tabs) {
             const state = vscode.getState() || {};
             const savedIndex = state.activeTabIndex;
-            
+
             if (savedIndex !== undefined && savedIndex !== null) {
               tabs.setAttribute('selected-index', savedIndex.toString());
             }
-            
+
             tabs.addEventListener('vsc-select', (event) => {
               const selectedIndex = event.detail.selectedIndex;
               if (selectedIndex !== undefined && selectedIndex !== null) {

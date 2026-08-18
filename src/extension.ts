@@ -481,6 +481,55 @@ async function moveQuickStartMenuItem(direction: -1 | 1) {
 }
 
 /**
+ * Close transient runtime webview panels that VS Code may restore after reload.
+ * These panels are snapshots and can reopen without refreshed data.
+ */
+async function closeRestoredRuntimePanelsOnActivate(): Promise<void> {
+  const transientViewTypes = new Set([
+    'wrkobjView',
+    'wrkjobView',
+    'wrkactjobView',
+    'wrksplfView',
+    'wrkusrjobView'
+  ]);
+
+  const tabsToClose = vscode.window.tabGroups.all
+    .flatMap(group => group.tabs)
+    .filter(tab => {
+      const input = tab.input;
+
+      // Transient quick-action webviews.
+      if (input instanceof vscode.TabInputWebview) {
+        return transientViewTypes.has(input.viewType);
+      }
+
+      // DSPMSG / DSPMSG QSYSOPR are opened via custom editor (vscode.openWith).
+      // Close restored queue-style tabs so they don't reopen stale after restart.
+      if (input instanceof vscode.TabInputCustom) {
+        if (input.viewType !== 'vscode-ibmi-fs.editor') {
+          return false;
+        }
+        // Add additional FS extensions here to have it close old tabs at re-activate
+        const upperPath = input.uri.path.toUpperCase();
+        return [
+          '.MSGQ',
+          '.OUTQ',
+          '.SBSD',
+          '.DTAQ',
+          '.JOBQ'
+        ].some(ext => upperPath.endsWith(ext));
+      }
+
+      return false;
+    });
+
+  if (tabsToClose.length > 0) {
+    await vscode.window.tabGroups.close(tabsToClose);
+  }
+}
+
+
+/**
  * Extension activation function
  * This method is called when the extension is activated for the first time
  * @param context - The extension context provided by VS Code
@@ -488,6 +537,9 @@ async function moveQuickStartMenuItem(direction: -1 | 1) {
 export async function activate(context: vscode.ExtensionContext) {
   // Load the base IBM i extension
   loadBase();
+
+  // Drop restored transient panels so users don't see stale, data-less snapshots after reload.
+  await closeRestoredRuntimePanelsOnActivate();
 
   // Register the document manager
   DocumentManager.register(context);
@@ -553,7 +605,7 @@ export async function activate(context: vscode.ExtensionContext) {
       // Determine object type from URI
       const ext = uri.path.split('.').pop()?.toUpperCase();
       const fragment = uri.fragment?.toUpperCase();
-      
+
       // Build actions list based on object type
       const actions: { label: string; command: string; icon?: string }[] = [];
 
@@ -886,9 +938,9 @@ export async function activate(context: vscode.ExtensionContext) {
       try {
         // Create the URI for the QSYSOPR message queue in QSYS library
         const uri = vscode.Uri.parse('member:/QSYS/QSYSOPR.MSGQ');
-        
-        // Open the file with the custom editor
-        await vscode.commands.executeCommand('vscode.openWith', uri, 'vscode-ibmi-fs.editor');
+
+        // Open in preview mode so the tab is less likely to persist across restarts.
+        await vscode.commands.executeCommand('vscode.openWith', uri, 'vscode-ibmi-fs.editor', { preview: true });
       } catch (error) {
         vscode.window.showErrorMessage(vscode.l10n.t('Failed to open QSYSOPR: {0}', String(error)));
       }
@@ -908,9 +960,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
         // Create the URI for the user's message queue in QSYS library
         const uri = vscode.Uri.parse(`member:/QUSRSYS/${connection.currentUser.toUpperCase()}.MSGQ`);
-        
-        // Open the file with the custom editor
-        await vscode.commands.executeCommand('vscode.openWith', uri, 'vscode-ibmi-fs.editor');
+
+        // Open in preview mode so the tab is less likely to persist across restarts.
+        await vscode.commands.executeCommand('vscode.openWith', uri, 'vscode-ibmi-fs.editor', { preview: true });
       } catch (error) {
         vscode.window.showErrorMessage(vscode.l10n.t(`Failed to open user's message queue: {0}`, String(error)));
       }
