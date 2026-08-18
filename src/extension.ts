@@ -516,7 +516,12 @@ async function closeRestoredRuntimePanelsOnActivate(): Promise<void> {
           '.OUTQ',
           '.SBSD',
           '.DTAQ',
-          '.JOBQ'
+          '.JOBQ',
+          '.JOBD',
+          '.DDMF',
+          '.JRN',
+          '.BNDDIR',
+
         ].some(ext => upperPath.endsWith(ext));
       }
 

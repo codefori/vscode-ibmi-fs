@@ -65,7 +65,7 @@ export namespace JobDescriptionActions {
     const connection = ibmi?.getConnection();
     if (connection) {
 
-      if(getProtected(connection,item.library)){
+      if (getProtected(connection, item.library)) {
         vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
@@ -133,10 +133,12 @@ export default class Jobd extends Base {
           HOLD_ON_JOB_QUEUE, OUTPUT_QUEUE_LIBRARY CONCAT '/' CONCAT OUTPUT_QUEUE AS OUTPUT_QUEUE, OUTPUT_QUEUE_PRIORITY, SPOOLED_FILE_ACTION, PRINTER_DEVICE,
           PRINT_TEXT, JOB_MESSAGE_QUEUE_MAXIMUM_SIZE, JOB_MESSAGE_QUEUE_FULL_ACTION, SYNTAX_CHECK_SEVERITY, JOB_END_SEVERITY,
           JOBLOG_OUTPUT, INQUIRY_MESSAGE_REPLY, MESSAGE_LOGGING_LEVEL, MESSAGE_LOGGING_SEVERITY, MESSAGE_LOGGING_TEXT,
-          LOG_CL_PROGRAM_COMMANDS, DEVICE_RECOVERY_ACTION, TIME_SLICE_END_POOL, ALLOW_MULTIPLE_THREADS, WORKLOAD_GROUP, ASPGRP,
+          LOG_CL_PROGRAM_COMMANDS, DEVICE_RECOVERY_ACTION, TIME_SLICE_END_POOL, ALLOW_MULTIPLE_THREADS,
+          ASPGRP,
           DDM_CONVERSATION
-          FROM QSYS2.JOB_DESCRIPTION_INFO
-          WHERE JOB_DESCRIPTION = '${this.name}' AND JOB_DESCRIPTION_LIBRARY = '${this.library}'`,
+          FROM TABLE(QSYS2.JOB_DESCRIPTION_INFO(
+                              JOB_DESCRIPTION => '${this.name}',
+                              JOB_DESCRIPTION_LIBRARY => '${this.library}'))`,
         'QSYS2',
         'JOB_DESCRIPTION_INFO',
         'VIEW'
