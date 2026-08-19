@@ -283,33 +283,33 @@ export class Binddir extends Base {
        X.ENTRY_TYPE AS OBJTYPE,
        Y.SYMBOL_NAME,
        Y.SYMBOL_USAGE
-  FROM TABLE (
-         QSYS2.BINDING_DIRECTORY_INFO('${this.library}', '${this.name}')
-       ) X
+        FROM TABLE (
+              QSYS2.BINDING_DIRECTORY_INFO('${this.library}', '${this.name}')
+            ) X
 
-  CROSS JOIN LATERAL (
-         SELECT O.OBJNAME,
-                O.OBJLIB,
-                O.OBJTYPE
-           FROM TABLE (
-                  QSYS2.OBJECT_STATISTICS(
-                     OBJECT_SCHEMA  => X.ENTRY_LIBRARY,
-                     OBJTYPELIST => X.ENTRY_TYPE,
-                     OBJECT_NAME    => X.ENTRY
-                  )
-                ) O
-       ) O
+        CROSS JOIN LATERAL (
+              SELECT O.OBJNAME,
+                      O.OBJLIB,
+                      O.OBJTYPE
+                FROM TABLE (
+                        QSYS2.OBJECT_STATISTICS(
+                          OBJECT_SCHEMA  => X.ENTRY_LIBRARY,
+                          OBJTYPELIST => X.ENTRY_TYPE,
+                          OBJECT_NAME    => X.ENTRY
+                        )
+                      ) O
+            ) O
 
-  CROSS JOIN LATERAL (
-         SELECT *
-           FROM TABLE (
-                  QSYS2.PROGRAM_EXPORT_IMPORT_INFO(
-                     PROGRAM_LIBRARY => O.OBJLIB,
-                     PROGRAM_NAME    => O.OBJNAME,
-                     OBJECT_TYPE     => O.OBJTYPE
-                  )
-                ) PX
-       ) Y`,
+        CROSS JOIN LATERAL (
+              SELECT *
+                FROM TABLE (
+                        QSYS2.PROGRAM_EXPORT_IMPORT_INFO(
+                          PROGRAM_LIBRARY => O.OBJLIB,
+                          PROGRAM_NAME    => O.OBJNAME,
+                          OBJECT_TYPE     => O.OBJTYPE
+                        )
+                      ) PX
+            ) Y`,
         'QSYS2',
         'BINDING_DIRECTORY_INFO',
         'VIEW'

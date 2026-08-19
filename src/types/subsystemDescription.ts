@@ -771,27 +771,27 @@ export class Sbsd extends Base {
     ];
 
     if (this.ajes.length > 0) {
-      panels.push({ title: vscode.l10n.t("AJE"), badge: this.ajes.length, content: renderAjes(this.ajes) })
+      panels.push({ title: vscode.l10n.t("AJEs"), badge: this.ajes.length, content: renderAjes(this.ajes) })
     }
 
     if (this.wses.length > 0) {
-      panels.push({ title: vscode.l10n.t("WSE"), badge: this.wses.length, content: renderWses(this.wses) })
+      panels.push({ title: vscode.l10n.t("WSEs"), badge: this.wses.length, content: renderWses(this.wses) })
     }
 
     if (this.jobqes.length > 0) {
-      panels.push({ title: vscode.l10n.t("JOBQE"), badge: this.jobqes.length, content: renderJobqes(this.jobqes) })
+      panels.push({ title: vscode.l10n.t("JOBQEs"), badge: this.jobqes.length, content: renderJobqes(this.jobqes) })
     }
 
     if (this.rtges.length > 0) {
-      panels.push({ title: vscode.l10n.t("RTGE"), badge: this.rtges.length, content: renderRtges(this.rtges) })
+      panels.push({ title: vscode.l10n.t("RTGEs"), badge: this.rtges.length, content: renderRtges(this.rtges) })
     }
 
     if (this.pjes.length > 0) {
-      panels.push({ title: vscode.l10n.t("PJE"), badge: this.pjes.length, content: renderPjes(this.pjes) })
+      panels.push({ title: vscode.l10n.t("PJEs"), badge: this.pjes.length, content: renderPjes(this.pjes) })
     }
 
-    if (this.sbs[0].STATUS === 'ACTIVE') {
-      panels.push({ title: vscode.l10n.t("JOBS"), badge: this.jobs.length, content: renderJobs(this.jobs) })
+    if (this.sbs[0].STATUS==='ACTIVE') {
+      panels.push({ title: vscode.l10n.t("JOBs"), badge: this.jobs.length, content: renderJobs(this.jobs) })
     }
 
     this.renderedShape = this.panelShape();

@@ -338,8 +338,6 @@ export namespace DspobjActions {
         }
       );
 
-      const journaledLabel = vscode.l10n.t('Journaled');
-
       // Define columns for object statistics (detail table - Map format)
       const statsColumns = new Map<string, string>([
         ['OBJLONGNAME', vscode.l10n.t('SQL Name')],
@@ -358,7 +356,7 @@ export namespace DspobjActions {
         ['SAVE_VOLUME', vscode.l10n.t('Save Volume')],
         ['SAVE_SEQUENCE_NUMBER', vscode.l10n.t('Save Sequence')],
         ['RESTORE_TIMESTAMP', vscode.l10n.t('Restored')],
-        ['JOURNAL_STATUS', journaledLabel],
+        ['JOURNAL_STATUS', vscode.l10n.t('Journaled')],
         ['AUTHORIZATION_LIST', vscode.l10n.t('Auth List')]
       ]);
 
