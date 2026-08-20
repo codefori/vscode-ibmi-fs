@@ -12,12 +12,12 @@ export const IBMI_OBJECT_NAME = /^([\w$#@][\w\d$#@_.]{0,9})$/i;
 export function generateRandomString(len: number): string {
   const letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
   let result = '';
-  
+
   for (let i = 0; i < len; i++) {
     const randomIndex = Math.floor(Math.random() * letters.length);
     result += letters[randomIndex];
   }
-  
+
   return result;
 }
 
@@ -42,21 +42,21 @@ export function getQSYSObjectPath(library: string, name: string, type: string, m
  * @param lib - Library name to check
  * @returns true if the library is protected, false otherwise
  */
-export function getProtected(connection: IBMi, lib: string) : boolean {
+export function getProtected(connection: IBMi, lib: string): boolean {
 
-  let isProtected=true;
-  let rule : ObjectFilters;
+  let isProtected = true;
+  let rule: ObjectFilters;
 
   connection.getConfig().objectFilters.forEach(element => {
-    if(element.library==lib||(element.library.endsWith('*')&&lib.startsWith(element.library.substring(0,element.library.length-1)))){
-      if(rule){
-        if((element.types[0]!=='*ALL'&&rule.types[0]==='*ALL')||(element.object!=='*'&&rule.object==='*')){
-          rule=element;
-          isProtected=element.protected;
+    if (element.library == lib || (element.library.endsWith('*') && lib.startsWith(element.library.substring(0, element.library.length - 1)))) {
+      if (rule) {
+        if ((element.types[0] !== '*ALL' && rule.types[0] === '*ALL') || (element.object !== '*' && rule.object === '*')) {
+          rule = element;
+          isProtected = element.protected;
         }
       } else {
-        rule=element;
-        isProtected=element.protected;
+        rule = element;
+        isProtected = element.protected;
       }
     }
   });
@@ -132,7 +132,7 @@ export async function checkSqlObjectExists(
 ): Promise<boolean> {
   try {
     let query: string;
-    
+
     switch (objectType) {
       case 'VIEW':
         // Check in SYSVIEWS for views
@@ -154,7 +154,7 @@ export async function checkSqlObjectExists(
             AND TABLE_TYPE = '${objectType}'
         `;
         break;
-        
+
       case 'FUNCTION':
         // Check in SYSFUNCS for functions (including table functions)
         query = `
@@ -164,7 +164,7 @@ export async function checkSqlObjectExists(
             AND ROUTINE_NAME = '${objectName.toUpperCase()}'
         `;
         break;
-        
+
       case 'PROCEDURE':
         // Check in SYSPROCS for procedures
         query = `
@@ -174,18 +174,18 @@ export async function checkSqlObjectExists(
             AND ROUTINE_NAME = '${objectName.toUpperCase()}'
         `;
         break;
-        
+
       default:
         throw new Error(`Unsupported object type: ${objectType}`);
     }
-    
+
     const result = await ibmi.runSQL(query);
-    
+
     if (result && result.length > 0) {
       const count = Number(result[0].OBJECT_COUNT);
       return count > 0;
     }
-    
+
     return false;
   } catch (error) {
     console.error(`Error checking SQL object existence: ${error}`);
@@ -258,16 +258,18 @@ export async function executeSqlIfExists(
   try {
     // Check if the object exists
     const exists = await checkSqlObjectExists(ibmi, schema, objectName, objectType);
-    
+
     if (!exists) {
+      console.log(`checkObjectExists failed for ${schema}, ${objectName},${objectType}`);
       return null;
     }
-    
+
     // Object exists, execute the SQL
     const result = await ibmi.runSQL(sqlStatement);
     return result;
-    
+
   } catch (error) {
+    console.log(`checkObjectExists SQL statement failed ${sqlStatement}`);
     return null;
   }
 }
@@ -340,14 +342,14 @@ export async function executeSqlWithValidation(
   try {
     // Check all required objects
     const missingObjects: string[] = [];
-    
+
     for (const obj of requiredObjects) {
       const exists = await checkSqlObjectExists(ibmi, obj.schema, obj.name, obj.type);
       if (!exists) {
         missingObjects.push(`${obj.schema}.${obj.name} (${obj.type})`);
       }
     }
-    
+
     // If any objects are missing, return error
     if (missingObjects.length > 0) {
       return {
@@ -356,14 +358,14 @@ export async function executeSqlWithValidation(
         missingObjects
       };
     }
-    
+
     // All objects exist, execute the SQL
     const result = await ibmi.runSQL(sqlStatement);
     return {
       success: true,
       data: result
     };
-    
+
   } catch (error) {
     return {
       success: false,

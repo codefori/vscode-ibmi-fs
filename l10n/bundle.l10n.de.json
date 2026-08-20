@@ -812,6 +812,8 @@
   "MEDIA_PREFERENCE": "Datenträgervorgabe",
   "Member": "Teildatei",
   "Member Lock": "Member-Sperre",
+  "Member Lock Type": "Member-Sperrtyp",
+  "Member Name": "Teildateiname",
   "Member name": "Teildateiname",
   "Members": "Mitglieder",
   "MEMBERS_SAVED": "Mitglieder gespeichert",

@@ -98,11 +98,11 @@ export namespace DataQueueActions {
   export const clearDataQueue = async (item: IBMiObject | Dtaq): Promise<boolean> => {
     const library = item.library.toUpperCase();
     const name = item.name.toUpperCase();
-    
+
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      if(getProtected(connection,item.library)){
+      if (getProtected(connection, item.library)) {
         vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
@@ -127,7 +127,7 @@ export namespace DataQueueActions {
         } catch (error) {
           vscode.window.showErrorMessage(vscode.l10n.t("An error occurred while clearing DTAQ {0}/{1}", library, name));
           return false;
-       }
+        }
       } else {
         return false;
       }
@@ -147,7 +147,7 @@ export namespace DataQueueActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      if(getProtected(connection,item.library)){
+      if (getProtected(connection, item.library)) {
         vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
@@ -169,7 +169,7 @@ export namespace DataQueueActions {
    */
   export const _sendToDataQueue = async (dataQueue: Dtaq): Promise<boolean> => {
     // Get key data if this is a keyed data queue
-    const key = dataQueue.info[0].SEQUENCE==='KEYED' ? await vscode.window.showInputBox({
+    const key = dataQueue.info[0].SEQUENCE === 'KEYED' ? await vscode.window.showInputBox({
       placeHolder: vscode.l10n.t("key data"),
       title: vscode.l10n.t("Enter key data"),
       validateInput: data => {
@@ -178,7 +178,7 @@ export namespace DataQueueActions {
         }
       }
     }) : "";
-    
+
     if (!dataQueue.keyed || key) {
       // Ask if message is in UTF8 format
       const fmt = await vscode.window.showQuickPick(
@@ -189,7 +189,7 @@ export namespace DataQueueActions {
           canPickMany: false,
         },
       );
-      
+
       // Get the message data
       const data = await vscode.window.showInputBox({
         placeHolder: vscode.l10n.t("message"),
@@ -200,7 +200,7 @@ export namespace DataQueueActions {
           }
         }
       });
-      
+
       if (data) {
         const ibmi = getInstance();
         const connection = ibmi?.getConnection();
@@ -317,13 +317,14 @@ export class Dtaq extends Base {
       // First query to get data queue type
       this.dtaq = await executeSqlIfExists(
         connection,
-        `SELECT DATA_QUEUE_TYPE, 
+        `SELECT DATA_QUEUE_TYPE,
           SEQUENCE
-          FROM QSYS2.DATA_QUEUE_INFO
-          WHERE DATA_QUEUE_NAME = '${this.name}' AND DATA_QUEUE_LIBRARY = '${this.library}'`,
-          'QSYS2',
-          'DATA_QUEUE_INFO',
-          'VIEW'
+          FROM TABLE(QSYS2.DATA_QUEUE_INFO(
+                        DATA_QUEUE_NAME => '${this.name}',
+                        DATA_QUEUE_LIBRARY => '${this.library}'))`,
+        'QSYS2',
+        'DATA_QUEUE_INFO',
+        'VIEW'
       );
 
       if (this.dtaq === null) {
@@ -331,7 +332,7 @@ export class Dtaq extends Base {
         return;
       }
 
-      this._keyed=this.dtaq[0].SEQUENCE === 'KEYED';
+      this._keyed = this.dtaq[0].SEQUENCE === 'KEYED';
 
       // Build SQL based on data queue type (DDM vs standard)
       if (this.dtaq[0].DATA_QUEUE_TYPE === 'DDM') {
@@ -363,8 +364,9 @@ export class Dtaq extends Base {
                     TEXT_DESCRIPTION`
       }
 
-      sql = sql.trim() + ` FROM QSYS2.DATA_QUEUE_INFO
-                WHERE DATA_QUEUE_NAME = '${this.name}' AND DATA_QUEUE_LIBRARY = '${this.library}'`;
+      sql = sql.trim() + ` FROM TABLE(QSYS2.DATA_QUEUE_INFO(
+                           DATA_QUEUE_NAME => '${this.name}',
+                           DATA_QUEUE_LIBRARY=> '${this.library}'))`;
 
       this.dtaq = await executeSqlIfExists(
         connection,
@@ -536,7 +538,7 @@ function renderEntries(keyed: boolean, entries: Entry[], isUtf8: boolean) {
 
   let customStyles = "";
 
-  if(keyed){
+  if (keyed) {
     customStyles = `
       /* Custom styles for cells - specific to dataqueue entries table */
       .dataqueue-entries-table vscode-table-cell:nth-child(4) {

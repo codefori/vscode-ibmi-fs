@@ -163,7 +163,7 @@ export namespace SaveFileActions {
               WHEN IASP_NAME = '*SYSBAS' THEN NULL
               ELSE IASP_NAME
           END AS IASP_NAME
-        FROM TABLE (qsys2.OBJECT_STATISTICS(OBJECT_SCHEMA => 'QSYS', OBJTYPELIST => 'LIB', OBJECT_NAME => '${target.library}'))`);
+        FROM TABLE (qsys2.LIBRARY_INFO(OBJECT_NAME => '${target.library}', DETAILED_INFO=>'NO'))`);
 
       const qsysPath = libinfo[0].IASP_NAME ? getQSYSObjectPath(library, name, "file", undefined, String(libinfo[0].IASP_NAME)) :
         getQSYSObjectPath(library, name, "FILE");
@@ -324,7 +324,7 @@ export namespace SaveFileActions {
                     WHEN IASP_NAME = '*SYSBAS' THEN NULL
                     ELSE IASP_NAME
                 END AS IASP_NAME
-              FROM TABLE (qsys2.OBJECT_STATISTICS(OBJECT_SCHEMA => 'QSYS', OBJTYPELIST => 'LIB', OBJECT_NAME => '${target.library}'))`);
+              FROM TABLE (qsys2.LIBRARY_INFO(OBJECT_NAME => '${target.library}', DETAILED_INFO=>'NO'))`);
 
             const qsysPath = libinfo[0].IASP_NAME ? getQSYSObjectPath(target.library, target.name, "file", undefined, String(libinfo[0].IASP_NAME)) :
               getQSYSObjectPath(target.library, target.name, "FILE");
@@ -430,7 +430,7 @@ export namespace SaveFileActions {
         return false;
       }
 
-      let saveCmd;
+      let saveCmd = "";
 
       const savfInfo = await executeSqlIfExists(
         connection,

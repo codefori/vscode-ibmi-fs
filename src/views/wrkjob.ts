@@ -125,7 +125,7 @@ export namespace WrkjobActions {
   const joblogColumns = (): FastTableColumn<JoblogEntry>[] => [
     { title: vscode.l10n.t("MSGID"), width: "0.7fr", getValue: e => e.msgid },
     { title: vscode.l10n.t("Message"), width: "2fr", getValue: e => e.msgtext },
-    { title: vscode.l10n.t("Second Level"), width: "0.3fr", getValue: e => e.msgtext2.replaceAll('&N','\n').replaceAll('&B','\n\t').replaceAll('&P','\n\t'), collapsible: true },
+    { title: vscode.l10n.t("Second Level"), width: "0.3fr", getValue: e => e.msgtext2.replaceAll('&N', '\n').replaceAll('&B', '\n\t').replaceAll('&P', '\n\t'), collapsible: true },
     { title: vscode.l10n.t("Sev."), width: "0.3fr", getValue: e => String(e.severity) },
     { title: vscode.l10n.t("From Program"), width: "1.5fr", getValue: e => e.fromProgram },
     { title: vscode.l10n.t("Timestamp"), width: "1.2fr", getValue: e => e.timestamp }
@@ -185,7 +185,7 @@ export namespace WrkjobActions {
             }
           });
         }
-        
+
         if (jobName) {
           return openWrkjobWebview(jobName);
         }
@@ -193,72 +193,72 @@ export namespace WrkjobActions {
       vscode.commands.registerCommand("vscode-ibmi-fs.showWrkjobActions", async () => {
         // Use the currentActivePanel to get the job name
         let jobName: string | undefined = currentActivePanel;
-        
+
         if (!jobName) {
           vscode.window.showErrorMessage(vscode.l10n.t("No active job view found"));
           return;
         }
-        
+
         // Fetch current job info to determine available actions
         const ibmi = getInstance();
         const connection = ibmi?.getConnection();
-        
+
         if (!connection) {
           vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
           return;
         }
-        
+
         try {
           const jobInfo = await fetchJobInfo(jobName);
           if (!jobInfo || jobInfo.length === 0) {
             vscode.window.showErrorMessage(vscode.l10n.t("Unable to retrieve job information"));
             return;
           }
-          
+
           const jobStatus = jobInfo[0].JOB_STATUS;
           const activeStatus = jobInfo[0].ACTIVE_STATUS;
-          
+
           // Build action list based on job status
           const actions: vscode.QuickPickItem[] = [];
-          
-          if (jobStatus === 'ACTIVE' && activeStatus==='HLD') {
+
+          if (jobStatus === 'ACTIVE' && activeStatus === 'HLD') {
             actions.push({
               label: vscode.l10n.t("$(play) Release Job"),
             });
-          } else if (jobStatus === 'ACTIVE' && activeStatus!=='HLD') {
+          } else if (jobStatus === 'ACTIVE' && activeStatus !== 'HLD') {
             actions.push({
               label: vscode.l10n.t("$(debug-pause) Hold Job"),
             });
           }
-          
+
           if (jobStatus !== 'OUTQ') {
             actions.push({
               label: vscode.l10n.t("$(close) End Job"),
             });
           }
-          
+
           // Add debug action for active jobs
           if (jobStatus === 'ACTIVE') {
             actions.push({
               label: vscode.l10n.t("$(debug-alt) Debug Job"),
             });
           }
-          
+
           if (actions.length === 0) {
             vscode.window.showInformationMessage(vscode.l10n.t("No actions available for job {0} (status: {1})", jobName, jobStatus));
             return;
           }
-          
+
           // Show quick pick menu
           const selected = await vscode.window.showQuickPick(actions, {
             placeHolder: vscode.l10n.t("Select an action for job {0}", jobName),
             title: vscode.l10n.t("Job Actions")
           });
-          
+
           if (!selected) {
             return;
           }
-          
+
           // Execute the selected action
           let success = false;
           if (selected.label.includes("Hold")) {
@@ -270,7 +270,7 @@ export namespace WrkjobActions {
           } else if (selected.label.includes("Debug")) {
             success = await JobOperations.debugJob({ job: jobName });
           }
-          
+
           // Refresh the webview if action was successful (except for debug)
           if (success && !selected.label.includes("Debug")) {
             await vscode.commands.executeCommand('vscode-ibmi-fs.refreshWrkjob');
@@ -424,7 +424,7 @@ export namespace WrkjobActions {
   const fetchJobInfo = async (jobName: string): Promise<any> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       throw new Error(vscode.l10n.t("Not connected to IBM i"));
     }
@@ -436,13 +436,18 @@ export namespace WrkjobActions {
     const jobNameOnly = parts[2];
 
     // Check if job exists
+    let query =
+      `SELECT COUNT(*) as CNT
+       FROM TABLE(QSYS2.JOB_INFO( JOB_STATUS_FILTER => '*ALL',
+                                  JOB_USER_FILTER => '${jobUser}'))
+       WHERE JOB_NAME = '${jobName}'`;
+    if (jobNameOnly && jobNameOnly != '*ALL' && jobNameOnly != '') {
+      query += ` AND JOB_NAME_SHORT = '${jobNameOnly}'`;
+    }
+
     const jobExists = await executeSqlIfExists(
       connection,
-      `SELECT COUNT(*) as CNT
-       FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', 
-                                   JOB_USER_FILTER => '${jobUser}', 
-                                   JOB_NAME_FILTER => '${jobNameOnly}'))
-       WHERE JOB_NAME = '${jobName}'`,
+      query,
       'QSYS2',
       'JOB_INFO',
       'FUNCTION'
@@ -453,10 +458,7 @@ export namespace WrkjobActions {
       return null;
     }
 
-    // Fetch job info
-    const jobInfo = await executeSqlIfExists(
-      connection,
-      `SELECT P.JOB_STATUS,
+    query = `SELECT P.JOB_STATUS,
        X.JOB_STATUS AS ACTIVE_STATUS,
        X.FUNCTION_TYPE CONCAT '-' CONCAT X."FUNCTION" AS "FUNCTION",
        P.JOB_TYPE,
@@ -490,16 +492,24 @@ export namespace WrkjobActions {
         ELAPSED_TOTAL_DISK_IO_COUNT,
         CPU_TIME,
         TOTAL_DISK_IO_COUNT
-       FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL', 
-                                  JOB_USER_FILTER => '${jobUser}', 
-                                  JOB_NAME_FILTER => '${jobNameOnly}')) p
+       FROM TABLE(QSYS2.JOB_INFO(JOB_STATUS_FILTER => '*ALL',
+                                  JOB_USER_FILTER => '${jobUser}')) p
        LEFT JOIN TABLE (
-            QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => '${jobNameOnly}', 
-                                  CURRENT_USER_LIST_FILTER => '${jobUser}', 
+            QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => '${jobNameOnly}',
+                                  CURRENT_USER_LIST_FILTER => '${jobUser}',
                                   DETAILED_INFO => 'NONE', RESET_STATISTICS => 'NO')
              ) X
              ON X.JOB_NAME = P.JOB_NAME
-       WHERE P.JOB_NAME = '${jobName}'`,
+       WHERE P.JOB_NAME = '${jobName}'`;
+
+    if (jobNameOnly && jobNameOnly != '*ALL' && jobNameOnly != '') {
+      query += ` AND P.JOB_NAME_SHORT = '${jobNameOnly}'`;
+    }
+
+    // Fetch job info
+    const jobInfo = await executeSqlIfExists(
+      connection,
+      query,
       'QSYS2',
       'JOB_INFO',
       'FUNCTION'
@@ -519,7 +529,7 @@ export namespace WrkjobActions {
   const fetchCallStack = async (jobName: string): Promise<StackEntry[]> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       return [];
     }
@@ -555,7 +565,7 @@ export namespace WrkjobActions {
   const fetchLibl = async (jobName: string): Promise<LibraryEntry[]> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       return [];
     }
@@ -563,7 +573,7 @@ export namespace WrkjobActions {
     const liblspl = await connection.runCommand({
       command: `QSYS/DSPJOB JOB(${jobName}) OPTION(*LIBL)`,
       environment: `ile`,
-      getSpooledFiles:true,
+      getSpooledFiles: true,
     });
 
     if (!liblspl || !liblspl.stdout) {
@@ -574,20 +584,20 @@ export namespace WrkjobActions {
     // The output has fixed-width columns, so we parse by position
     const lines = liblspl.stdout.split('\n');
     const libraries: LibraryEntry[] = [];
-    
-  for (const line of lines) {
-      
+
+    for (const line of lines) {
+
       // Extract fields by position (fixed-width columns)
       const library = line.substring(3, 13).trim();
       const type = line.substring(15, 18).trim();
       const asp = line.substring(26, 36).trim();
       const description = line.substring(38, 90).trim();
-      
+
       // Skip if library name is empty or starts with * (separator lines)
       if (!library || library.startsWith('*')) {
         continue;
       }
-      
+
       // Only include valid library types
       if (type === 'SYS' || type === 'CUR' || type === 'USR') {
         libraries.push({
@@ -608,7 +618,7 @@ export namespace WrkjobActions {
   const fetchLocks = async (jobName: string): Promise<LockEntry[]> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       return [];
     }
@@ -647,7 +657,7 @@ export namespace WrkjobActions {
   const fetchOpenFiles = async (jobName: string): Promise<OpenFileEntry[]> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       return [];
     }
@@ -735,7 +745,7 @@ export namespace WrkjobActions {
   const fetchSpools = async (jobName: string): Promise<SpoolEntry[]> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       return [];
     }
@@ -858,7 +868,7 @@ export namespace WrkjobActions {
   const openWrkjobWebview = async (jobName: string): Promise<boolean> => {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (!connection) {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return false;
@@ -1041,7 +1051,7 @@ export namespace WrkjobActions {
 
       // Store the panel and refresh function
       activePanels.set(jobName, { panel, refreshFn: refreshFunction });
-      
+
       // Track when this panel becomes active
       panel.onDidChangeViewState(e => {
         if (e.webviewPanel.active) {
@@ -1097,7 +1107,7 @@ export namespace WrkjobActions {
       const generateContent = () => {
         // Job Info tab with action buttons
         const jobStatus = jobInfo && jobInfo.length > 0 ? String(jobInfo[0].JOB_STATUS) : '';
-        
+
         // Create action buttons based on job status
         let actionButtons = '';
         if (jobStatus === 'HELD') {
@@ -1113,7 +1123,7 @@ export namespace WrkjobActions {
             </div>
           `;
         }
-        
+
         const jobInfoHtml = generateDetailTable({
           title: vscode.l10n.t("Job: {0}", jobName),
           subtitle: vscode.l10n.t("Job Information"),
@@ -1269,7 +1279,7 @@ export namespace WrkjobActions {
 
         const uri = vscode.Uri.parse(href);
         const params = new URLSearchParams(uri.query);
-        
+
         let refetch = false;
         // Acting on the job itself changes the Job Info panel too — its status fields and the
         // Hold/Release buttons that are drawn from that status. That panel isn't a table, so
@@ -1328,7 +1338,7 @@ export namespace WrkjobActions {
                 nbr: entry.nbr,
                 job: entry.job
               });
-              
+
               if (deleted) {
                 refetch = true;
               }

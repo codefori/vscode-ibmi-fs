@@ -34,11 +34,11 @@ export namespace BindingDirectoryActions {
    * Register Binding Directory commands with VS Code
    * @param context - Extension context
    */
-    export const register = (context: vscode.ExtensionContext) => {
+  export const register = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
       vscode.commands.registerCommand("vscode-ibmi-fs.Addbnddire", async (item: IBMiObject | Binddir | vscode.Uri) => {
         let binddir: IBMiObject | Binddir;
-        
+
         // Handle toolbar call (Uri)
         if (item instanceof vscode.Uri) {
           const parts = item.path.split('/');
@@ -48,14 +48,14 @@ export namespace BindingDirectoryActions {
         } else {
           binddir = item;
         }
-        
+
         const result = await addbnddire(binddir);
-        
+
         // Refresh document if called from toolbar
         if (result && item instanceof vscode.Uri) {
           await ObjectProvider.refreshDocument(item);
         }
-        
+
         return result;
       })
     );
@@ -72,11 +72,11 @@ export namespace BindingDirectoryActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      if(getProtected(connection,bnddir.split('/')[0])){
+      if (getProtected(connection, bnddir.split('/')[0])) {
         vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
-      
+
       // Show confirmation dialog to prevent accidental removal
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to remove {0}?", item.object), { modal: true }, vscode.l10n.t("Remove object"))) {
         // Execute RMVBNDDIRE command on IBM i
@@ -108,16 +108,16 @@ export namespace BindingDirectoryActions {
    * @returns True if addition was successful, false otherwise
    */
   export const addbnddire = async (item: IBMiObject | Binddir): Promise<boolean> => {
-    
+
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
 
-      if(getProtected(connection,item.library)){
+      if (getProtected(connection, item.library)) {
         vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
-    
+
       // Prompt user for object details
       let obj, objtype, activation;
 
@@ -172,9 +172,9 @@ export namespace BindingDirectoryActions {
         return false;
       }
     } else {
-        vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
-        return false;
-      }
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
+      return false;
+    }
   };
 }
 
@@ -248,9 +248,9 @@ export class Binddir extends Base {
           ENTRY_TYPE,
           ENTRY_ACTIVATION,
           to_char(ENTRY_CREATE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') as ENTRY_CREATE_TIMESTAMP
-        FROM QSYS2.BINDING_DIRECTORY_INFO
-        WHERE BINDING_DIRECTORY_LIBRARY = '${this.library}'
-              AND BINDING_DIRECTORY = '${this.name}'`,
+        FROM TABLE(QSYS2.BINDING_DIRECTORY_INFO(
+                      BINDING_DIRECTORY_LIBRARY => '${this.library}',
+                      BINDING_DIRECTORY => '${this.name}'))`,
         'QSYS2',
         'BINDING_DIRECTORY_INFO',
         'VIEW'
@@ -279,15 +279,37 @@ export class Binddir extends Base {
       this.exports.length = 0;
       const entryRows = await executeSqlIfExists(
         connection,
-        `SELECT ENTRY_LIBRARY CONCAT '/' CONCAT ENTRY as ENTRY,
-          y.SYMBOL_NAME,
-          y.SYMBOL_USAGE
-        FROM QSYS2.BINDING_DIRECTORY_INFO x
-            INNER JOIN QSYS2.PROGRAM_EXPORT_IMPORT_INFO y
-                ON x.ENTRY_LIBRARY = y.PROGRAM_LIBRARY
-                    AND x.ENTRY = y.PROGRAM_NAME
-        WHERE BINDING_DIRECTORY_LIBRARY = '${this.library}'
-          AND BINDING_DIRECTORY = '${this.name}'`,
+        `SELECT X.ENTRY_LIBRARY CONCAT '/' CONCAT X.ENTRY AS ENTRY,
+       X.ENTRY_TYPE AS OBJTYPE,
+       Y.SYMBOL_NAME,
+       Y.SYMBOL_USAGE
+        FROM TABLE (
+              QSYS2.BINDING_DIRECTORY_INFO('${this.library}', '${this.name}')
+            ) X
+
+        CROSS JOIN LATERAL (
+              SELECT O.OBJNAME,
+                      O.OBJLIB,
+                      O.OBJTYPE
+                FROM TABLE (
+                        QSYS2.OBJECT_STATISTICS(
+                          OBJECT_SCHEMA  => X.ENTRY_LIBRARY,
+                          OBJTYPELIST => X.ENTRY_TYPE,
+                          OBJECT_NAME    => X.ENTRY
+                        )
+                      ) O
+            ) O
+
+        CROSS JOIN LATERAL (
+              SELECT *
+                FROM TABLE (
+                        QSYS2.PROGRAM_EXPORT_IMPORT_INFO(
+                          PROGRAM_LIBRARY => O.OBJLIB,
+                          PROGRAM_NAME    => O.OBJNAME,
+                          OBJECT_TYPE     => O.OBJTYPE
+                        )
+                      ) PX
+            ) Y`,
         'QSYS2',
         'BINDING_DIRECTORY_INFO',
         'VIEW'
@@ -327,7 +349,7 @@ export class Binddir extends Base {
     let refetch = false;  // Flag to determine if data needs to be refetched
     let entryJson;
     const params = new URLSearchParams(uri.query);
-    
+
     // Route to appropriate action handler based on action type
     switch (uri.path) {
       case "remove":
@@ -345,7 +367,7 @@ export class Binddir extends Base {
     if (refetch) {
       await this.fetch();
     }
-    
+
     // Return result indicating whether the UI should be re-rendered
     return { rerender: refetch };
   }
@@ -380,8 +402,8 @@ function toEntry(row: Tools.DB2Row): Entry {
 function toExport(row: Tools.DB2Row): Export {
   return {
     method: String(row.SYMBOL_NAME),
-    usage: String(row.SYMBOL_USAGE), 
-    object: String(row.ENTRY), 
+    usage: String(row.SYMBOL_USAGE),
+    object: String(row.ENTRY),
   };
 }
 
@@ -403,7 +425,7 @@ function renderEntries(entries: Entry[], name: string) {
       getValue: e => {
         // Encode entry as URL parameter for action handlers
         const arg = encodeURIComponent(JSON.stringify(e));
-        
+
         return `<vscode-button appearance="secondary" href="action:remove?entry=${arg}">${vscode.l10n.t("Remove")}</vscode-button>`;
       }
     }
@@ -415,7 +437,7 @@ function renderEntries(entries: Entry[], name: string) {
       color: var(--vscode-textLink-foreground);
     }
   `;
-  
+
   return `<div class="modules-entries-table">` + generateFastTable({
     title: vscode.l10n.t("Binding Directory: {0}", name),
     subtitle: vscode.l10n.t("Total entries: {0}", String(entries.length)),
@@ -446,7 +468,7 @@ function renderExports(exports: Export[]) {
       color: var(--vscode-textLink-foreground);
     }
   `;
-  
+
   return `<div class="exports-entries-bd-table">` + generateFastTable({
     title: ``,
     subtitle: ``,
