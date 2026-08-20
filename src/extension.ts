@@ -518,10 +518,19 @@ async function closeRestoredRuntimePanelsOnActivate(): Promise<void> {
           '.DTAQ',
           '.JOBQ',
           '.JOBD',
-          '.DDMF',
           '.JRN',
           '.BNDDIR',
-
+          '.DTAARA',
+          '.PGM',
+          '.SRVPGM',
+          '.CMD',
+          '.USRSPC',
+          '.MSGF',
+          '.MODULE',
+          '.JRNRCV',
+          '.CLS',
+          '.USRIDX',
+          '.FILE', // covers plain files as well as SAVF/DDMF (distinguished by uri fragment, not extension)
         ].some(ext => upperPath.endsWith(ext));
       }
 
