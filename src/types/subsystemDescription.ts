@@ -99,7 +99,7 @@ export namespace SubsystemActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      if(getProtected(connection,item.library)){
+      if (getProtected(connection, item.library)) {
         vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
@@ -108,9 +108,9 @@ export namespace SubsystemActions {
       let sbsd = await executeSqlIfExists(
         connection,
         `SELECT STATUS
-          FROM QSYS2.SUBSYSTEM_INFO
-          WHERE SUBSYSTEM_DESCRIPTION = '${name}'
-            AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${library}'`,
+          FROM TABLE(QSYS2.SUBSYSTEM_INFO(
+                      SUBSYSTEM_DESCRIPTION => '${name}',
+                      SUBSYSTEM_DESCRIPTION_LIBRARY => '${library}'))`,
         'QSYS2',
         'SUBSYSTEM_INFO',
         'VIEW'
@@ -121,7 +121,7 @@ export namespace SubsystemActions {
         return false;
       }
 
-      if(sbsd[0].STATUS === "ACTIVE") {
+      if (sbsd[0].STATUS === "ACTIVE") {
         vscode.window.showErrorMessage(vscode.l10n.t("Sbsd {0}/{1} already active", library, name));
         return false;
       }
@@ -162,7 +162,7 @@ export namespace SubsystemActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      if(getProtected(connection,item.library)){
+      if (getProtected(connection, item.library)) {
         vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
@@ -171,9 +171,9 @@ export namespace SubsystemActions {
       let sbsd = await executeSqlIfExists(
         connection,
         `SELECT STATUS
-          FROM QSYS2.SUBSYSTEM_INFO
-          WHERE SUBSYSTEM_DESCRIPTION = '${name}'
-            AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${library}'`,
+          FROM TABLE(QSYS2.SUBSYSTEM_INFO(
+                      SUBSYSTEM_DESCRIPTION => '${name}',
+                      SUBSYSTEM_DESCRIPTION_LIBRARY => '${library}'))`,
         'QSYS2',
         'SUBSYSTEM_INFO',
         'VIEW'
@@ -184,7 +184,7 @@ export namespace SubsystemActions {
         return false;
       }
 
-      if(sbsd[0].STATUS === "INACTIVE") {
+      if (sbsd[0].STATUS === "INACTIVE") {
         vscode.window.showErrorMessage(vscode.l10n.t("Sbsd {0}/{1} already inactive", library, name));
         return false;
       }
@@ -428,8 +428,8 @@ export class Sbsd extends Base {
    */
   async fetch() {
 
-    this.jobqes.length=0;
-    this.jobs.length=0;
+    this.jobqes.length = 0;
+    this.jobs.length = 0;
 
     await Promise.all([
       await this.fetchInfo(),
@@ -438,9 +438,9 @@ export class Sbsd extends Base {
       await this.fetchWses(),
       await this.fetchPjes(),
       await this.fetchRtges(),
-      this.sbs[0].STATUS==='ACTIVE' ? this.fetchJobqes() : Promise.resolve(),
-      this.sbs[0].STATUS==='ACTIVE' ? this.fetchJobs() : Promise.resolve()
-    ])  
+      this.sbs[0].STATUS === 'ACTIVE' ? this.fetchJobqes() : Promise.resolve(),
+      this.sbs[0].STATUS === 'ACTIVE' ? this.fetchJobs() : Promise.resolve()
+    ])
   }
 
   /**
@@ -468,9 +468,9 @@ export class Sbsd extends Base {
             SIGNON_DEVICE_FILE,
             SECONDARY_LANGUAGE_LIBRARY,
             IASP_NAME
-          FROM QSYS2.SUBSYSTEM_INFO
-          WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
-                AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`,
+          FROM TABLE(QSYS2.SUBSYSTEM_INFO(
+                      SUBSYSTEM_DESCRIPTION => '${this.name}',
+                      SUBSYSTEM_DESCRIPTION_LIBRARY => '${this.library}'))`,
         'QSYS2',
         'SUBSYSTEM_INFO',
         'VIEW'
@@ -495,19 +495,24 @@ export class Sbsd extends Base {
     const connection = ibmi?.getConnection();
     if (connection) {
       this.pools.length = 0;
+      const query =
+        `SELECT P.POOL_ID,
+         P.POOL_NAME,
+         P.POOL_SIZE,
+         P.MAXIMUM_ACTIVE_JOBS
+           FROM TABLE(QSYS2.SUBSYSTEM_POOL_INFO(
+                        SUBSYSTEM_DESCRIPTION => '${this.name}',
+                        SUBSYSTEM_DESCRIPTION_LIBRARY => '${this.library}')) P`;
       const entryRows = await executeSqlIfExists(
         connection,
-        `SELECT POOL_ID,
-          POOL_NAME
-        FROM QSYS2.SUBSYSTEM_POOL_INFO
-        WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
-          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`,
+        query,
         'QSYS2',
         'SUBSYSTEM_POOL_INFO',
         'VIEW'
       );
 
       if (entryRows === null) {
+        console.log(`SBS POOLS Failed: ${query}\n`);
         vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_POOL_INFO"));
         return;
       }
@@ -532,15 +537,16 @@ export class Sbsd extends Base {
         connection,
         `SELECT AUTOSTART_JOB_NAME,
           JOB_DESCRIPTION_LIBRARY CONCAT '/' CONCAT JOB_DESCRIPTION JOB_DESCRIPTION
-        FROM QSYS2.AUTOSTART_JOB_INFO
-        WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
-          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`,
+        FROM TABLE(QSYS2.AUTOSTART_JOB_INFO(
+                    SUBSYSTEM_DESCRIPTION => '${this.name}',
+                    SUBSYSTEM_DESCRIPTION_LIBRARY => '${this.library}'))`,
         'QSYS2',
         'AUTOSTART_JOB_INFO',
         'VIEW'
       );
 
       if (entryRows === null) {
+
         vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "AUTOSTART_JOB_INFO"));
         return;
       }
@@ -568,9 +574,9 @@ export class Sbsd extends Base {
           JOB_DESCRIPTION_LIBRARY concat '/' concat JOB_DESCRIPTION JOB_DESCRIPTION ,
           ALLOCATION,
           MAXIMUM_ACTIVE_JOBS
-        FROM QSYS2.WORKSTATION_INFO
-        WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
-          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`,
+        FROM TABLE(QSYS2.WORKSTATION_INFO(
+                    SUBSYSTEM_DESCRIPTION => '${this.name}',
+                    SUBSYSTEM_DESCRIPTION_LIBRARY => '${this.library}'))`,
         'QSYS2',
         'WORKSTATION_INFO',
         'VIEW'
@@ -605,9 +611,9 @@ export class Sbsd extends Base {
           POOL_ID,
           COMPARISON_DATA,
           COMPARISON_START
-        FROM QSYS2.ROUTING_ENTRY_INFO
-        WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
-          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`,
+        FROM TABLE(QSYS2.ROUTING_ENTRY_INFO(
+                    SUBSYSTEM_NAME => '${this.name}',
+                    SUBSYSTEM_LIBRARY => '${this.library}')) rtge`,
         'QSYS2',
         'ROUTING_ENTRY_INFO',
         'VIEW'
@@ -652,9 +658,9 @@ export class Sbsd extends Base {
               ELSE CHAR(MAXIMUM_USES)
           END MAXIMUM_USES,
           CLASS_LIBRARY CONCAT '/' CONCAT CLASS CLASS
-        FROM QSYS2.PRESTART_JOB_INFO
-        WHERE SUBSYSTEM_DESCRIPTION = '${this.name}'
-          AND SUBSYSTEM_DESCRIPTION_LIBRARY = '${this.library}'`,
+        FROM TABLE(QSYS2.PRESTART_JOB_INFO(
+                    SUBSYSTEM_DESCRIPTION => '${this.name}',
+                    SUBSYSTEM_DESCRIPTION_LIBRARY => '${this.library}'))`,
         'QSYS2',
         'PRESTART_JOB_INFO',
         'VIEW'
@@ -680,6 +686,9 @@ export class Sbsd extends Base {
     const connection = ibmi?.getConnection();
     if (connection) {
       this.jobqes.length = 0;
+      // Since Job_Queue_Info returns jobQ info for a given jobq name,
+      // the only way to get a list of JOBQs for a subystem name
+      // is to use the VIEW version of it, as is being done here.
       const entryRows = await executeSqlIfExists(
         connection,
         `SELECT JOB_QUEUE_LIBRARY CONCAT '/' CONCAT JOB_QUEUE_NAME JOB_QUEUE_NAME,
@@ -866,7 +875,7 @@ export class Sbsd extends Base {
     let refetch = false;  // Flag to determine if data needs to be refetched
     let entryJson;
     const params = new URLSearchParams(uri.query);
-    
+
     // Route to appropriate action handler based on action type
     switch (uri.path) {
       // Individual job actions
@@ -876,8 +885,8 @@ export class Sbsd extends Base {
         entryJson = params.get("entry");
         if (entryJson) {
           const entry: Job = JSON.parse(decodeURIComponent(entryJson));
-          if(await SubsystemActions.holdJob(entry)){
-            refetch=true;
+          if (await SubsystemActions.holdJob(entry)) {
+            refetch = true;
           }
         }
         break;
@@ -887,8 +896,8 @@ export class Sbsd extends Base {
         entryJson = params.get("entry");
         if (entryJson) {
           const entry: Job = JSON.parse(decodeURIComponent(entryJson));
-          if(await SubsystemActions.releaseJob(entry)){
-            refetch=true;
+          if (await SubsystemActions.releaseJob(entry)) {
+            refetch = true;
           }
         }
         break;
@@ -907,18 +916,18 @@ export class Sbsd extends Base {
         entryJson = params.get("entry");
         if (entryJson) {
           const entry: Job = JSON.parse(decodeURIComponent(entryJson));
-          if(await SubsystemActions.endJob(entry)){
-            refetch=true;
+          if (await SubsystemActions.endJob(entry)) {
+            refetch = true;
           }
         }
         break;
     }
-    
+
     // If any action was successful, refetch data to update the UI
     if (refetch) {
       await this.fetch();
     }
-    
+
     // Return result indicating whether the UI should be re-rendered
     return { rerender: refetch };
   }
@@ -1103,7 +1112,7 @@ function renderAjes(data: GenEntry[]) {
       color: var(--vscode-textLink-foreground);
     }
   `;
-  
+
   return `<div class="aje-entries-table">` + generateFastTable({
     title: ``,
     subtitle: ``,
@@ -1126,9 +1135,9 @@ function wseColumns(): FastTableColumn<Wse>[] {
   return [
     { title: vscode.l10n.t("WS name"), width: "1fr", getValue: e => e.wsname },
     { title: vscode.l10n.t("WS type"), width: "1fr", getValue: e => e.wstype },
-    { title: vscode.l10n.t("Jobd"), width: "2fr", getValue: e => e.jobd},
-    { title: vscode.l10n.t("Allocation"), width: "1fr", getValue: e => e.alloc},
-    { title: vscode.l10n.t("Max Active jobs"), width: "1fr", getValue: e => e.maxact},
+    { title: vscode.l10n.t("Jobd"), width: "2fr", getValue: e => e.jobd },
+    { title: vscode.l10n.t("Allocation"), width: "1fr", getValue: e => e.alloc },
+    { title: vscode.l10n.t("Max Active jobs"), width: "1fr", getValue: e => e.maxact },
   ];
 }
 
@@ -1206,7 +1215,7 @@ function renderRtges(data: Rtge[]) {
       color: var(--vscode-textLink-foreground);
     }
   `;
-  
+
   return `<div class="rtge-entries-table">` + generateFastTable({
     title: ``,
     subtitle: ``,
@@ -1289,7 +1298,7 @@ function jobColumns(): FastTableColumn<Job>[] {
         // If job is HLD, show Release button; otherwise show Hold button
         return `<vscode-button appearance="primary" href="action:wrkJob?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>
                 ${e.status !== 'HLD' ? `<vscode-button appearance="secondary" href="action:holdJob?entry=${arg}">${vscode.l10n.t("Hold")}</vscode-button>` :
-                  `<vscode-button appearance="secondary" href="action:releaseJob?entry=${arg}">${vscode.l10n.t("Release")}</vscode-button>`}
+            `<vscode-button appearance="secondary" href="action:releaseJob?entry=${arg}">${vscode.l10n.t("Release")}</vscode-button>`}
                 <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>`;
       }
     }

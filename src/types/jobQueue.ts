@@ -105,7 +105,7 @@ export namespace JobQueueActions {
     const connection = ibmi?.getConnection();
     if (connection) {
 
-      if(getProtected(connection,item.library)){
+      if (getProtected(connection, item.library)) {
         vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
@@ -114,19 +114,20 @@ export namespace JobQueueActions {
       let jobq = await executeSqlIfExists(
         connection,
         `SELECT JOB_QUEUE_STATUS
-          FROM QSYS2.JOB_QUEUE_INFO
-          WHERE JOB_QUEUE_NAME = '${name}' AND JOB_QUEUE_LIBRARY = '${library}'`,
+          FROM TABLE(QSYS2.JOB_QUEUE_INFO(
+                            JOBQ_NAME => '${name}',
+                            JOBQ_LIB => '${library}'))`,
         'QSYS2',
         'JOB_QUEUE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (jobq === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "JOB_QUEUE_INFO"));
         return false;
       }
 
-      if(jobq[0].JOB_QUEUE_STATUS === "HELD") {
+      if (jobq[0].JOB_QUEUE_STATUS === "HELD") {
         vscode.window.showErrorMessage(vscode.l10n.t("Jobq {0}/{1} already held", library, name));
         return false;
       }
@@ -148,10 +149,10 @@ export namespace JobQueueActions {
       else {
         return false;
       }
-  } else {
-    vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
-    return false;
-  }
+    } else {
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
+      return false;
+    }
   };
 
   /**
@@ -167,7 +168,7 @@ export namespace JobQueueActions {
     const connection = ibmi?.getConnection();
     if (connection) {
 
-      if(getProtected(connection,item.library)){
+      if (getProtected(connection, item.library)) {
         vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
@@ -176,35 +177,36 @@ export namespace JobQueueActions {
       let jobq = await executeSqlIfExists(
         connection,
         `SELECT JOB_QUEUE_STATUS
-          FROM QSYS2.JOB_QUEUE_INFO
-          WHERE JOB_QUEUE_NAME = '${name}' AND JOB_QUEUE_LIBRARY = '${library}'`,
+          FROM TABLE(QSYS2.JOB_QUEUE_INFO(
+                            JOBQ_NAME => '${name}',
+                            JOBQ_LIB => '${library}'))`,
         'QSYS2',
         'JOB_QUEUE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (jobq === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "JOB_QUEUE_INFO"));
         return false;
       }
 
-      if(jobq[0].JOB_QUEUE_STATUS !== "HELD") {
+      if (jobq[0].JOB_QUEUE_STATUS !== "HELD") {
         vscode.window.showErrorMessage(vscode.l10n.t("Jobq {0}/{1} not held", library, name));
         return false;
       }
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to release Job Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Release JOBQ"))) {
-          const cmdrun: CommandResult = await connection.runCommand({
-            command: `QSYS/RLSJOBQ ${library}/${name}`,
-            environment: `ile`
-          });
+        const cmdrun: CommandResult = await connection.runCommand({
+          command: `QSYS/RLSJOBQ ${library}/${name}`,
+          environment: `ile`
+        });
 
-          if (cmdrun.code === 0) {
-            vscode.window.showInformationMessage(vscode.l10n.t("Job Queue {0}/{1} released.", library, name));
-            return true;
-          } else {
-            vscode.window.showErrorMessage(vscode.l10n.t("Unable to release Job Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
-            return false;
-          }
+        if (cmdrun.code === 0) {
+          vscode.window.showInformationMessage(vscode.l10n.t("Job Queue {0}/{1} released.", library, name));
+          return true;
+        } else {
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to release Job Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          return false;
+        }
       } else {
         return false;
       }
@@ -226,7 +228,7 @@ export namespace JobQueueActions {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      if(getProtected(connection,library)){
+      if (getProtected(connection, library)) {
         vscode.window.showWarningMessage(vscode.l10n.t("Unable to perform object action because it is protected."));
         return false;
       }
@@ -367,15 +369,16 @@ export default class Jobq extends Base {
         connection,
         `SELECT JOB_QUEUE_STATUS, NUMBER_OF_JOBS, SUBSYSTEM_LIBRARY_NAME CONCAT '/' CONCAT SUBSYSTEM_NAME AS SUBSYSTEM_NAME, MAXIMUM_ACTIVE_JOBS, ACTIVE_JOBS, HELD_JOBS,
             RELEASED_JOBS, SCHEDULED_JOBS, TEXT_DESCRIPTION
-          FROM QSYS2.JOB_QUEUE_INFO
-          WHERE JOB_QUEUE_NAME = '${this.name}' AND JOB_QUEUE_LIBRARY = '${this.library}'`,
+          FROM TABLE(QSYS2.JOB_QUEUE_INFO(
+                            JOBQ_NAME => '${this.name}',
+                            JOBQ_LIB => '${this.library}'))`,
         'QSYS2',
         'JOB_QUEUE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (this.jobq === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "JOB_QUEUE_INFO"));
         return;
       }
     } else {
@@ -391,7 +394,7 @@ export default class Jobq extends Base {
   async fetchJobs(): Promise<void> {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
-    
+
     if (connection) {
       // Build WHERE clause with base conditions
       let whereClause = `JOB_QUEUE_NAME = '${this.name}' AND JOB_QUEUE_LIBRARY = '${this.library}'`;
@@ -409,14 +412,21 @@ export default class Jobq extends Base {
       // Get total count for pagination
       const countRows = await executeSqlIfExists(
         connection,
-        `SELECT COUNT(*) as TOTAL FROM SYSTOOLS.JOB_QUEUE_ENTRIES WHERE ${whereClause}`,
-        'SYSTOOLS',
-        'JOB_QUEUE_ENTRIES',
-        'VIEW'
+        `select COUNT(*) AS TOTAL FROM TABLE (
+              QSYS2.JOB_INFO(
+              JOB_STATUS_FILTER => '*JOBQ',
+              JOB_TYPE_FILTER => '*ALL',
+              JOB_SUBSYSTEM_FILTER => '*ALL',
+              JOB_USER_FILTER => '*ALL',
+              JOB_SUBMITTER_FILTER => '*ALL'))
+              WHERE ${whereClause}`,
+        'QSYS2',
+        'JOB_INFO',
+        'FUNCTION'
       );
 
       if (countRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "SYSTOOLS", "JOB_QUEUE_ENTRIES"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "SYSTOOLS", "JOB_QUEUE_ENTRIES"));
         return;
       }
 
@@ -433,17 +443,22 @@ export default class Jobq extends Base {
                 to_char(JOB_ENTERED_SYSTEM_TIME, 'yyyy-mm-dd HH24:mi') as JOB_ENTERED_SYSTEM_TIME,
                 JOB_QUEUE_STATUS,
                 case when JOB_SCHEDULED_TIME is not null then to_char(JOB_SCHEDULED_TIME, 'yyyy-mm-dd HH24:mi') else null end as JOB_SCHEDULED_TIME
-            FROM SYSTOOLS.JOB_QUEUE_ENTRIES
+            FROM TABLE(QSYS2.JOB_INFO(
+                              JOB_STATUS_FILTER => '*JOBQ',
+                              JOB_TYPE_FILTER => '*ALL',
+                              JOB_SUBSYSTEM_FILTER => '*ALL',
+                              JOB_USER_FILTER => '*ALL',
+                              JOB_SUBMITTER_FILTER => '*ALL'))
             WHERE ${whereClause}
             ORDER BY JOB_ENTERED_SYSTEM_TIME DESC
             LIMIT ${this.itemsPerPage} OFFSET ${offset}`,
-        'SYSTOOLS',
-        'JOB_QUEUE_ENTRIES',
-        'VIEW'
+        'QSYS2',
+        'JOB_INFO',
+        'FUNCTION'
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "SYSTOOLS", "JOB_QUEUE_ENTRIES"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "SYSTOOLS", "JOB_QUEUE_ENTRIES"));
         return;
       }
 
@@ -526,12 +541,12 @@ export default class Jobq extends Base {
         getValue: e => {
           // Encode job entry as URL parameter for action handlers
           const arg = encodeURIComponent(JSON.stringify(e));
-          
+
           // Conditionally show Hold or Release button based on job status
           // If job is HELD, show Release button; otherwise show Hold button
           return `<vscode-button appearance="primary" href="action:wrkJob?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>
-                  ${e.jobsts!=='HELD'?`<vscode-button appearance="secondary" href="action:hldJob?entry=${arg}">${vscode.l10n.t("Hold")}</vscode-button>`:
-            `<vscode-button appearance="secondary" href="action:rlsJob?entry=${arg}">${vscode.l10n.t("Release")}</vscode-button>`}
+                  ${e.jobsts !== 'HELD' ? `<vscode-button appearance="secondary" href="action:hldJob?entry=${arg}">${vscode.l10n.t("Hold")}</vscode-button>` :
+              `<vscode-button appearance="secondary" href="action:rlsJob?entry=${arg}">${vscode.l10n.t("Release")}</vscode-button>`}
                   <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>
                   <vscode-button appearance="secondary" href="action:debugJob?entry=${arg}">${vscode.l10n.t("Debug")}</vscode-button>`;
         }
@@ -597,7 +612,7 @@ export default class Jobq extends Base {
     let refetch = false;  // Flag to determine if data needs to be refetched
     let entryJson;
     const params = new URLSearchParams(uri.query);
-    
+
     // Route to appropriate action handler based on action type
     switch (uri.path) {
       // Individual job actions
@@ -615,8 +630,8 @@ export default class Jobq extends Base {
         entryJson = params.get("entry");
         if (entryJson) {
           const entry: Entry = JSON.parse(decodeURIComponent(entryJson));
-          if(await JobQueueActions.hldJob(entry)){
-            refetch=true;
+          if (await JobQueueActions.hldJob(entry)) {
+            refetch = true;
           }
         }
         break;
@@ -626,8 +641,8 @@ export default class Jobq extends Base {
         entryJson = params.get("entry");
         if (entryJson) {
           const entry: Entry = JSON.parse(decodeURIComponent(entryJson));
-          if(await JobQueueActions.rlsJob(entry)){
-            refetch=true;
+          if (await JobQueueActions.rlsJob(entry)) {
+            refetch = true;
           }
         }
         break;
@@ -637,8 +652,8 @@ export default class Jobq extends Base {
         entryJson = params.get("entry");
         if (entryJson) {
           const entry: Entry = JSON.parse(decodeURIComponent(entryJson));
-          if(await JobQueueActions.endJob(entry)){
-            refetch=true;
+          if (await JobQueueActions.endJob(entry)) {
+            refetch = true;
           }
         }
         break;
@@ -653,12 +668,12 @@ export default class Jobq extends Base {
         }
         break;
     }
-    
+
     // If any action was successful, refetch data to update the UI
     if (refetch) {
       await this.fetch();
     }
-    
+
     // Return result indicating whether the UI should be re-rendered
     return { rerender: refetch };
   }

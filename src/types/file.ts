@@ -64,12 +64,12 @@ export namespace FileActions {
 
     // Generate SQL statement to query file contents
     const sqlStatement = `-- Query file
-    
-      select * 
+
+      select *
         from ${library}.${name}`;
-    
+
     // Open the SQL template with the generated statement
-    return await DocumentManager.openTextTemplate(sqlStatement,'sql');
+    return await DocumentManager.openTextTemplate(sqlStatement, 'sql');
   };
 }
 
@@ -141,7 +141,7 @@ interface Column {
  * Provides comprehensive information about file structure, statistics, members, and dependencies
  */
 export default class File extends Base {
-  
+
   /** Column definitions for file information display */
   columns: Map<string, string> = new Map();
   /** File/table/index information data */
@@ -156,7 +156,7 @@ export default class File extends Base {
   columnsview: Map<string, string> = new Map();
   /** View definition data */
   private view?: any;
-  
+
   /** Array of dependent objects (indexes, views, etc.) */
   private depobjs: DepObj[] = [];
   /** Array of file members */
@@ -190,14 +190,14 @@ export default class File extends Base {
         vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OBJECT_STATISTICS"));
         return;
       }
-      
+
       if (objTypeResult && objTypeResult.length > 0) {
         this.objtype = String(objTypeResult[0].SQL_OBJECT_TYPE);
       } else {
         this.objtype = 'TABLE'
       }
 
-      this.stats=false;
+      this.stats = false;
 
       if (this.objtype === 'INDEX') {
         await Promise.all([
@@ -228,7 +228,7 @@ export default class File extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      this.columns =new Map<string, string>([
+      this.columns = new Map<string, string>([
         ['TABLE_SCHEMA', vscode.l10n.t('SQL schema name')],
         ['TABLE_NAME', vscode.l10n.t('SQL table name')],
         ['SQL_OBJECT_TYPE', vscode.l10n.t('SQL object type')],
@@ -268,9 +268,9 @@ export default class File extends Base {
             X.DAYS_USED_COUNT,
             IS_INSERTABLE_INTO,
             X.OBJSIZE,
-            X.IASP_NAME,
+            LIBX.IASP_NAME AS IASP_NAME,
             X.JOURNALED,
-            JOURNAL_LIBRARY CONCAT '/' CONCAT X.JOURNAL_NAME AS JOURNAL_NAME,
+            X.JOURNAL_LIBRARY CONCAT '/' CONCAT X.JOURNAL_NAME AS JOURNAL_NAME,
             ENABLED,
             MAINTENANCE,
             "REFRESH",
@@ -280,9 +280,19 @@ export default class File extends Base {
           FROM QSYS2.SYSTABLES,
               TABLE (
                   QSYS2.OBJECT_STATISTICS('${this.library}', 'FILE', '${this.name}')
-              ) X
-          WHERE SYSTEM_TABLE_SCHEMA = '${this.library}'
-                AND SYSTEM_TABLE_NAME = '${this.name}'`,
+              ) X,
+               LATERAL (
+         SELECT *
+           FROM TABLE (
+               QSYS2.LIBRARY_INFO(
+                 CASE
+                   WHEN X.OBJTYPE = '*LIB' THEN x.OBJNAME
+                   ELSE X.OBJLIB
+                 END, DETAILED_INFO => 'NO')
+             ) LIBINFO
+       ) LIBX
+          WHERE TABLE_SCHEMA = '${this.library}'
+                AND TABLE_NAME = '${this.name}'`,
         'QSYS2',
         'SYSTABLES',
         'VIEW'
@@ -306,7 +316,7 @@ export default class File extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      this.fileColumns.length=0;
+      this.fileColumns.length = 0;
       const entryRows = await executeSqlIfExists(
         connection,
         `SELECT COLUMN_NAME,
@@ -364,7 +374,7 @@ export default class File extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      this.columnsview =new Map<string, string>([
+      this.columnsview = new Map<string, string>([
         ['VIEW_DEFINITION', vscode.l10n.t('View definition')],
         ['IS_INSERTABLE_INTO', vscode.l10n.t('Is insertable into')],
         ['IS_UPDATABLE', vscode.l10n.t('Is updatable')],
@@ -465,7 +475,7 @@ export default class File extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      this.depobjs.length=0;
+      this.depobjs.length = 0;
       const entryRows = await executeSqlIfExists(
         connection,
         `SELECT SQL_OBJECT_TYPE,
@@ -502,7 +512,7 @@ export default class File extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      this.members.length=0;
+      this.members.length = 0;
       const entryRows = await executeSqlIfExists(
         connection,
         `SELECT SYSTEM_TABLE_MEMBER,
@@ -539,7 +549,7 @@ export default class File extends Base {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      this.columns =new Map<string, string>([
+      this.columns = new Map<string, string>([
         ['INDEX_SCHEMA', vscode.l10n.t('SQL schema name')],
         ['INDEX_NAME', vscode.l10n.t('SQL index name')],
         ['SQL_OBJECT_TYPE', vscode.l10n.t('SQL object type')],
@@ -569,15 +579,25 @@ export default class File extends Base {
             TO_CHAR(LAST_USED_TIMESTAMP, 'yyyy-mm-dd') AS LAST_USED_TIMESTAMP,
             X.DAYS_USED_COUNT,
             X.OBJSIZE,
-            X.IASP_NAME,
+            LIBX.IASP_NAME,
             X.JOURNALED,
-            JOURNAL_LIBRARY CONCAT '/' CONCAT X.JOURNAL_NAME AS JOURNAL_NAME
+            X.JOURNAL_LIBRARY CONCAT '/' CONCAT X.JOURNAL_NAME AS JOURNAL_NAME
           FROM QSYS2.SYSINDEXES,
             TABLE (
                 QSYS2.OBJECT_STATISTICS('${this.library}', 'FILE', '${this.name}')
-            ) X
-          WHERE SYSTEM_INDEX_SCHEMA = '${this.library}'
-                AND SYSTEM_INDEX_NAME = '${this.name}'`,
+            ) X,
+          LATERAL (
+            SELECT *
+              FROM TABLE (
+                  QSYS2.LIBRARY_INFO(
+                    CASE
+                      WHEN X.OBJTYPE = '*LIB' THEN x.OBJNAME
+                      ELSE X.OBJLIB
+                    END, DETAILED_INFO => 'NO')
+                ) LIBINFO
+          ) LIBX
+          WHERE INDEX_SCHEMA = '${this.library}'
+                AND INDEX_NAME = '${this.name}'`,
         'QSYS2',
         'SYSINDEXES',
         'VIEW'
@@ -602,7 +622,7 @@ export default class File extends Base {
     const connection = ibmi?.getConnection();
     if (connection) {
       this.columnsstats = await getColumns(connection, 'SYSINDEXSTAT');
-      
+
       this.stats = await executeSqlIfExists(
         connection,
         `SELECT INDEX_VALID,
@@ -666,24 +686,24 @@ export default class File extends Base {
       { title: vscode.l10n.t("Detail"), content: this.renderMainPanel() },
     ];
 
-    if(this.objtype === 'VIEW') {
+    if (this.objtype === 'VIEW') {
       panels.push({ title: vscode.l10n.t("View info"), content: this.renderViewPanel() })
     }
 
-    if(this.stats && this.stats.length > 0) {
+    if (this.stats && this.stats.length > 0) {
       panels.push({ title: vscode.l10n.t("Statistics"), content: this.renderStatsPanel() })
     }
 
-    if(this.fileColumns) {
-      panels.push({ title: vscode.l10n.t("File columns"), content: this.renderFileColumns(), badge:this.fileColumns.length })
+    if (this.fileColumns) {
+      panels.push({ title: vscode.l10n.t("File columns"), content: this.renderFileColumns(), badge: this.fileColumns.length })
     }
 
-    if(this.depobjs.length>0){
-      panels.push({ title: vscode.l10n.t("Dependent objects"), content: this.renderDepObjs(), badge:this.depobjs.length });
+    if (this.depobjs.length > 0) {
+      panels.push({ title: vscode.l10n.t("Dependent objects"), content: this.renderDepObjs(), badge: this.depobjs.length });
     }
 
-    if(this.members.length>0){
-      panels.push({ title: vscode.l10n.t("Members"), content: this.renderMembers(), badge:this.members.length });
+    if (this.members.length > 0) {
+      panels.push({ title: vscode.l10n.t("Members"), content: this.renderMembers(), badge: this.members.length });
     }
 
     return Components.panels(panels);
@@ -706,7 +726,7 @@ export default class File extends Base {
       subtitle: vscode.l10n.t('File Information'),
       columns: this.columns,
       data: this.file,
-      codeColumns:['MQT_DEFINITION'],
+      codeColumns: ['MQT_DEFINITION'],
       hideNullValues: true
     });
   }
@@ -724,7 +744,7 @@ export default class File extends Base {
       subtitle: '',
       columns: this.columnsview,
       data: this.view,
-      codeColumns:['VIEW_DEFINITION'],
+      codeColumns: ['VIEW_DEFINITION'],
       hideNullValues: true
     });
   }
@@ -742,7 +762,7 @@ export default class File extends Base {
       subtitle: '',
       columns: this.columnsstats,
       data: this.stats,
-      codeColumns:['COLUMN_NAMES'],
+      codeColumns: ['COLUMN_NAMES'],
       hideNullValues: true
     });
   }
@@ -835,7 +855,7 @@ export default class File extends Base {
   renderMembers() {
     // Define table columns with their properties
     const columns: FastTableColumn<Member>[] = [
-      { title: vscode.l10n.t("Member"), width: "1fr", getValue: e => e.member  },
+      { title: vscode.l10n.t("Member"), width: "1fr", getValue: e => e.member },
       { title: vscode.l10n.t("Rows"), width: "0.7fr", getValue: e => e.rows },
       { title: vscode.l10n.t("Deleted rows"), width: "0.7fr", getValue: e => e.delrows },
       { title: vscode.l10n.t("Size"), width: "0.7fr", getValue: e => e.size },
@@ -863,7 +883,7 @@ export default class File extends Base {
   renderFileColumns() {
     // Define table columns with their properties
     const columns: FastTableColumn<Column>[] = [
-      { title: vscode.l10n.t("Column name"), width: "1fr", getValue: e => e.name  },
+      { title: vscode.l10n.t("Column name"), width: "1fr", getValue: e => e.name },
       { title: vscode.l10n.t("Short name"), width: "0.7fr", getValue: e => e.shortName !== e.name ? e.shortName : '' },
       { title: vscode.l10n.t("Position"), width: "0.3fr", getValue: e => e.position },
       { title: vscode.l10n.t("Data type"), width: "0.7fr", getValue: e => e.datatype },
@@ -893,7 +913,7 @@ export default class File extends Base {
    * @returns Empty action result
    */
   async handleAction(data: any): Promise<HandleActionResult> {
-    return { };
+    return {};
   }
 
   /**
