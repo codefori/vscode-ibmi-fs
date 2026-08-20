@@ -213,6 +213,8 @@ export namespace DspobjActions {
       SELECT LOCK_STATE,
              LOCK_STATUS,
              LOCK_SCOPE,
+             MEMBER_LOCK_TYPE,
+             MEMBER_NAME,
              JOB_NAME
         FROM TABLE (QSYS2.LIBRARY_INFO('${library}', DETAILED_INFO => 'NO')) X,
        LATERAL (
@@ -222,8 +224,9 @@ export namespace DspobjActions {
                     LIBRARY_NAME=>'${library}',
                     OBJECT_NAME => '${name}',
                     OBJECT_TYPE => '${type}',
-                    IASP_NUMBER => COALESCE(X.IASP_NUMBER, 0))
-             ) LOCKS
+                    IASP_NUMBER => CASE WHEN X.IASP_NAME = '*SYSBAS' THEN 0 ELSE X.IASP_NUMBER END
+             )
+           ) LOCKS
        ) L
     `;
 
@@ -365,6 +368,8 @@ export namespace DspobjActions {
         { title: vscode.l10n.t('Lock State'), width: '1fr', getValue: e => e.LOCK_STATE },
         { title: vscode.l10n.t('Lock Status'), width: '1fr', getValue: e => e.LOCK_STATUS },
         { title: vscode.l10n.t('Lock Scope'), width: '1fr', getValue: e => e.LOCK_SCOPE },
+        { title: vscode.l10n.t('Member Lock Type'), width: '1fr', getValue: e => e.MEMBER_LOCK_TYPE },
+        { title: vscode.l10n.t('Member Name'), width: '1fr', getValue: e => e.MEMBER_NAME },
         { title: vscode.l10n.t('Job Name'), width: '2fr', getValue: e => e.JOB_NAME }
       ];
 

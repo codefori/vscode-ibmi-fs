@@ -270,7 +270,7 @@ export default class File extends Base {
             X.OBJSIZE,
             LIBX.IASP_NAME AS IASP_NAME,
             X.JOURNALED,
-            JOURNAL_LIBRARY CONCAT '/' CONCAT X.JOURNAL_NAME AS JOURNAL_NAME,
+            X.JOURNAL_LIBRARY CONCAT '/' CONCAT X.JOURNAL_NAME AS JOURNAL_NAME,
             ENABLED,
             MAINTENANCE,
             "REFRESH",
@@ -280,7 +280,7 @@ export default class File extends Base {
           FROM QSYS2.SYSTABLES,
               TABLE (
                   QSYS2.OBJECT_STATISTICS('${this.library}', 'FILE', '${this.name}')
-              ) X
+              ) X,
                LATERAL (
          SELECT *
            FROM TABLE (
@@ -290,7 +290,9 @@ export default class File extends Base {
                    ELSE X.OBJLIB
                  END, DETAILED_INFO => 'NO')
              ) LIBINFO
-       ) LIBX`,
+       ) LIBX
+          WHERE TABLE_SCHEMA = '${this.library}'
+                AND TABLE_NAME = '${this.name}'`,
         'QSYS2',
         'SYSTABLES',
         'VIEW'
@@ -579,21 +581,23 @@ export default class File extends Base {
             X.OBJSIZE,
             LIBX.IASP_NAME,
             X.JOURNALED,
-            JOURNAL_LIBRARY CONCAT '/' CONCAT X.JOURNAL_NAME AS JOURNAL_NAME
+            X.JOURNAL_LIBRARY CONCAT '/' CONCAT X.JOURNAL_NAME AS JOURNAL_NAME
           FROM QSYS2.SYSINDEXES,
             TABLE (
                 QSYS2.OBJECT_STATISTICS('${this.library}', 'FILE', '${this.name}')
-            ) X
+            ) X,
           LATERAL (
-         SELECT *
-           FROM TABLE (
-               QSYS2.LIBRARY_INFO(
-                 CASE
-                   WHEN X.OBJTYPE = '*LIB' THEN x.OBJNAME
-                   ELSE X.OBJLIB
-                 END, DETAILED_INFO => 'NO')
-             ) LIBINFO
-       ) LIBX`,
+            SELECT *
+              FROM TABLE (
+                  QSYS2.LIBRARY_INFO(
+                    CASE
+                      WHEN X.OBJTYPE = '*LIB' THEN x.OBJNAME
+                      ELSE X.OBJLIB
+                    END, DETAILED_INFO => 'NO')
+                ) LIBINFO
+          ) LIBX
+          WHERE INDEX_SCHEMA = '${this.library}'
+                AND INDEX_NAME = '${this.name}'`,
         'QSYS2',
         'SYSINDEXES',
         'VIEW'
