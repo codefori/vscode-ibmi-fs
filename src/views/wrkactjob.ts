@@ -40,6 +40,8 @@ export namespace WrkactjobActions {
   interface Entry {
     /** Subsystem name */
     subsystem: string;
+    /** Subsystem description library */
+    subsystemLibrary: string;
     /** Job name */
     job: string;
     /** Authorization name (user) */
@@ -100,6 +102,7 @@ export namespace WrkactjobActions {
     // Fetch active jobs data with search filter
     const query = `
       SELECT case when SUBSYSTEM is null then ' ' else SUBSYSTEM end as SUBSYSTEM,
+             SUBSYSTEM_LIBRARY_NAME,
              JOB_NAME,
              AUTHORIZATION_NAME,
              JOB_TYPE,
@@ -134,6 +137,7 @@ export namespace WrkactjobActions {
 
     const entries = result.map((row: any): Entry => ({
       subsystem: String(row.SUBSYSTEM),
+      subsystemLibrary: String(row.SUBSYSTEM_LIBRARY_NAME || ''),
       job: String(row.JOB_NAME),
       user: String(row.AUTHORIZATION_NAME),
       type: String(row.JOB_TYPE),
@@ -243,12 +247,15 @@ export namespace WrkactjobActions {
           title: vscode.l10n.t("Actions"),
           width: "2fr",
           getValue: e => {
-            // Don't show action buttons for subsystem jobs (JOB_TYPE = 'SBS')
-            if (e.type === 'SBS') {
-              return '';
-            }
             // Encode job entry as URL parameter for action handlers
             const arg = encodeURIComponent(JSON.stringify(e));
+            // Subsystem jobs (JOB_TYPE = 'SBS') only get the Subsystem Description detail
+            // action, not the Hold/Release/End/Debug actions meant for regular jobs.
+            if (e.type === 'SBS') {
+              return e.subsystemLibrary
+                ? `<vscode-button appearance="primary" href="action:sbsDetail?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>`
+                : '';
+            }
             // Conditionally show Hold or Release button based on job status
             // If job is HLD, show Release button; otherwise show Hold button
             return `<vscode-button appearance="primary" href="action:wrkJob?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>
@@ -362,6 +369,16 @@ export namespace WrkactjobActions {
           case "wrkJob":
             // Open WRKJOB for the selected job
             await vscode.commands.executeCommand('vscode-ibmi-fs.wrkjob', entry.job);
+            break;
+
+          case "sbsDetail":
+            // Open the Subsystem Description (*SBSD) view
+            await vscode.commands.executeCommand(
+              'vscode.openWith',
+              vscode.Uri.parse(`member:/${entry.subsystemLibrary}/${entry.subsystem.trim()}.SBSD`),
+              'vscode-ibmi-fs.editor',
+              { preview: true }
+            );
             break;
 
           case "holdJob":

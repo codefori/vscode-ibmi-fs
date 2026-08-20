@@ -23,6 +23,7 @@ import { WrksplfActions } from './views/wrksplf';
 import { WrkjobActions } from './views/wrkjob';
 import { WrkactjobActions } from './views/wrkactjob';
 import { WrkusrjobActions } from './views/wrkusrjob';
+import { WrksbsActions } from './views/wrksbs';
 import { DocumentManager } from './documentManager';
 
 /**
@@ -94,6 +95,7 @@ function getDefaultQuickStartMenuItems(): QuickStartMenuItem[] {
     { icon: 'server-process', label: 'WRKJOB', description: vscode.l10n.t('Work with Job'), command: 'vscode-ibmi-fs.wrkjob' },
     { icon: 'list-tree', label: 'WRKACTJOB', description: vscode.l10n.t('Work with Active Jobs'), command: 'vscode-ibmi-fs.wrkactjob' },
     { icon: 'account', label: 'WRKUSRJOB', description: vscode.l10n.t('Work with User Jobs'), command: 'vscode-ibmi-fs.wrkusrjob' },
+    { icon: 'organization', label: 'WRKSBS', description: vscode.l10n.t('Work with Subsystems'), command: 'vscode-ibmi-fs.wrksbs' },
   ];
 }
 
@@ -490,7 +492,8 @@ async function closeRestoredRuntimePanelsOnActivate(): Promise<void> {
     'wrkjobView',
     'wrkactjobView',
     'wrksplfView',
-    'wrkusrjobView'
+    'wrkusrjobView',
+    'wrksbsView'
   ]);
 
   const tabsToClose = vscode.window.tabGroups.all
@@ -586,6 +589,7 @@ export async function activate(context: vscode.ExtensionContext) {
   WrkjobActions.register(context);
   WrkactjobActions.register(context);
   WrkusrjobActions.register(context);
+  WrksbsActions.register(context);
 
   // Register refresh command
   context.subscriptions.push(

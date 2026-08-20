@@ -405,6 +405,17 @@
         "title": "%command.refreshWrkusrjob.title%",
         "category": "IBM i FS",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "vscode-ibmi-fs.wrksbs",
+        "title": "%command.wrksbs.title%",
+        "category": "FS Quick Start"
+      },
+      {
+        "command": "vscode-ibmi-fs.refreshWrksbs",
+        "title": "%command.refreshWrksbs.title%",
+        "category": "IBM i FS",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
@@ -588,6 +599,11 @@
           "command": "vscode-ibmi-fs.refreshWrkusrjob",
           "when": "activeWebviewPanelId == 'wrkusrjobView'",
           "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.refreshWrksbs",
+          "when": "activeWebviewPanelId == 'wrksbsView'",
+          "group": "navigation@1"
         }
       ],
       "view/item/context": [
@@ -736,6 +752,14 @@
         },
         {
           "command": "vscode-ibmi-fs.refreshWrkusrjob",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.wrksbs",
+          "when": "code-for-ibmi:connected"
+        },
+        {
+          "command": "vscode-ibmi-fs.refreshWrksbs",
           "when": "never"
         }
       ]
