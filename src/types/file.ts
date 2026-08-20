@@ -17,10 +17,10 @@
  */
 
 import Base from "./base";
-import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
+import { CommandResult, IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, executeSqlIfExists } from "../tools";
+import { getColumns, executeSqlIfExists, generateRandomString } from "../tools";
 import { generateDetailTable, generateFastTable, FastTableColumn } from "../ibmi";
 import { DocumentManager } from "../documentManager";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
@@ -136,6 +136,18 @@ interface Column {
 }
 
 /**
+ * Interface representing a key column of an SQL index
+ */
+interface IndexKeyColumn {
+  /** Column name */
+  name: string
+  /** Ordinal position within the index key */
+  position: number
+  /** Whether the index enforces uniqueness */
+  unique: boolean
+}
+
+/**
  * File object class
  * Handles display and management of IBM i FILE objects including tables, views, and indexes
  * Provides comprehensive information about file structure, statistics, members, and dependencies
@@ -165,6 +177,10 @@ export default class File extends Base {
   private fileColumns: Column[] = [];
   /** SQL object type (TABLE, VIEW, INDEX) */
   private objtype: string = '';
+  /** Key field info from DSPFD TYPE(*ACCPTH), keyed by (system) field name */
+  private keys: Map<string, { seq: number, unique: boolean }> = new Map();
+  /** Array of key columns, for SQL index objects */
+  private indexKeyColumns: IndexKeyColumn[] = [];
 
 
   /**
@@ -202,7 +218,8 @@ export default class File extends Base {
       if (this.objtype === 'INDEX') {
         await Promise.all([
           this.fetchInfoIndex(),
-          this.fetchStatsIndex()
+          this.fetchStatsIndex(),
+          this.fetchIndexColumns()
         ])
       } else {
         await Promise.all([
@@ -212,6 +229,7 @@ export default class File extends Base {
           this.objtype !== 'VIEW' ? this.fetchStatsFile() : Promise.resolve(),
           this.objtype !== 'VIEW' ? this.fetchMembers() : Promise.resolve(),
           this.objtype !== 'VIEW' ? this.fetchDependency() : Promise.resolve(),
+          this.objtype !== 'VIEW' ? this.fetchKeys() : Promise.resolve(),
         ])
       }
     } else {
@@ -292,6 +310,36 @@ export default class File extends Base {
         vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSTABLES"));
         return;
       }
+
+      // Not all files are database files (DSPF, PRTF): those have no row in
+      // SYSTABLES, so fall back to generic object-level info from OBJECT_STATISTICS, which
+      // works for any object regardless of type.
+      if (this.file.length === 0) {
+        this.columns = new Map<string, string>([
+          ['OBJNAME', vscode.l10n.t('Object name')],
+          ['OBJATTRIBUTE', vscode.l10n.t('Object attribute')],
+          ['OBJOWNER', vscode.l10n.t('Owner')],
+          ['OBJTEXT', vscode.l10n.t('Text')],
+          ['OBJCREATED', vscode.l10n.t('Creation date/time')],
+          ['OBJSIZE', vscode.l10n.t('Object size')]
+        ]);
+
+        this.file = await executeSqlIfExists(
+          connection,
+          `SELECT OBJNAME,
+              OBJATTRIBUTE,
+              OBJOWNER,
+              OBJTEXT,
+              TO_CHAR(OBJCREATED, 'yyyy-mm-dd HH24:mi') AS OBJCREATED,
+              OBJSIZE
+            FROM TABLE (
+                QSYS2.OBJECT_STATISTICS('${this.library}', 'FILE', '${this.name}')
+            )`,
+          'QSYS2',
+          'OBJECT_STATISTICS',
+          'FUNCTION'
+        );
+      }
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
@@ -352,6 +400,53 @@ export default class File extends Base {
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
+    }
+  }
+
+  /**
+   * Fetch key field info from DSPFD TYPE(*ACCPTH)
+   * Uses a native command rather than an SQL catalog, so it reports the access path for
+   * DDS, DDS-less, and SQL-created files alike. A file with only an arrival-sequence access
+   * path legitimately has no keys, so an empty result here is left as-is, not treated as an error.
+   */
+  async fetchKeys(): Promise<void> {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (!connection) {
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
+      return;
+    }
+
+    this.keys.clear();
+    const tmpfile = generateRandomString(10);
+
+    const cmdrun: CommandResult = await connection.runCommand({
+      command: `QSYS/DSPFD FILE(${this.library}/${this.name}) TYPE(*ACCPTH) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile}) OUTMBR(*FIRST *REPLACE)`,
+      environment: `ile`
+    });
+
+    if (cmdrun.code !== 0) {
+      return;
+    }
+
+    try {
+      const rows = await connection.runSQL(`SELECT APKEYF, APKEYN, APUNIQ FROM QTEMP.${tmpfile}`);
+
+      for (const row of rows) {
+        const fieldName = String(row.APKEYF ?? '').trim();
+        if (fieldName === '') {
+          continue;
+        }
+        this.keys.set(fieldName, {
+          seq: Number(row.APKEYN ?? 0),
+          unique: String(row.APUNIQ ?? '').trim().toUpperCase() === 'Y'
+        });
+      }
+    } finally {
+      await connection.runCommand({
+        command: `QSYS/DLTF FILE(QTEMP/${tmpfile})`,
+        environment: `ile`
+      });
     }
   }
 
@@ -656,6 +751,64 @@ export default class File extends Base {
   }
 
   /**
+   * Fetch key column info for an SQL index from QSYS2.SYSKEYS
+   * Indexes dont have data columns of their own the way tables and views do, only key columns,
+   * so this is shown as its own panel instead of reusing "File columns".
+   */
+  async fetchIndexColumns(): Promise<void> {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      this.indexKeyColumns.length = 0;
+
+      const keyRows = await executeSqlIfExists(
+        connection,
+        `SELECT COLUMN_NAME,
+            ORDINAL_POSITION
+          FROM QSYS2.SYSKEYS
+          WHERE SYSTEM_INDEX_SCHEMA = '${this.library}'
+                AND SYSTEM_INDEX_NAME = '${this.name}'
+          ORDER BY ORDINAL_POSITION`,
+        'QSYS2',
+        'SYSKEYS',
+        'VIEW'
+      );
+
+      if (keyRows === null || keyRows.length === 0) {
+        return;
+      }
+
+      const statRows = await executeSqlIfExists(
+        connection,
+        `SELECT ACCPTH_TYPE
+          FROM QSYS2.SYSINDEXSTAT
+          WHERE SYSTEM_INDEX_SCHEMA = '${this.library}'
+                AND SYSTEM_INDEX_NAME = '${this.name}'`,
+        'QSYS2',
+        'SYSINDEXSTAT',
+        'VIEW'
+      );
+      const unique = statRows !== null && statRows.length > 0
+        && String(statRows[0].ACCPTH_TYPE ?? '').toUpperCase().includes('UNIQUE');
+
+      for (const row of keyRows) {
+        const name = String(row.COLUMN_NAME ?? '').trim();
+        if (name === '') {
+          continue;
+        }
+        this.indexKeyColumns.push({
+          name,
+          position: Number(row.ORDINAL_POSITION ?? 0),
+          unique
+        });
+      }
+    } else {
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
+      return;
+    }
+  }
+
+  /**
    * Generate HTML for the file view with multiple tabs
    * Creates tabs for Detail, View Info (if view), Statistics, Dependent Objects, and Members
    * @returns HTML string containing all panels with appropriate badges
@@ -674,8 +827,12 @@ export default class File extends Base {
       panels.push({ title: vscode.l10n.t("Statistics"), content: this.renderStatsPanel() })
     }
 
-    if(this.fileColumns) {
+    if(this.fileColumns.length > 0) {
       panels.push({ title: vscode.l10n.t("File columns"), content: this.renderFileColumns(), badge:this.fileColumns.length })
+    }
+
+    if(this.indexKeyColumns.length > 0) {
+      panels.push({ title: vscode.l10n.t("Key columns"), content: this.renderIndexKeyColumns(), badge:this.indexKeyColumns.length })
     }
 
     if(this.depobjs.length>0){
@@ -865,6 +1022,8 @@ export default class File extends Base {
     const columns: FastTableColumn<Column>[] = [
       { title: vscode.l10n.t("Column name"), width: "1fr", getValue: e => e.name  },
       { title: vscode.l10n.t("Short name"), width: "0.7fr", getValue: e => e.shortName !== e.name ? e.shortName : '' },
+      { title: vscode.l10n.t("Key"), width: "0.4fr", getValue: e => this.keys.get(e.shortName)?.seq ?? '' },
+      { title: vscode.l10n.t("Unique"), width: "0.5fr", getValue: e => { const key = this.keys.get(e.shortName); return key ? (key.unique ? 'YES' : 'NO') : ''; } },
       { title: vscode.l10n.t("Position"), width: "0.3fr", getValue: e => e.position },
       { title: vscode.l10n.t("Data type"), width: "0.7fr", getValue: e => e.datatype },
       { title: vscode.l10n.t("Length"), width: "0.5fr", getValue: e => e.length },
@@ -883,6 +1042,28 @@ export default class File extends Base {
       data: this.fileColumns,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t('No columns found'),
+    }) + ``;
+  }
+
+  /**
+   * Render the key columns table for an SQL index
+   * @returns HTML string for the fast table component
+   * @private
+   */
+  private renderIndexKeyColumns() {
+    const columns: FastTableColumn<IndexKeyColumn>[] = [
+      { title: vscode.l10n.t("Column name"), width: "1fr", getValue: e => e.name },
+      { title: vscode.l10n.t("Key"), width: "0.4fr", getValue: e => e.position },
+      { title: vscode.l10n.t("Unique"), width: "0.5fr", getValue: e => e.unique ? 'YES' : 'NO' }
+    ];
+
+    return generateFastTable({
+      title: ``,
+      subtitle: ``,
+      columns: columns,
+      data: this.indexKeyColumns,
+      stickyHeader: true,
+      emptyMessage: vscode.l10n.t('No key columns found'),
     }) + ``;
   }
 
