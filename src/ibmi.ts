@@ -4,6 +4,7 @@ import { VscodeTools } from "@halcyontech/vscode-ibmi-types/ui/Tools";
 import { FrontendTables } from "@halcyontech/vscode-ibmi-types/ui/frontendTables";
 import { ExtensionContext, Extension, extensions } from "vscode";
 import { ClassInfoComponent } from "./connection/components/classInfo";
+import { PgmRefsComponent } from "./connection/components/pgmRefs";
 import { QwcrclsiComponent } from "./connection/components/qwcrclsi";
 
 /** Reference to the base Code for IBM i extension */
@@ -28,6 +29,7 @@ export function loadBase(context?: ExtensionContext): CodeForIBMi | undefined {
   if (base && context && !componentsRegistered) {
     base.componentRegistry.registerComponent(context, new QwcrclsiComponent());
     base.componentRegistry.registerComponent(context, new ClassInfoComponent());
+    base.componentRegistry.registerComponent(context, new PgmRefsComponent());
     componentsRegistered = true;
   }
 
