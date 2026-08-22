@@ -2,21 +2,36 @@ import { CodeForIBMi } from "@halcyontech/vscode-ibmi-types";
 import Instance from "@halcyontech/vscode-ibmi-types/Instance";
 import { VscodeTools } from "@halcyontech/vscode-ibmi-types/ui/Tools";
 import { FrontendTables } from "@halcyontech/vscode-ibmi-types/ui/frontendTables";
-import { Extension, extensions } from "vscode";
+import { ExtensionContext, Extension, extensions } from "vscode";
+import { ClassInfoComponent } from "./connection/components/classInfo";
+import { QwcrclsiComponent } from "./connection/components/qwcrclsi";
 
 /** Reference to the base Code for IBM i extension */
 let baseExtension: Extension<CodeForIBMi> | undefined;
+/** Whether this extension's components have already been registered with the base extension */
+let componentsRegistered = false;
 
 /**
  * Load and return the base Code for IBM i extension
+ *
+ * @param context - The extension context; when provided (i.e. called from `activate`), this
+ * extension's {@link IBMiComponent}s are registered with the base extension's component registry.
  * @returns The CodeForIBMi extension API if available, undefined otherwise
  */
-export function loadBase(): CodeForIBMi | undefined {
+export function loadBase(context?: ExtensionContext): CodeForIBMi | undefined {
   if (!baseExtension) {
     baseExtension = (extensions ? extensions.getExtension(`halcyontechltd.code-for-ibmi`) : undefined);
   }
 
-  return (baseExtension && baseExtension.isActive && baseExtension.exports ? baseExtension.exports : undefined);
+  const base = (baseExtension && baseExtension.isActive && baseExtension.exports ? baseExtension.exports : undefined);
+
+  if (base && context && !componentsRegistered) {
+    base.componentRegistry.registerComponent(context, new QwcrclsiComponent());
+    base.componentRegistry.registerComponent(context, new ClassInfoComponent());
+    componentsRegistered = true;
+  }
+
+  return base;
 }
 
 /**
