@@ -552,8 +552,8 @@ async function closeRestoredRuntimePanelsOnActivate(): Promise<void> {
  * @param context - The extension context provided by VS Code
  */
 export async function activate(context: vscode.ExtensionContext) {
-  // Load the base IBM i extension
-  loadBase();
+  // Load the base IBM i extension and register this extension's components
+  loadBase(context);
 
   // Drop restored transient panels so users don't see stale, data-less snapshots after reload.
   await closeRestoredRuntimePanelsOnActivate();

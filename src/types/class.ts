@@ -12,22 +12,22 @@
  * - View default wait time settings
  * - View purge eligibility status
  * - View usage statistics (last used date, days used count)
- * - Automatic creation of required SQL objects (stored procedure, view, function)
+ * - Automatic installation of the required SQL objects (stored procedure, table function)
  * - Read-only view (no modification capabilities)
  *
  * Technical Implementation:
- * - Uses QWCRCLSI API to retrieve class information
- * - Creates temporary SQL objects in the connection's temp library
- * - Leverages SQL stored procedures and table functions for data retrieval
+ * - Uses the QWCRCLSI API to retrieve class information, wrapped as an
+ *   {@link QwcrclsiComponent IBMi component} installed on demand
+ * - Queries the {@link ClassInfoComponent CLASS_INFO table function}, also installed on demand,
+ *   which combines QWCRCLSI with OBJECT_STATISTICS for a single class
  *
  * @module class
  */
 
-import { CommandResult } from "@halcyontech/vscode-ibmi-types";
 import * as vscode from 'vscode';
 import { getInstance } from "../ibmi";
-import { checkProcedureExists, checkTableFunctionExists, checkViewExists } from "../tools";
 import { generateDetailTable } from "../ibmi";
+import { ClassInfoComponent } from "../connection/components/classInfo";
 import Base from "./base";
 
 /**
@@ -53,218 +53,18 @@ export default class Cls extends Base {
    * Fetch class information from IBM i
    *
    * This method performs the following steps:
-   * 1. Checks if required SQL objects exist (stored procedure, view, function)
-   * 2. If missing, creates them using QWCRCLSI API wrapper
-   * 3. Queries the class information from the created view
+   * 1. Ensures the {@link ClassInfoComponent CLASS_INFO table function} (and, transitively, the
+   *    QWCRCLSI procedure it depends on) is installed in the connection's temporary library
+   * 2. Queries it for the specific class
    *
-   * The SQL objects are created in the connection's temporary library and include:
-   * - QWCRCLSI: Stored procedure that calls the QWCRCLSI API
-   * - CLASS_INFO: Table function that retrieves all classes using OBJECT_STATISTICS
-   * - CLASS_INFO: View that exposes the table function results
-   *
-   * @throws Will show error message if SQL objects cannot be created
+   * @throws Will show error message if the required components cannot be installed
    */
   async fetch(): Promise<void> {
     const ibmi = getInstance();
     const connection = ibmi?.getConnection();
     if (connection) {
-      // Check if required SQL objects exist in the temporary library
-      // We need: QWCRCLSI procedure, CLASS_INFO view, and CLASS_INFO function
+
       const tempLib = connection.getConfig().tempLibrary;
-
-      const procedureExists = await checkProcedureExists(connection, tempLib, 'QWCRCLSI');
-      const viewExists = await checkViewExists(connection, tempLib, 'CLASS_INFO');
-      const functionExists = await checkTableFunctionExists(connection, tempLib, 'CLASS_INFO');
-
-      // If any of the 3 required objects are missing, create them all
-      if (!procedureExists || !viewExists || !functionExists) {
-        try {
-          // Write SQL script to create the required objects
-          const content = connection.getContent();
-          if (content) {
-            // Create SQL script that defines:
-            // 1. QWCRCLSI stored procedure (wrapper for QWCRCLSI API)
-            // 2. CLASS_INFO table function (retrieves all classes)
-            // 3. CLASS_INFO view (exposes the function results)
-            await content.writeStreamfileRaw(connection.getTempDirectory() + '/clsbuild.sql', `
-              --
-              -- Subject: Finding IBM i class objects and return the class attributes
-              -- Author: Scott Forstie
-              -- Date  : February, 2025
-              --
-              -- Co-author: Christian Jorgensen
-              -- Date  : February, 2025
-              --
-              -- This service uses a stored procedure to call API QWCRCLSI,
-              -- not using printed output from the Display Class (DSPCLS) CL command.
-              --
-              -- Features Used: This Gist uses object_statistics, SQL PL, Pipe
-              --
-              -- Resources:
-              -- https://www.ibm.com/docs/api/v1/content/ssw_ibm_i_75/apis/qwcrclsi.htm
-              --
-
-              drop function if exists ${connection.getConfig().tempLibrary}.class_info;
-              drop procedure if exists ${connection.getConfig().tempLibrary}.QWCRCLSI;
-
-              --
-              -- UDTF... return single class information via QWCRCLSI API
-              --
-              create or replace procedure ${connection.getConfig().tempLibrary}.QWCRCLSI(
-                out   Buf     char( 112 )
-              , in    BufLen  integer
-              , in    Format  char(   8 )
-              , in    QObj    char(  20 )
-              , in    EC      char(   8 ) for bit data
-              )
-              language CL
-              parameter style general
-              program type main
-              external name 'QSYS/QWCRCLSI'
-              ;
-
-              --
-              -- UDTF... find class information
-              --
-              CREATE OR REPLACE FUNCTION ${connection.getConfig().tempLibrary}.class_info ()
-                  RETURNS TABLE (
-                      class_library VARCHAR(10) FOR SBCS DATA,
-                      class_name VARCHAR(10) FOR SBCS DATA,
-                      text_description VARCHAR(50) FOR SBCS DATA,
-                      last_used date,
-                      use_count INTEGER,
-                      run_priority INTEGER,
-                      eligible_purge VARCHAR(4) FOR SBCS DATA,
-                      time_slice INTEGER,
-                      default_wait VARCHAR(11) FOR SBCS DATA,
-                      maximum_cpu_time  VARCHAR(11) FOR SBCS DATA,
-                      maximum_temporary_storage_allowed VARCHAR(11) FOR SBCS DATA,
-                      maximum_active_threads VARCHAR(11) FOR SBCS DATA
-                  )
-                  NOT DETERMINISTIC
-                  EXTERNAL ACTION
-                  MODIFIES SQL DATA
-                  NOT FENCED
-                  SET OPTION commit = *none, usrprf = *user, dynusrprf = *user
-                  BEGIN
-                      DECLARE local_sqlcode INTEGER;
-                      DECLARE local_sqlstate CHAR(5);
-                      DECLARE v_message_text VARCHAR(70);
-                      DECLARE v_dspcls VARCHAR(1000);
-                      --
-                      -- QWCRCLSI detail
-                      --
-                      DECLARE v_class CHAR(10);
-                      DECLARE v_class_library CHAR(10);
-                      DECLARE v_class_run_priority INTEGER;
-                      DECLARE v_class_time_slice INTEGER;
-                      DECLARE v_class_eligible_purge VARCHAR(4) FOR SBCS DATA;
-                      DECLARE v_class_dft_wait VARCHAR(11);
-                      DECLARE v_class_max_cpu VARCHAR(11) FOR SBCS DATA;
-                      DECLARE v_class_max_tmp_stg VARCHAR(11) FOR SBCS DATA;
-                      DECLARE v_class_max_threads VARCHAR(11) FOR SBCS DATA;
-                      --
-                      -- OBJECT_STATISTICS detail
-                      --
-                      DECLARE find_classes_query_text VARCHAR(5000);
-                      DECLARE v_cls_text VARCHAR(50);
-                      DECLARE v_job_name VARCHAR(28);
-                      DECLARE v_cls_last_use DATE;
-                      DECLARE v_cls_use_count INTEGER;
-                      DECLARE buffer char( 112 ) for bit data not null default '';
-                      DECLARE c_find_classes CURSOR FOR find_classes_query;
-                      DECLARE CONTINUE HANDLER FOR sqlexception
-                      BEGIN
-                          GET DIAGNOSTICS CONDITION 1
-                                  local_sqlcode = db2_returned_sqlcode,
-                                  local_sqlstate = returned_sqlstate;
-                          SET v_message_text = 'systools.class_info() failed with: ' CONCAT
-                                      local_sqlcode CONCAT '  AND ' CONCAT local_sqlstate;
-                          SIGNAL SQLSTATE 'QPC01' SET MESSAGE_TEXT = v_message_text;
-                      END;
-                      SET find_classes_query_text =
-              'select libs.objname, objs.OBJNAME, objs.OBJTEXT, objs.LAST_USED_TIMESTAMP, objs.DAYS_USED_COUNT from table (
-                              qsys2.object_statistics(''QSYS      '', ''*LIB'')
-                            ) libs, lateral ( select * FROM TABLE (qsys2.OBJECT_STATISTICS(libs.objname,''CLS    '')) AS a ) objs'
-                      ;
-                      PREPARE find_classes_query FROM find_classes_query_text;
-                      OPEN c_find_classes;
-                      l1: LOOP
-                          FETCH FROM c_find_classes
-                              INTO v_class_library, v_class, v_cls_text, v_cls_last_use,
-                                  v_cls_use_count;
-                          GET DIAGNOSTICS CONDITION 1
-                                  local_sqlcode = db2_returned_sqlcode,
-                                  local_sqlstate = returned_sqlstate;
-                          IF (local_sqlstate = '02000') THEN
-                              CLOSE c_find_classes;
-                              RETURN;
-                          END IF;
-                          CALL ${connection.getConfig().tempLibrary}.QWCRCLSI( buffer, 112, 'CLSI0100', v_class concat v_class_library, x'00000000' );
-                          SET v_class_run_priority = INTERPRET(SUBSTR(buffer, 29, 4 ) AS INTEGER);
-                          SET v_class_time_slice = INTERPRET(SUBSTR(buffer, 33, 4 ) AS INTEGER);
-                          SET v_class_eligible_purge = case when INTERPRET(SUBSTR(buffer, 37, 4 ) AS INTEGER) = 1 then '*YES' else '*NO' end;
-                          SET v_class_dft_wait = INTERPRET(SUBSTR(buffer, 41, 4 ) AS INTEGER);
-                          IF ( TRIM( v_class_dft_wait ) = '-1' ) THEN SET v_class_dft_wait = '*NOMAX'; END IF;
-                          SET v_class_max_cpu = INTERPRET(SUBSTR(buffer, 45, 4 ) AS INTEGER);
-                          IF ( TRIM( v_class_max_cpu ) = '-1' ) THEN SET v_class_max_cpu = '*NOMAX'; END IF;
-                          SET v_class_max_tmp_stg = INTERPRET(SUBSTR(buffer, 109, 4 ) AS INTEGER);
-                          IF ( TRIM( v_class_max_tmp_stg ) = '-1' ) THEN SET v_class_max_tmp_stg = '*NOMAX'; END IF;
-                          SET v_class_max_threads = INTERPRET(SUBSTR(buffer, 53, 4 ) AS INTEGER);
-                          IF ( TRIM( v_class_max_threads ) = '-1' ) THEN SET v_class_max_threads = '*NOMAX'; END IF;
-                          PIPE (
-                              v_class_library,
-                              v_class, v_cls_text, v_cls_last_use, v_cls_use_count,
-                              v_class_run_priority, v_class_eligible_purge, v_class_time_slice, v_class_dft_wait,
-                              v_class_max_cpu, v_class_max_tmp_stg, v_class_max_threads);
-                      END LOOP; /* L1 */
-                      CLOSE c_find_classes;
-                  END;
-
-
-              --
-              -- Create a view to expose the class information
-              --
-              CREATE OR REPLACE VIEW ${connection.getConfig().tempLibrary}.class_info (
-                      class_library FOR COLUMN class_lib, class_name FOR COLUMN class,
-                      TEXT_DESCRIPTION FOR COLUMN text,
-                      LAST_USED_TIMESTAMP FOR COLUMN last_used, use_count,
-                      run_priority FOR COLUMN priority, time_slice, eligible_purge,
-                      default_wait FOR COLUMN DFTWAIT, maximum_cpu_time FOR COLUMN cpu_time,
-                      maximum_temporary_storage_allowed FOR COLUMN max_stg,
-                      maximum_active_threads FOR COLUMN max_thread) AS
-                  SELECT *
-                      FROM TABLE (
-                              ${connection.getConfig().tempLibrary}.class_info()
-                          );
-            `)
-
-            // Execute the SQL script to create the objects
-            const runsql: CommandResult = await connection.runCommand({
-              command: `QSYS/RUNSQLSTM SRCSTMF('${connection.getTempDirectory()}/clsbuild.sql') COMMIT(*NONE)`,
-              environment: `ile`,
-            });
-
-            if (runsql.code !== 0) {
-              vscode.window.showErrorMessage(vscode.l10n.t("Unable to create necessary SQL objects for displaying classes."));
-              return;
-            } else {
-              // Clean up the temporary SQL script file
-              await connection.runCommand({
-                command: `rm -f ${connection.getTempDirectory()}/clsbuild.sql`,
-                environment: `pase`,
-              });
-            }
-          } else {
-            vscode.window.showErrorMessage(vscode.l10n.t("Unable to create necessary SQL objects for displaying classes."));
-            return;
-          }
-        } catch (error) {
-          console.dir(error)
-          vscode.window.showErrorMessage(vscode.l10n.t("Unable to create necessary SQL objects for displaying classes."));
-          return;
-        }
-      }
 
       // Define column mappings for display
       // Maps database column names to user-friendly display labels
@@ -284,7 +84,7 @@ export default class Cls extends Base {
       // Query the class information for the specific class
       this.cls = await connection.runSQL(
         `SELECT TEXT_DESCRIPTION,
-          LAST_USED_TIMESTAMP,
+          to_char(LAST_USED, 'yyyy-mm-dd') as LAST_USED_TIMESTAMP,
           USE_COUNT,
           RUN_PRIORITY,
           TIME_SLICE,
@@ -293,8 +93,7 @@ export default class Cls extends Base {
           MAXIMUM_CPU_TIME,
           MAXIMUM_TEMPORARY_STORAGE_ALLOWED,
           MAXIMUM_ACTIVE_THREADS
-        FROM ${connection.getConfig().tempLibrary}.class_info
-        where CLASS_LIBRARY= '${this.library}' and CLASS_NAME = '${this.name}'`)
+        FROM TABLE(${tempLib}.${ClassInfoComponent.FUNCTION_NAME}('${this.library}', '${this.name}')) X`)
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
