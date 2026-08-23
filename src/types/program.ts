@@ -10,6 +10,7 @@
  * - View bound modules with source information
  * - View bound service programs with signatures
  * - View exported procedures (for service programs)
+ * - View referenced objects (files, etc.) retrieved via DSPPGMREF
  * - View SQL settings and optimization details
  * - View activation group and storage model information
  * - Read-only view (no modification capabilities)
@@ -24,6 +25,7 @@ import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getColumns, executeSqlIfExists } from "../tools";
 import { generateDetailTable, FastTableColumn, generateFastTable } from "../ibmi";
+import { PgmRefsComponent } from "../connection/components/pgmRefs";
 
 /**
  * Interface representing a bound module within a program
@@ -72,6 +74,28 @@ interface Export {
 }
 
 /**
+ * Interface representing an object referenced by the program (from DSPPGMREF)
+ */
+interface Reference {
+  /** Referenced object name with library (library/name) */
+  object: string
+  /** Referenced object type (e.g. *FILE, *PGM) */
+  type: string
+  /** Name as it appears in the source program */
+  srcname: string
+  /** Referenced file's record format */
+  rcdfmt: string
+  /** Number of record formats used for the referenced file */
+  rcdfmtCount: string
+  /** File usage (input/output/update/etc.) */
+  usage: string
+  /** Referenced file's record format level check ID */
+  lvlchk: string
+  /** Field count in the referenced file */
+  fields: string
+}
+
+/**
  * Program (*PGM) and Service Program (*SRVPGM) object class
  * Handles display of IBM i Program and Service Program information
  */
@@ -82,6 +106,8 @@ export class Pgm extends Base {
   private readonly srvpgms: Srvpgm[] = [];
   /** List of exported procedures (for service programs) */
   private readonly exports: Export[] = [];
+  /** List of objects referenced by the program (files, etc.) */
+  private readonly references: Reference[] = [];
   private _keyed = false;
   /** Column definitions for display */
   columns: Map<string, string> = new Map();
@@ -101,7 +127,8 @@ export class Pgm extends Base {
       this.fetchInfo(),
       this.fetchModules(),
       this.fetchSrvpgms(),
-      this.isSrvpgm ? this.fetchExports() : Promise.resolve()
+      this.isSrvpgm ? this.fetchExports() : Promise.resolve(),
+      this.fetchReferences()
     ])
   }
 
@@ -336,6 +363,39 @@ export class Pgm extends Base {
   }
 
   /**
+   * Fetch objects referenced by the program (files, etc.)
+   * Retrieves reference information via the {@link PgmRefsComponent PGMREFS table function},
+   * which wraps the DSPPGMREF (Display Program References) CL command
+   */
+  private async fetchReferences() {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      this.references.length = 0;
+      const tempLib = connection.getConfig().tempLibrary;
+
+      const entryRows = await connection.runSQL(
+        `SELECT TRIM(REFOBJLIB) CONCAT '/' CONCAT TRIM(REFOBJNAME) AS REFOBJNAME,
+          REFOBJTYPE,
+          REFSRCNAME,
+          REFRCDFMT,
+          RCDFMT_COUNT,
+          FILE_USAGE,
+          LVLCHKID,
+          FIELDS
+        FROM TABLE(
+          ${tempLib}.${PgmRefsComponent.FUNCTION_NAME}(LIBRARY_NAME => '${this.library}', OBJECT_NAME => '${this.name}', OBJTYPE => '${this.isSrvpgm ? '*SRVPGM' : '*PGM'}')
+        )`
+      );
+
+      this.references.push(...entryRows.map(toReference));
+    } else {
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
+      return;
+    }
+  }
+
+  /**
    * Generate HTML for the program view with tabs
    * @returns HTML string containing tabbed interface with program details, bounds, and exports
    */
@@ -348,6 +408,10 @@ export class Pgm extends Base {
 
     if (this.isSrvpgm) {
       panels.push({ title: vscode.l10n.t("Exports"), badge: this.exports.length, content: renderExports(this.exports) });
+    }
+
+    if (this.references.length > 0) {
+      panels.push({ title: vscode.l10n.t("References"), badge: this.references.length, content: renderReferences(this.references) });
     }
 
     return Components.panels(panels);
@@ -427,6 +491,24 @@ function toExport(row: Tools.DB2Row): Export {
   return {
     method: String(row.SYMBOL_NAME),
     usage: String(row.SYMBOL_USAGE)
+  };
+}
+
+/**
+ * Convert a database row to a Reference object
+ * @param row - Database row from the PGMREFS table function (DSPPGMREF)
+ * @returns Reference object
+ */
+function toReference(row: Tools.DB2Row): Reference {
+  return {
+    object: String(row.REFOBJNAME),
+    type: String(row.REFOBJTYPE),
+    srcname: String(row.REFSRCNAME),
+    rcdfmt: String(row.REFRCDFMT),
+    rcdfmtCount: String(row.RCDFMT_COUNT),
+    usage: String(row.FILE_USAGE),
+    lvlchk: String(row.LVLCHKID),
+    fields: String(row.FIELDS)
   };
 }
 
@@ -518,6 +600,42 @@ function renderExports(exports: Export[]) {
     data: exports,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t('No exports in this service program.'),
+    customStyles: customStyles,
+    customScript: ""
+  }) + `</div>`;
+}
+
+/**
+ * Render the references panel showing objects referenced by the program (DSPPGMREF)
+ * @param references - Array of referenced objects
+ * @returns HTML string for the references panel
+ */
+function renderReferences(references: Reference[]) {
+  const columns: FastTableColumn<Reference>[] = [
+    { title: vscode.l10n.t("Referenced object"), width: "1.5fr", getValue: e => e.object },
+    { title: vscode.l10n.t("Type"), width: "0.7fr", getValue: e => e.type },
+    { title: vscode.l10n.t("Source name"), width: "1fr", getValue: e => e.srcname },
+    { title: vscode.l10n.t("Record format"), width: "1fr", getValue: e => e.rcdfmt },
+    { title: vscode.l10n.t("Record format count"), width: "0.7fr", getValue: e => e.rcdfmtCount },
+    { title: vscode.l10n.t("File usage"), width: "1.2fr", getValue: e => e.usage },
+    { title: vscode.l10n.t("Level check ID"), width: "1fr", getValue: e => e.lvlchk },
+    { title: vscode.l10n.t("Field count"), width: "0.6fr", getValue: e => e.fields },
+  ];
+
+  const customStyles = `
+    /* Custom styles for referenced object name cells */
+    .references-entries-table vscode-table-cell:first-child {
+      color: var(--vscode-textLink-foreground);
+    }
+  `;
+
+  return `<div class="references-entries-table">` + generateFastTable({
+    title: ``,
+    subtitle: ``,
+    columns: columns,
+    data: references,
+    stickyHeader: true,
+    emptyMessage: vscode.l10n.t('No references found for this object.'),
     customStyles: customStyles,
     customScript: ""
   }) + `</div>`;

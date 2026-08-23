@@ -11,6 +11,7 @@
  * - List all procedures defined in the module
  * - View imported and exported symbols
  * - Display referenced system objects
+ * - View objects referenced by the module (files, etc.) via DSPPGMREF
  * - Show copyright information
  * - Support for multiple detail views with tabbed interface
  *
@@ -25,6 +26,7 @@ import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getColumns, generateRandomString } from "../tools";
 import { generateDetailTable, FastTableColumn, generateFastTable } from "../ibmi";
+import { PgmRefsComponent } from "../connection/components/pgmRefs";
 
 /**
  * Interface representing a procedure entry in a module
@@ -61,6 +63,28 @@ interface Copyright {
 }
 
 /**
+ * Interface representing an object referenced by the module (from DSPPGMREF)
+ */
+interface Reference {
+  /** Referenced object name with library (library/name) */
+  object: string
+  /** Referenced object type (e.g. *FILE, *PGM) */
+  type: string
+  /** Name as it appears in the source program */
+  srcname: string
+  /** Referenced file's record format */
+  rcdfmt: string
+  /** Number of record formats used for the referenced file */
+  rcdfmtCount: string
+  /** File usage (input/output/update/etc.) */
+  usage: string
+  /** Referenced file's record format level check ID */
+  lvlchk: string
+  /** Field count in the referenced file */
+  fields: string
+}
+
+/**
  * Module (*MODULE) object class
  * Handles display and analysis of IBM i Module information
  */
@@ -73,6 +97,8 @@ export class Module extends Base {
   private readonly sysobj: Entry[] = [];
   /** List of copyright strings */
   private readonly copyrights: Copyright[] = [];
+  /** List of objects referenced by the module (files, etc.) */
+  private readonly references: Reference[] = [];
   /** Column definitions for basic module information display */
   columns: Map<string, string> = new Map();
   /** Column definitions for size information display */
@@ -96,7 +122,8 @@ export class Module extends Base {
       await this.fetchImpExports(),
       await this.fetchProcList(),
       await this.fetchSysObj(),
-      await this.fetchCopyRight()
+      await this.fetchCopyRight(),
+      await this.fetchReferences()
     ])
   }
 
@@ -487,6 +514,39 @@ export class Module extends Base {
   }
 
   /**
+   * Fetch objects referenced by the module (files, etc.)
+   * Retrieves reference information via the {@link PgmRefsComponent PGMREFS table function},
+   * which wraps the DSPPGMREF (Display Program References) CL command
+   */
+  private async fetchReferences() {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+    if (connection) {
+      this.references.length = 0;
+      const tempLib = connection.getConfig().tempLibrary;
+
+      const entryRows = await connection.runSQL(
+        `SELECT TRIM(REFOBJLIB) CONCAT '/' CONCAT TRIM(REFOBJNAME) AS REFOBJNAME,
+          REFOBJTYPE,
+          REFSRCNAME,
+          REFRCDFMT,
+          RCDFMT_COUNT,
+          FILE_USAGE,
+          LVLCHKID,
+          FIELDS
+        FROM TABLE(
+          ${tempLib}.${PgmRefsComponent.FUNCTION_NAME}(LIBRARY_NAME => '${this.library}', OBJECT_NAME => '${this.name}', OBJTYPE => '*MODULE')
+        )`
+      );
+
+      this.references.push(...entryRows.map(toReference));
+    } else {
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
+      return;
+    }
+  }
+
+  /**
    * Generate HTML for the module view with tabs
    * Creates a multi-panel interface displaying:
    * - Detail: Basic module information
@@ -517,6 +577,10 @@ export class Module extends Base {
 
     if (this.copyrights.length>0) {
       panels.push({ title: vscode.l10n.t("Copyright"), badge: this.copyrights.length, content: renderCopyright(this.copyrights) });
+    }
+
+    if (this.references.length>0) {
+      panels.push({ title: vscode.l10n.t("References"), badge: this.references.length, content: renderReferences(this.references) });
     }
 
     return Components.panels(panels);
@@ -627,6 +691,24 @@ function toCopyRight(row: Tools.DB2Row): Copyright {
 }
 
 /**
+ * Convert a database row to a Reference object
+ * @param row - Database row from the PGMREFS table function (DSPPGMREF)
+ * @returns Reference object
+ */
+function toReference(row: Tools.DB2Row): Reference {
+  return {
+    object: String(row.REFOBJNAME),
+    type: String(row.REFOBJTYPE),
+    srcname: String(row.REFSRCNAME),
+    rcdfmt: String(row.REFRCDFMT),
+    rcdfmtCount: String(row.RCDFMT_COUNT),
+    usage: String(row.FILE_USAGE),
+    lvlchk: String(row.LVLCHKID),
+    fields: String(row.FIELDS)
+  };
+}
+
+/**
  * Render the procedures panel
  * Displays all procedures defined in the module with their types and optimization
  * @param exports - Array of procedure entries
@@ -730,5 +812,40 @@ function renderCopyright(crs: Copyright[]) {
     data: crs,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t('No copyright information in this module.'),
+  }) + `</div>`;
+}
+
+/**
+ * Render the references panel showing objects referenced by the module (DSPPGMREF)
+ * @param references - Array of referenced objects
+ * @returns HTML string for the references panel
+ */
+function renderReferences(references: Reference[]) {
+  const columns: FastTableColumn<Reference>[] = [
+    { title: vscode.l10n.t("Referenced object"), width: "1.5fr", getValue: e => e.object },
+    { title: vscode.l10n.t("Type"), width: "0.7fr", getValue: e => e.type },
+    { title: vscode.l10n.t("Source name"), width: "1fr", getValue: e => e.srcname },
+    { title: vscode.l10n.t("Record format"), width: "1fr", getValue: e => e.rcdfmt },
+    { title: vscode.l10n.t("Record format count"), width: "0.7fr", getValue: e => e.rcdfmtCount },
+    { title: vscode.l10n.t("File usage"), width: "1.2fr", getValue: e => e.usage },
+    { title: vscode.l10n.t("Level check ID"), width: "1fr", getValue: e => e.lvlchk },
+    { title: vscode.l10n.t("Field count"), width: "0.6fr", getValue: e => e.fields },
+  ];
+
+  const customStyles = `
+    /* Custom styles for referenced object name cells */
+    .references-entries-table vscode-table-cell:first-child {
+      color: var(--vscode-textLink-foreground);
+    }
+  `;
+
+  return `<div class="references-entries-table">` + generateFastTable({
+    title: ``,
+    subtitle: ``,
+    columns: columns,
+    data: references,
+    stickyHeader: true,
+    emptyMessage: vscode.l10n.t('No references found for this object.'),
+    customStyles: customStyles,
   }) + `</div>`;
 }
