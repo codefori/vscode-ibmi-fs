@@ -335,11 +335,11 @@ export default class Msgq extends Base {
         `SELECT COUNT(*) as TOTAL FROM TABLE(QSYS2.MESSAGE_QUEUE_INFO(QUEUE_NAME => '${this.name}', QUEUE_LIBRARY => '${this.library}' )) ${whereClause}`,
         'QSYS2',
         'MESSAGE_QUEUE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (countRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "MESSAGE_QUEUE_INFO"));
         return;
       }
 
@@ -373,11 +373,11 @@ export default class Msgq extends Base {
         LIMIT ${this.itemsPerPage} OFFSET ${offset}`,
         'QSYS2',
         'MESSAGE_QUEUE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "MESSAGE_QUEUE_INFO"));
         return;
       }
 

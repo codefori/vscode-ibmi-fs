@@ -94,16 +94,16 @@ export default class Cmd extends Base {
           "THREADSAFE",
           MULTITHREADED_JOB_ACTION,
           TARGET_RELEASE
-        FROM QSYS2.COMMAND_INFO
-        WHERE COMMAND_LIBRARY = '${this.library}'
-        AND COMMAND_NAME = '${this.name}'`,
+        FROM TABLE(QSYS2.COMMAND_INFO(
+          COMMAND_LIBRARY => '${this.library}',
+          COMMAND_NAME => '${this.name}'))`,
         'QSYS2',
         'COMMAND_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (this.cmd === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "COMMAND_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "COMMAND_INFO"));
         return;
       }
     } else {

@@ -349,6 +349,11 @@ export default class File extends Base {
           'OBJECT_STATISTICS',
           'FUNCTION'
         );
+
+        if (this.file === null) {
+          vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OBJECT_STATISTICS"));
+          return;
+        }
       }
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
@@ -402,7 +407,7 @@ export default class File extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSTABLES"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SYSCOLUMNS"));
         return;
       }
 

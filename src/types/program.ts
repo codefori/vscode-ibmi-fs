@@ -237,15 +237,14 @@ export class Pgm extends Base {
           SQL_PACKAGE_LIBRARY,
           SQL_PACKAGE,
           SQL_RDB_CONNECTION_METHOD
-        FROM QSYS2.PROGRAM_INFO
-        WHERE PROGRAM_LIBRARY = '${this.library}' AND PROGRAM_NAME='${this.name}'`,
+        FROM TABLE(QSYS2.PROGRAM_INFO(PROGRAM_LIBRARY => '${this.library}', PROGRAM_NAME => '${this.name}', OBJECT_TYPE => '${this.isSrvpgm ? '*SRVPGM' : '*PGM'}'))`,
         'QSYS2',
         'PROGRAM_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (this.pgm === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "PROGRAM_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "PROGRAM_INFO"));
         return;
       }
     } else {
@@ -280,15 +279,14 @@ export class Pgm extends Base {
           RELEASE_CREATED_ON,
           TARGET_RELEASE,
           ALLOW_RTVCLSRC
-        FROM QSYS2.BOUND_MODULE_INFO
-        WHERE PROGRAM_LIBRARY = '${this.library}' AND PROGRAM_NAME='${this.name}'`,
+        FROM TABLE(QSYS2.BOUND_MODULE_INFO(PROGRAM_LIBRARY => '${this.library}', PROGRAM_NAME => '${this.name}', OBJECT_TYPE => '${this.isSrvpgm ? '*SRVPGM' : '*PGM'}'))`,
         'QSYS2',
         'BOUND_MODULE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BOUND_MODULE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "BOUND_MODULE_INFO"));
         return;
       }
 
@@ -311,15 +309,14 @@ export class Pgm extends Base {
         SELECT BOUND_SERVICE_PROGRAM_LIBRARY CONCAT '/' CONCAT BOUND_SERVICE_PROGRAM as srvpgm,
           BOUND_SERVICE_PROGRAM_SIGNATURE,
           BOUND_SERVICE_PROGRAM_ACTIVATION
-        FROM QSYS2.BOUND_SRVPGM_INFO
-        WHERE PROGRAM_LIBRARY = '${this.library}' AND PROGRAM_NAME='${this.name}'`,
+        FROM TABLE(QSYS2.BOUND_SRVPGM_INFO(PROGRAM_LIBRARY => '${this.library}', PROGRAM_NAME => '${this.name}', OBJECT_TYPE => '${this.isSrvpgm ? '*SRVPGM' : '*PGM'}'))`,
         'QSYS2',
         'BOUND_SRVPGM_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BOUND_SRVPGM_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "BOUND_SRVPGM_INFO"));
         return;
       }
 
@@ -343,15 +340,14 @@ export class Pgm extends Base {
         connection,
         `
         select SYMBOL_NAME, SYMBOL_USAGE 
-        from QSYS2.PROGRAM_EXPORT_IMPORT_INFO
-        WHERE PROGRAM_LIBRARY = '${this.library}' AND PROGRAM_NAME='${this.name}'`,
+        FROM TABLE(QSYS2.PROGRAM_EXPORT_IMPORT_INFO(PROGRAM_LIBRARY => '${this.library}', PROGRAM_NAME => '${this.name}'))`,
         'QSYS2',
         'PROGRAM_EXPORT_IMPORT_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "PROGRAM_EXPORT_IMPORT_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "PROGRAM_EXPORT_IMPORT_INFO"));
         return;
       }
 

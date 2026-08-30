@@ -281,11 +281,11 @@ export class Dtaara extends Base {
           DATA_AREA_LIBRARY => '${this.library}'))`,
         'QSYS2',
         'DATA_AREA_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (this.dta === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_AREA_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "DATA_AREA_INFO"));
         return;
       }
 
@@ -302,11 +302,11 @@ export class Dtaara extends Base {
             OBJTYPELIST => 'DTAARA', OBJECT_NAME => '${this.name}'))`,
         'QSYS2',
         'DATA_AREA_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (this.dta === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_AREA_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "DATA_AREA_INFO"));
         return;
       }
     } else {

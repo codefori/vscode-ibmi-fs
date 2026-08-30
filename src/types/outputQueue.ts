@@ -275,15 +275,14 @@ export namespace OutputQueueActions {
       let outq = await executeSqlIfExists(
         connection,
         `SELECT NETWORK_CONNECTION_TYPE, NUMBER_OF_WRITERS
-          FROM QSYS2.OUTPUT_QUEUE_INFO
-          WHERE OUTPUT_QUEUE_NAME = '${name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${library}'`,
+          FROM TABLE(QSYS2.OUTPUT_QUEUE_INFO(OUTQ_LIB => '${library}', OUTQ_NAME => '${name}'))`,
         'QSYS2',
         'OUTPUT_QUEUE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (outq === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OUTPUT_QUEUE_INFO"));
         return false;
       }
 
@@ -578,16 +577,14 @@ export default class Outq extends Base {
             REMOTE_PRINTER_QUEUE,
             INTERNET_ADDRESS,
             DESTINATION_OPTIONS
-            from QSYS2.OUTPUT_QUEUE_INFO
-            WHERE OUTPUT_QUEUE_NAME = '${this.name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${this.library}'
-  `,
+          FROM TABLE(QSYS2.OUTPUT_QUEUE_INFO(OUTQ_LIB => '${this.library}', OUTQ_NAME => '${this.name}'))`,
         'QSYS2',
         'OUTPUT_QUEUE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (this.outq === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OUTPUT_QUEUE_INFO"));
         return;
       }
     } else {
@@ -606,12 +603,12 @@ export default class Outq extends Base {
 
     if (connection) {
       // Build WHERE clause with base conditions
-      let whereClause = `OUTPUT_QUEUE_NAME = '${this.name}' AND OUTPUT_QUEUE_LIBRARY_NAME = '${this.library}'`;
+      let whereClause = ``;
 
       // Add search filter if present
       if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
         const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
-        whereClause += ` AND (
+        whereClause += ` WHERE (
           UPPER(SPOOLED_FILE_NAME) LIKE '${searchPattern}' OR
           UPPER(USER_NAME) LIKE '${searchPattern}' OR
           UPPER(USER_DATA) LIKE '${searchPattern}' OR
@@ -623,14 +620,14 @@ export default class Outq extends Base {
       // Get total count for pagination
       const countRows = await executeSqlIfExists(
         connection,
-        `SELECT COUNT(*) as TOTAL FROM QSYS2.OUTPUT_QUEUE_ENTRIES_BASIC WHERE ${whereClause}`,
+        `SELECT COUNT(*) as TOTAL FROM TABLE (QSYS2.OUTPUT_QUEUE_ENTRIES(OUTQ_LIB => '${this.library}', OUTQ_NAME => '${this.name}', DETAILED_INFO => 'NO')) ${whereClause}`,
         'QSYS2',
-        'OUTPUT_QUEUE_ENTRIES_BASIC',
-        'VIEW'
+        'OUTPUT_QUEUE_ENTRIES',
+        'FUNCTION'
       );
 
       if (countRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_ENTRIES_BASIC"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OUTPUT_QUEUE_ENTRIES"));
         return;
       }
 
@@ -650,17 +647,18 @@ export default class Outq extends Base {
             SIZE,
             TOTAL_PAGES,
             JOB_NAME,
-            FILE_NUMBER from QSYS2.OUTPUT_QUEUE_ENTRIES_BASIC
-            WHERE ${whereClause}
+            FILE_NUMBER 
+            FROM TABLE (QSYS2.OUTPUT_QUEUE_ENTRIES(OUTQ_LIB => '${this.library}', OUTQ_NAME => '${this.name}', DETAILED_INFO => 'NO'))
+            ${whereClause}
             ORDER BY CREATE_TIMESTAMP DESC
             LIMIT ${this.itemsPerPage} OFFSET ${offset}`,
         'QSYS2',
-        'OUTPUT_QUEUE_ENTRIES_BASIC',
-        'VIEW'
+        'OUTPUT_QUEUE_ENTRIES',
+        'FUNCTION'
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "OUTPUT_QUEUE_ENTRIES_BASIC"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "OUTPUT_QUEUE_ENTRIES_BASIC"));
         return;
       }
 

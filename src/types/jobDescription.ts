@@ -141,11 +141,11 @@ export default class Jobd extends Base {
                               JOB_DESCRIPTION_LIBRARY => '${this.library}'))`,
         'QSYS2',
         'JOB_DESCRIPTION_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (this.jobd === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_DESCRIPTION_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "JOB_DESCRIPTION_INFO"));
         return;
       }
     } else {

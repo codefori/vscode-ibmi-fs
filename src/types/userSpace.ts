@@ -178,20 +178,22 @@ export class Usrspc extends Base {
       // Add custom columns for data display
       this.columns.set('DATA', vscode.l10n.t("Data"));
       this.columns.set('DATA_BINARY', vscode.l10n.t("Binary Data"));
+      // OBJTEXT comes from OBJECT_STATISTICS, so it has no heading in USER_SPACE_INFO
+      this.columns.set('OBJTEXT', vscode.l10n.t("Text"));
 
       this.usrspc = await executeSqlIfExists(
         connection,
-        `SELECT SIZE, EXTENDABLE, INITIAL_VALUE, OBJECT_DOMAIN, TEXT_DESCRIPTION, y.data, y.data_binary
-                  FROM QSYS2.USER_SPACE_INFO x, TABLE(QSYS2.USER_SPACE(
-                    USER_SPACE => '${this.name}', USER_SPACE_LIBRARY => '${this.library}')) y
-                  WHERE x.USER_SPACE = '${this.name}' AND x.user_space_library='${this.library}'`,
+        `SELECT SIZE, EXTENDABLE, INITIAL_VALUE, OBJTEXT, y.data, y.data_binary
+          FROM table(QSYS2.USER_SPACE_INFO(USER_SPACE => '${this.name}', USER_SPACE_LIBRARY => '${this.library}')) x, TABLE(QSYS2.USER_SPACE(
+            USER_SPACE => '${this.name}', USER_SPACE_LIBRARY => '${this.library}')) y,
+            table(qsys2.object_statistics(OBJECT_SCHEMA => '${this.library}', OBJTYPELIST => '*USRSPC', OBJECT_NAME => '${this.name}'))`,
         'QSYS2',
         'USER_SPACE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (this.usrspc === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "USER_SPACE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "USER_SPACE_INFO"));
         return;
       }
     } else {
@@ -206,7 +208,7 @@ export class Usrspc extends Base {
    */
   generateHTML(): string {
     return generateDetailTable({
-      title: `User Space: ${this.library}/${this.name}`,
+      title: vscode.l10n.t("User Space: {0}/{1}", this.library, this.name),
       subtitle: vscode.l10n.t('User Space Information'),
       columns: this.columns,
       data: this.usrspc,

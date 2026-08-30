@@ -80,10 +80,10 @@ export async function getColumns(ibmi: IBMi, table: String, schema = 'QSYS2') {
     const name = column.COLUMN_NAME!.toString();
     const heading = parseHeading(column.COLUMN_HEADING!.toString());
     const length = Number(column.LENGTH);
-    // Translate using the column name as key (more stable than heading)
-    // Falls back to heading if no translation exists for column name
-    const translatedLabel = vscode.l10n.t(name, heading);
-    columns.set(name, translatedLabel);
+    // Translate using the column name as key (more stable than heading).
+    // l10n.t() returns the key untranslated when the bundle has no entry, so use the heading instead.
+    const translatedLabel = vscode.l10n.t(name);
+    columns.set(name, translatedLabel === name ? (heading || name) : translatedLabel);
   });
 
   return columns;
