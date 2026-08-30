@@ -113,11 +113,11 @@ export namespace SubsystemActions {
                       SUBSYSTEM_DESCRIPTION_LIBRARY => '${library}'))`,
         'QSYS2',
         'SUBSYSTEM_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (sbsd === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SUBSYSTEM_INFO"));
         return false;
       }
 
@@ -176,11 +176,11 @@ export namespace SubsystemActions {
                       SUBSYSTEM_DESCRIPTION_LIBRARY => '${library}'))`,
         'QSYS2',
         'SUBSYSTEM_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (sbsd === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SUBSYSTEM_INFO"));
         return false;
       }
 
@@ -473,11 +473,11 @@ export class Sbsd extends Base {
                       SUBSYSTEM_DESCRIPTION_LIBRARY => '${this.library}'))`,
         'QSYS2',
         'SUBSYSTEM_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (this.sbs === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SUBSYSTEM_INFO"));
         return;
       }
     } else {
@@ -508,12 +508,12 @@ export class Sbsd extends Base {
         query,
         'QSYS2',
         'SUBSYSTEM_POOL_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (entryRows === null) {
         console.log(`SBS POOLS Failed: ${query}\n`);
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SUBSYSTEM_POOL_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SUBSYSTEM_POOL_INFO"));
         return;
       }
 
@@ -542,12 +542,12 @@ export class Sbsd extends Base {
                     SUBSYSTEM_DESCRIPTION_LIBRARY => '${this.library}'))`,
         'QSYS2',
         'AUTOSTART_JOB_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (entryRows === null) {
 
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "AUTOSTART_JOB_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "AUTOSTART_JOB_INFO"));
         return;
       }
 
@@ -579,11 +579,11 @@ export class Sbsd extends Base {
                     SUBSYSTEM_DESCRIPTION_LIBRARY => '${this.library}'))`,
         'QSYS2',
         'WORKSTATION_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "WORKSTATION_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "WORKSTATION_INFO"));
         return;
       }
       this.wses.push(...entryRows.map(toWse));
@@ -616,11 +616,11 @@ export class Sbsd extends Base {
                     SUBSYSTEM_LIBRARY => '${this.library}')) rtge`,
         'QSYS2',
         'ROUTING_ENTRY_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "ROUTING_ENTRY_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "ROUTING_ENTRY_INFO"));
         return;
       }
       this.rtges.push(...entryRows.map(toRtge));
@@ -663,11 +663,11 @@ export class Sbsd extends Base {
                     SUBSYSTEM_DESCRIPTION_LIBRARY => '${this.library}'))`,
         'QSYS2',
         'PRESTART_JOB_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "PRESTART_JOB_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "PRESTART_JOB_INFO"));
         return;
       }
       this.pjes.push(...entryRows.map(toPje));
@@ -704,11 +704,11 @@ export class Sbsd extends Base {
           AND SUBSYSTEM_LIBRARY_NAME = '${this.library}'`,
         'QSYS2',
         'JOB_QUEUE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "JOB_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "JOB_QUEUE_INFO"));
         return;
       }
       this.jobqes.push(...entryRows.map(toJobqe));

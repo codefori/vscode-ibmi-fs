@@ -140,15 +140,14 @@ export namespace SaveFileActions {
       const savfInfo = await executeSqlIfExists(
         connection,
         `SELECT SAVE_COMMAND
-          FROM QSYS2.SAVE_FILE_INFO
-          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'`,
+          FROM TABLE(QSYS2.SAVE_FILE_INFO(SAVE_FILE_LIBRARY => '${target.library}', SAVE_FILE => '${target.name}'))`,
         'QSYS2',
         'SAVE_FILE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (savfInfo === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_INFO"));
         return false;
       }
 
@@ -263,15 +262,14 @@ export namespace SaveFileActions {
       const savfInfo = await executeSqlIfExists(
         connection,
         `SELECT SAVE_COMMAND
-          FROM QSYS2.SAVE_FILE_INFO
-          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'`,
+          FROM TABLE(QSYS2.SAVE_FILE_INFO(SAVE_FILE_LIBRARY => '${target.library}', SAVE_FILE => '${target.name}'))`,
         'QSYS2',
         'SAVE_FILE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (savfInfo === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_INFO"));
         return false;
       }
 
@@ -435,15 +433,14 @@ export namespace SaveFileActions {
       const savfInfo = await executeSqlIfExists(
         connection,
         `SELECT SAVE_COMMAND
-          FROM QSYS2.SAVE_FILE_INFO
-          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'`,
+          FROM TABLE(QSYS2.SAVE_FILE_INFO(SAVE_FILE_LIBRARY => '${target.library}', SAVE_FILE => '${target.name}'))`,
         'QSYS2',
         'SAVE_FILE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (savfInfo === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_INFO"));
         return false;
       }
 
@@ -843,15 +840,14 @@ export namespace SaveFileActions {
       const savfInfo = await executeSqlIfExists(
         connection,
         `SELECT SAVE_COMMAND
-          FROM QSYS2.SAVE_FILE_INFO
-          WHERE SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'`,
+          FROM TABLE(QSYS2.SAVE_FILE_INFO(SAVE_FILE_LIBRARY => '${target.library}', SAVE_FILE => '${target.name}'))`,
         'QSYS2',
         'SAVE_FILE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (savfInfo === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_INFO"));
         return false;
       }
 
@@ -1272,15 +1268,14 @@ export class SaveFile extends Base {
         `SELECT SAVE_FILE_LIBRARY,
           SAVE_FILE,
           SAVE_COMMAND
-          FROM QSYS2.SAVE_FILE_INFO WHERE
-          SAVE_FILE_LIBRARY = '${this.library}' AND SAVE_FILE = '${this.name}'`,
+          FROM TABLE(QSYS2.SAVE_FILE_INFO(SAVE_FILE_LIBRARY => '${this.library}', SAVE_FILE => '${this.name}'))`,
         'QSYS2',
         'SAVE_FILE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (this.savf === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "SAVE_FILE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "SAVE_FILE_INFO"));
         return;
       }
 

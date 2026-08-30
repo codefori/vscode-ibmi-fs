@@ -203,11 +203,11 @@ export default class Msgf extends Base {
     if (connection) {
       
       // Build WHERE clause with search filter
-      let whereClause = `message_file = '${this.name}' AND message_file_library = '${this.library}'`;
+      let whereClause = ``;
       
       if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
         const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
-        whereClause += ` AND (
+        whereClause += ` WHERE (
           UPPER(MESSAGE_ID) LIKE '${searchPattern}' OR
           UPPER(MESSAGE_TEXT) LIKE '${searchPattern}' OR
           UPPER(MESSAGE_SECOND_LEVEL_TEXT) LIKE '${searchPattern}' OR
@@ -220,15 +220,15 @@ export default class Msgf extends Base {
       const countRows = await executeSqlIfExists(
         connection,
         `SELECT COUNT(*) as TOTAL
-            FROM qsys2.message_file_data
-            WHERE ${whereClause}`,
+            FROM table(qsys2.message_file_data(MESSAGE_FILE_LIBRARY => '${this.library}', MESSAGE_FILE => '${this.name}'))
+            ${whereClause}`,
         'QSYS2',
         'MESSAGE_FILE_DATA',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (countRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_FILE_DATA"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "MESSAGE_FILE_DATA"));
         return;
       }
 
@@ -253,17 +253,17 @@ export default class Msgf extends Base {
                     ELSE null
                 END AS VALID_REPLY_VALUES,
                 REPLACE(MESSAGE_DATA, ' &', '\n&') as PARAMETERS
-            FROM qsys2.message_file_data
-            WHERE ${whereClause}
+            FROM table(qsys2.message_file_data(MESSAGE_FILE_LIBRARY => '${this.library}', MESSAGE_FILE => '${this.name}'))
+            ${whereClause}
             ORDER BY MESSAGE_ID
             LIMIT ${this.itemsPerPage} OFFSET ${offset}`,
         'QSYS2',
         'MESSAGE_FILE_DATA',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "MESSAGE_FILE_DATA"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "MESSAGE_FILE_DATA"));
         return;
       }
 

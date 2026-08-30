@@ -104,12 +104,11 @@ export namespace UserIndexActions {
       const usridxInfo = await executeSqlIfExists(
         connection,
         `SELECT KEY_INSERTION
-         FROM QSYS2.USER_INDEX_INFO
-         WHERE USER_INDEX_LIBRARY = '${library}' AND USER_INDEX = '${name}'
+         FROM TABLE(QSYS2.USER_INDEX_INFO(USER_INDEX_LIBRARY => '${library}', USER_INDEX => '${name}'))
          FETCH FIRST ROW ONLY`,
         'QSYS2',
         'USER_INDEX_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (usridxInfo === null || usridxInfo.length === 0) {
@@ -219,12 +218,11 @@ export namespace UserIndexActions {
       const usridxInfo = await executeSqlIfExists(
         connection,
         `SELECT KEY_INSERTION, KEY_LENGTH
-         FROM QSYS2.USER_INDEX_INFO
-         WHERE USER_INDEX_LIBRARY = '${library}' AND USER_INDEX = '${name}'
+         FROM TABLE(QSYS2.USER_INDEX_INFO(USER_INDEX_LIBRARY => '${library}', USER_INDEX => '${name}'))
          FETCH FIRST ROW ONLY`,
         'QSYS2',
         'USER_INDEX_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (usridxInfo === null || usridxInfo.length === 0) {
@@ -456,6 +454,8 @@ export class Usridx extends Base {
 
     if (connection) {
       this.columns = await getColumns(connection, 'USER_INDEX_INFO');
+      // OBJTEXT comes from OBJECT_STATISTICS, so it has no heading in USER_INDEX_INFO
+      this.columns.set('OBJTEXT', vscode.l10n.t("Text"));
       let sql: string;
 
       // Query to get user index information
@@ -472,17 +472,16 @@ export class Usridx extends Base {
           ENTRY_TOTAL,
           ENTRIES_ADDED,
           ENTRIES_REMOVED,
-          OBJECT_DOMAIN,
-          TEXT_DESCRIPTION
-        FROM QSYS2.USER_INDEX_INFO
-        WHERE USER_INDEX_LIBRARY = '${this.library}' and USER_INDEX='${this.name}'`,
+          OBJTEXT
+        FROM TABLE(QSYS2.USER_INDEX_INFO(USER_INDEX_LIBRARY => '${this.library}', USER_INDEX => '${this.name}')),
+          table(qsys2.object_statistics(OBJECT_SCHEMA => '${this.library}', OBJTYPELIST => '*USRIDX', OBJECT_NAME => '${this.name}'))`,
         'QSYS2',
         'USER_INDEX_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (this.Usridx === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "USER_INDEX_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "USER_INDEX_INFO"));
         return;
       }
     } else {

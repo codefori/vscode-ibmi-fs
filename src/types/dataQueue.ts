@@ -324,11 +324,11 @@ export class Dtaq extends Base {
                         DATA_QUEUE_LIBRARY => '${this.library}'))`,
         'QSYS2',
         'DATA_QUEUE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (this.dtaq === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "DATA_QUEUE_INFO"));
         return;
       }
 
@@ -373,11 +373,11 @@ export class Dtaq extends Base {
         sql,
         'QSYS2',
         'DATA_QUEUE_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (this.dtaq === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "DATA_QUEUE_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "DATA_QUEUE_INFO"));
         return;
       }
     } else {

@@ -253,11 +253,11 @@ export class Binddir extends Base {
                       BINDING_DIRECTORY => '${this.name}'))`,
         'QSYS2',
         'BINDING_DIRECTORY_INFO',
-        'VIEW'
+        'FUNCTION'
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BINDING_DIRECTORY_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "BINDING_DIRECTORY_INFO"));
         return;
       }
 
@@ -311,12 +311,12 @@ export class Binddir extends Base {
                       ) PX
             ) Y`,
         'QSYS2',
-        'BINDING_DIRECTORY_INFO',
-        'VIEW'
+        'PROGRAM_EXPORT_IMPORT_INFO',
+        'FUNCTION'
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "VIEW", "QSYS2", "BINDING_DIRECTORY_INFO"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "PROGRAM_EXPORT_IMPORT_INFO"));
         return;
       }
 

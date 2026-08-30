@@ -426,7 +426,7 @@ export default class Jobq extends Base {
       );
 
       if (countRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "SYSTOOLS", "JOB_QUEUE_ENTRIES"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "JOB_INFO"));
         return;
       }
 
@@ -458,7 +458,7 @@ export default class Jobq extends Base {
       );
 
       if (entryRows === null) {
-        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "SYSTOOLS", "JOB_QUEUE_ENTRIES"));
+        vscode.window.showErrorMessage(vscode.l10n.t("SQL {0} {1}/{2} not found. Please check your IBM i system.", "FUNCTION", "QSYS2", "JOB_INFO"));
         return;
       }
 
