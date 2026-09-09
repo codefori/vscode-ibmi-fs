@@ -1949,39 +1949,38 @@ function renderSpooledFiles(
 }
 
 /**
+ * Column definitions for the IFS objects table, shared by every directory rendered.
+ */
+function ifsObjectColumns(): FastTableColumn<IFSObject>[] {
+  return [
+    { title: vscode.l10n.t("Name"), width: "2fr", getValue: (e) => e.name },
+    { title: vscode.l10n.t("Type"), width: "1fr", getValue: (e) => e.type },
+    { title: vscode.l10n.t("Owner"), width: "1fr", getValue: (e) => e.owner },
+    { title: vscode.l10n.t("Size"), width: "1fr", getValue: (e) => `${(e.size / 1024).toFixed(2)} KB` },
+    { title: vscode.l10n.t("Data"), width: "0.5fr", getValue: (e) => e.data },
+    { title: vscode.l10n.t("Checkpoint"), width: "0.5fr", getValue: (e) => e.allowCheckpoint },
+  ];
+}
+
+/**
  * Renders IFS directories and their objects
  * @param directories - Array of IFSDirectory entries to display
  * @returns HTML string for the IFS directories display
  */
 function renderIFSDirectories(directories: IFSDirectory[]): string {
-  let html = "";
+  const columns = ifsObjectColumns();
 
   // Render each directory with its objects
-  directories.forEach((dir) => {
-    html += `<h3 style="margin-top: 20px; color: var(--vscode-editor-foreground);">${dir.path}</h3>`;
-    html += Components.dataGrid<IFSObject>(
-      {
-        stickyHeader: false,
-        columns: [
-          { title: vscode.l10n.t("Name"), cellValue: (obj) => obj.name, size: "2fr" },
-          { title: vscode.l10n.t("Type"), cellValue: (obj) => obj.type, size: "1fr" },
-          { title: vscode.l10n.t("Owner"), cellValue: (obj) => obj.owner, size: "1fr" },
-          {
-            title: vscode.l10n.t("Size"),
-            cellValue: (obj) => `${(obj.size / 1024).toFixed(2)} KB`,
-            size: "1fr",
-          },
-          { title: vscode.l10n.t("Data"), cellValue: (obj) => obj.data, size: "0.5fr" },
-          {
-            title: vscode.l10n.t("Checkpoint"),
-            cellValue: (obj) => obj.allowCheckpoint,
-            size: "0.5fr",
-          },
-        ],
-      },
-      dir.objects,
-    );
-  });
-
-  return html;
+  return directories.map((dir) =>
+    `<div class="savf-ifs-table">` +
+    generateFastTable({
+      title: dir.path,
+      subtitle: vscode.l10n.t("Total Objects: {0}", String(dir.objects.length)),
+      columns: columns,
+      data: dir.objects,
+      stickyHeader: false,
+      emptyMessage: vscode.l10n.t("No objects found in this directory."),
+    }) +
+    `</div>`
+  ).join("");
 }
