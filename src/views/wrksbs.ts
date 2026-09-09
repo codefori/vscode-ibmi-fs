@@ -23,6 +23,17 @@ const WRKSBS_TABLE_ID = 'wrksbs-subsystems';
 const NO_MAX_ACTIVE_JOBS = -1;
 
 /**
+ * Resolve a column header. The SQL column name is used as the l10n key (the translated
+ * bundles carry entries for it), but VS Code loads no bundle for the English UI, so there
+ * `l10n.t()` returns the key verbatim — fall back to a readable English label in that case.
+ * Same approach as getColumns() in tools.ts, which falls back to the DB COLUMN_HEADING.
+ */
+const columnTitle = (sqlName: string, englishLabel: string): string => {
+  const translated = vscode.l10n.t(sqlName);
+  return translated === sqlName ? englishLabel : translated;
+};
+
+/**
  * Namespace containing actions for Work with Subsystems
  */
 export namespace WrksbsActions {
@@ -190,14 +201,15 @@ export namespace WrksbsActions {
         }
       });
 
-      // Column titles reuse the QSYS2.SUBSYSTEM_INFO column names as l10n keys — they're
-      // already translated everywhere else the view's raw SQL columns show up as labels.
+      // Column titles use the QSYS2.SUBSYSTEM_INFO column names as l10n keys (the translated
+      // bundles carry entries for them); columnTitle() supplies the English label for the
+      // English UI, where VS Code loads no bundle and l10n.t() echoes the key back.
       const subsystemColumns: FastTableColumn<Entry>[] = [
-        { title: vscode.l10n.t("SUBSYSTEM_DESCRIPTION_LIBRARY"), width: "1fr", getValue: e => e.library },
-        { title: vscode.l10n.t("SUBSYSTEM_DESCRIPTION"), width: "1fr", getValue: e => e.subsystem },
-        { title: vscode.l10n.t("MAXIMUM_ACTIVE_JOBS"), width: "0.8fr", getValue: e => e.maxActiveJobs },
-        { title: vscode.l10n.t("CURRENT_ACTIVE_JOBS"), width: "0.8fr", getValue: e => String(e.currentActiveJobs) },
-        { title: vscode.l10n.t("TEXT_DESCRIPTION"), width: "1.5fr", getValue: e => e.text },
+        { title: columnTitle("SUBSYSTEM_DESCRIPTION_LIBRARY", "Subsystem Description Library"), width: "1fr", getValue: e => e.library },
+        { title: columnTitle("SUBSYSTEM_DESCRIPTION", "Subsystem Description"), width: "1fr", getValue: e => e.subsystem },
+        { title: columnTitle("MAXIMUM_ACTIVE_JOBS", "Maximum Active Jobs"), width: "0.8fr", getValue: e => e.maxActiveJobs },
+        { title: columnTitle("CURRENT_ACTIVE_JOBS", "Current Active Jobs"), width: "0.8fr", getValue: e => String(e.currentActiveJobs) },
+        { title: columnTitle("TEXT_DESCRIPTION", "Text Description"), width: "1.5fr", getValue: e => e.text },
         {
           title: vscode.l10n.t("Actions"),
           width: "1fr",
