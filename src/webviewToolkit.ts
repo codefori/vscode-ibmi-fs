@@ -345,23 +345,6 @@ export namespace Components {
     role: 'presentation' | 'separator'
   }
 
-  /** Data grid component interface */
-  interface DataGrid<T> extends Component {
-    stickyHeader?: boolean
-    generateHeader?: "default" | "sticky" | "none"
-    headerClass?: string
-    columns: Column<T>[]
-    rowClass?: (row: T) => string
-  }
-
-  /** Column definition for data grids */
-  export interface Column<T> {
-    cellValue: (row: T) => string
-    title?: string
-    size?: string
-    cellClass?: (row: T) => string
-  }
-
   /** Dropdown component interface */
   interface DropDown extends Component {
     disabled: boolean
@@ -390,50 +373,6 @@ export namespace Components {
       ${panels.map((panel, index) => /*html*/ `<vscode-tab-header slot="header">${panel.title.toUpperCase()}${panel.badge ? ' ' + badge(panel.badge, true) : ''}</vscode-tab-header>`).join("")}
       ${panels.map((panel, index) => /*html*/ `<vscode-tab-panel ${panel.class ? `class="${panel.class}"` : ''}>${panel.content}</vscode-tab-panel>`).join("")}
     </vscode-tabs>`;
-  }
-
-  /**
-   * Generate a table component (replaces data grid)
-   * @param grid - Grid configuration
-   * @param content - Array of data to display
-   * @returns HTML string for the table
-   */
-  export function dataGrid<T>(grid: DataGrid<T>, content: T[]): string {
-    const columnsArray = grid.columns.map(col => col.size || 'auto');
-    return /*html*/ `<vscode-table ${renderAttributes(grid, "columns", "stickyHeader", "rowClass", "headerClass")} bordered columns='${JSON.stringify(columnsArray)}'>
-        ${renderHeader(grid)}
-        <vscode-table-body>
-          ${content.map(row => renderRow(grid, row)).join("")}
-        </vscode-table-body>
-      </vscode-table>`;
-  }
-
-  /**
-   * Render the header row for a table
-   * @param grid - Grid configuration
-   * @returns HTML string for the header row
-   */
-  function renderHeader<T>(grid: DataGrid<T>) {
-    if (grid.columns.filter(col => col.title).length) {
-      return /*html*/ `<vscode-table-header class="${grid.headerClass || ''}">
-        ${grid.columns.map((col, index) => /*html*/ `<vscode-table-header-cell>${col.title || ""}</vscode-table-header-cell>`).join("")}
-      </vscode-table-header>`;
-    }
-    else {
-      return "";
-    }
-  }
-
-  /**
-   * Render a data row for a table
-   * @param grid - Grid configuration
-   * @param row - Data row to render
-   * @returns HTML string for the data row
-   */
-  function renderRow<T>(grid: DataGrid<T>, row: T) {
-    return /*html*/ `<vscode-table-row class="${grid.rowClass?.(row) || ''}">
-        ${grid.columns.map((col, index) => /*html*/ `<vscode-table-cell class="${col.cellClass?.(row) || ''}">${col.cellValue(row)}</vscode-table-cell>`).join("")}
-      </vscode-table-row>`;
   }
 
   /**
