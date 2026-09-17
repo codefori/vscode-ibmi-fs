@@ -321,18 +321,18 @@ export default class Msgq extends Base {
       if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
         const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
         whereClause += ` AND (
-          UPPER(MESSAGE_ID) LIKE '${searchPattern}' OR
-          UPPER(MESSAGE_TEXT) LIKE '${searchPattern}' OR
-          UPPER(MESSAGE_SECOND_LEVEL_TEXT) LIKE '${searchPattern}' OR
-          UPPER(FROM_USER) LIKE '${searchPattern}' OR
-          UPPER(FROM_JOB) LIKE '${searchPattern}'
+          UPPER(x.MESSAGE_ID) LIKE '${searchPattern}' OR
+          UPPER(x.MESSAGE_TEXT) LIKE '${searchPattern}' OR
+          UPPER(x.MESSAGE_SECOND_LEVEL_TEXT) LIKE '${searchPattern}' OR
+          UPPER(x.FROM_USER) LIKE '${searchPattern}' OR
+          UPPER(x.FROM_JOB) LIKE '${searchPattern}'
         )`;
       }
 
       // Get total count for pagination
       const countRows = await executeSqlIfExists(
         connection,
-        `SELECT COUNT(*) as TOTAL FROM TABLE(QSYS2.MESSAGE_QUEUE_INFO(QUEUE_NAME => '${this.name}', QUEUE_LIBRARY => '${this.library}' )) ${whereClause}`,
+        `SELECT COUNT(*) as TOTAL FROM TABLE(QSYS2.MESSAGE_QUEUE_INFO(QUEUE_NAME => '${this.name}', QUEUE_LIBRARY => '${this.library}' )) x WHERE 1=1 ${whereClause}`,
         'QSYS2',
         'MESSAGE_QUEUE_INFO',
         'FUNCTION'
