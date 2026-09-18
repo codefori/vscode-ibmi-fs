@@ -319,7 +319,7 @@ export default class Msgq extends Base {
 
       // Add search filter if present
       if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
-        const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
+        const searchPattern = `%${this.searchTerm.trim().replace(/'/g, "''").toUpperCase()}%`;
         whereClause += ` AND (
           UPPER(x.MESSAGE_ID) LIKE '${searchPattern}' OR
           UPPER(x.MESSAGE_TEXT) LIKE '${searchPattern}' OR
