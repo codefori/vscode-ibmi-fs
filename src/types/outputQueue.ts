@@ -607,7 +607,7 @@ export default class Outq extends Base {
 
       // Add search filter if present
       if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
-        const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
+        const searchPattern = `%${this.searchTerm.trim().replace(/'/g, "''").toUpperCase()}%`;
         whereClause += ` WHERE (
           UPPER(SPOOLED_FILE_NAME) LIKE '${searchPattern}' OR
           UPPER(USER_NAME) LIKE '${searchPattern}' OR

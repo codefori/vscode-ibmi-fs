@@ -91,7 +91,7 @@ export namespace WrkusrjobActions {
     // Build WHERE clause for search
     let whereClause = '1=1';
     if (searchTerm && searchTerm.trim() !== '' && searchTerm.trim() !== '-') {
-      const searchPattern = `%${searchTerm.trim().toUpperCase()}%`;
+      const searchPattern = `%${searchTerm.trim().replace(/'/g, "''").toUpperCase()}%`;
       whereClause += ` AND (
         UPPER(JI.JOB_NAME) LIKE '${searchPattern}' OR
         UPPER(JI.JOB_STATUS) LIKE '${searchPattern}' OR

@@ -206,7 +206,7 @@ export default class Msgf extends Base {
       let whereClause = ``;
       
       if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
-        const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
+        const searchPattern = `%${this.searchTerm.trim().replace(/'/g, "''").toUpperCase()}%`;
         whereClause += ` WHERE (
           UPPER(MESSAGE_ID) LIKE '${searchPattern}' OR
           UPPER(MESSAGE_TEXT) LIKE '${searchPattern}' OR

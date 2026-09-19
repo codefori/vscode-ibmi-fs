@@ -98,7 +98,7 @@ export namespace WrksplfActions {
     // Build WHERE clause for search
     let whereClause = '1=1';
     if (searchTerm && searchTerm.trim() !== '' && searchTerm.trim() !== '-') {
-      const searchPattern = `%${searchTerm.trim().toUpperCase()}%`;
+      const searchPattern = `%${searchTerm.trim().replace(/'/g, "''").toUpperCase()}%`;
       whereClause += ` AND (
         UPPER(SPOOLED_FILE_NAME) LIKE '${searchPattern}' OR
         UPPER(JOB_USER) LIKE '${searchPattern}' OR

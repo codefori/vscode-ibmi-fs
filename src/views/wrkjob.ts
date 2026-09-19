@@ -803,7 +803,7 @@ export namespace WrkjobActions {
     // Build the search filter (shared between the count and the data query)
     let whereClause = '';
     if (searchTerm && searchTerm.trim() !== '' && searchTerm.trim() !== '-') {
-      const searchPattern = `%${searchTerm.trim().toUpperCase()}%`;
+      const searchPattern = `%${searchTerm.trim().replace(/'/g, "''").toUpperCase()}%`;
       whereClause = ` WHERE (
         UPPER(MESSAGE_ID) LIKE '${searchPattern}' OR
         UPPER(MESSAGE_TEXT) LIKE '${searchPattern}' OR

@@ -401,7 +401,7 @@ export default class Jobq extends Base {
 
       // Add search filter if present
       if (this.searchTerm && this.searchTerm.trim() !== '' && this.searchTerm.trim() !== '-') {
-        const searchPattern = `%${this.searchTerm.trim().toUpperCase()}%`;
+        const searchPattern = `%${this.searchTerm.trim().replace(/'/g, "''").toUpperCase()}%`;
         whereClause += ` AND (
           UPPER(JOB_NAME) LIKE '${searchPattern}' OR
           UPPER(SUBMITTER_JOB_NAME) LIKE '${searchPattern}' OR
