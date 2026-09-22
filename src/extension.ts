@@ -332,7 +332,7 @@ async function promptForQuickStartMenuItem(existing?: QuickStartMenuItem): Promi
         const type = await vscode.window.showInputBox({
           prompt: vscode.l10n.t('Enter object type (e.g., *PGM, *FILE, *DTAARA, *MSGQ, *OUTQ, *DTAQ)'),
           value: existing?.args?.[2],
-          placeHolder: vscode.l10n.t('*PGM'),
+          placeHolder: '*PGM',
           validateInput: value => (!value || value.trim().length === 0) ? vscode.l10n.t('Object type is required')
             : (!value.startsWith('*') ? vscode.l10n.t('Object type must start with *') : null)
         });
@@ -1037,7 +1037,7 @@ export async function activate(context: vscode.ExtensionContext) {
       if (!objType) {
         objType = await vscode.window.showInputBox({
           prompt: vscode.l10n.t("Enter object type (e.g., *PGM, *FILE, *DTAARA)"),
-          placeHolder: vscode.l10n.t("*PGM"),
+          placeHolder: "*PGM",
           value: "*PGM",
           validateInput: (value) => {
             if (!value || value.trim().length === 0) {

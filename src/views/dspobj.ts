@@ -82,7 +82,7 @@ export namespace DspobjActions {
 
           const type = await vscode.window.showInputBox({
             prompt: vscode.l10n.t("Enter object type (e.g., *PGM, *FILE, *DTAARA)"),
-            placeHolder: vscode.l10n.t("*PGM"),
+            placeHolder: "*PGM",
             value: "*PGM",
             validateInput: (value) => {
               if (!value || value.trim().length === 0) {
