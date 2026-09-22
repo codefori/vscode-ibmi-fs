@@ -22,7 +22,7 @@ import { Tools } from "@halcyontech/vscode-ibmi-types/api/Tools";
 import * as vscode from "vscode";
 import { getInstance } from "../ibmi";
 import ObjectProvider from '../objectProvider';
-import { executeSqlIfExists, getProtected, getQSYSObjectPath } from "../tools";
+import { executeSqlIfExists, getCLPrompter, getProtected, getQSYSObjectPath, promptAndRunCommand } from "../tools";
 import { FastTableColumn, FastTableUpdate, generateDetailTable, generateFastTable, generateFastTableUpdate } from "../ibmi";
 import { getItemsPerPage } from "../config";
 import { Components } from "../webviewToolkit";
@@ -451,6 +451,74 @@ export namespace SaveFileActions {
         return false;
       }
 
+      // Get the library the objects were saved from, used as default on the restore command
+      let savedLibrary = "";
+      if (saveCmd !== "SAV") {
+        const libResult = await connection.runSQL(
+          `SELECT LIBRARY_NAME
+            FROM QSYS2.SAVE_FILE_INFO WHERE
+            SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'`,
+        );
+        savedLibrary = libResult[0]?.LIBRARY_NAME
+          ? libResult[0].LIBRARY_NAME.toString()
+          : "";
+      }
+
+      // When the CL Prompter is installed, prompt the restore command instead of asking for
+      // every parameter one by one
+      const clPrompter = await getCLPrompter();
+      if (clPrompter) {
+        const savf = `${target.library}/${target.name}`;
+        let seedCommand: string;
+
+        if (saveCmd === "SAV") {
+          seedCommand = `QSYS/RST DEV('${getQSYSObjectPath(target.library, target.name, "FILE")}')`;
+        } else {
+          // A library save can be restored as a whole library or as single objects
+          let restoreCmd = "RSTOBJ";
+          if (saveCmd === "SAVLIB") {
+            const choice = await vscode.window.showQuickPick(["RSTLIB", "RSTOBJ"], {
+              placeHolder: vscode.l10n.t("Command for restore"),
+              title: vscode.l10n.t("Command for restore"),
+              canPickMany: false,
+            });
+
+            if (!choice) {
+              return false;
+            }
+            restoreCmd = choice;
+          }
+
+          seedCommand =
+            restoreCmd === "RSTLIB"
+              ? `QSYS/RSTLIB SAVLIB(${savedLibrary}) DEV(*SAVF) SAVF(${savf})`
+              : `QSYS/RSTOBJ OBJ(*ALL) SAVLIB(${savedLibrary}) DEV(*SAVF) SAVF(${savf})`;
+        }
+
+        const promptedResult = await promptAndRunCommand(
+          connection,
+          clPrompter,
+          seedCommand,
+          { progressTitle: vscode.l10n.t("Restore operation") },
+        );
+
+        if (!promptedResult) {
+          return false;
+        }
+
+        if (promptedResult.code === 0) {
+          vscode.window.showInformationMessage(
+            vscode.l10n.t("Restore operation completed successfully"),
+          );
+          return true;
+        } else {
+          vscode.window.showErrorMessage(
+            vscode.l10n.t("Failed to Restore: {0}", String(promptedResult.stderr)),
+          );
+          return false;
+        }
+      }
+
       const result = await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
@@ -475,17 +543,8 @@ export namespace SaveFileActions {
             savcmd2;
           let cmd: string | undefined;
 
-          // Get the library name from save file info if not QSYS/SAV command
-          if (saveCmd !== "SAV") {
-            const libResult = await connection.runSQL(
-              `SELECT LIBRARY_NAME
-                FROM QSYS2.SAVE_FILE_INFO WHERE
-                SAVE_FILE_LIBRARY = '${target.library}' AND SAVE_FILE = '${target.name}'`,
-            );
-            fromlib = libResult[0].LIBRARY_NAME
-              ? libResult[0].LIBRARY_NAME.toString()
-              : "";
-          }
+          // Library the objects were saved from, used as default on the restore command
+          fromlib = savedLibrary;
 
           // Determine restore command based on save command
           if (saveCmd === "SAVLIB") {
@@ -854,6 +913,65 @@ export namespace SaveFileActions {
       if (savfInfo && savfInfo[0].SAVE_COMMAND) {
         vscode.window.showErrorMessage(vscode.l10n.t("Save file {0}/{1} is not empty", target.library, target.name));
         return false;
+      }
+
+      // When the CL Prompter is installed, prompt the save command instead of asking for every
+      // parameter one by one
+      const clPrompter = await getCLPrompter();
+      if (clPrompter) {
+        // Still needed: the save type decides which command is prompted
+        const choice = await vscode.window.showQuickPick(
+          ["IFS", "LIBRARY", "OBJECT"],
+          {
+            placeHolder: vscode.l10n.t("Choose your save type"),
+            title: vscode.l10n.t("Save"),
+            canPickMany: false,
+          },
+        );
+
+        if (!choice) {
+          return false;
+        }
+
+        const savf = `${target.library}/${target.name}`;
+        let seedCommand: string;
+
+        switch (choice) {
+          case "IFS":
+            seedCommand = `QSYS/SAV DEV('${getQSYSObjectPath(target.library, target.name, "FILE")}')`;
+            break;
+
+          case "LIBRARY":
+            seedCommand = `QSYS/SAVLIB DEV(*SAVF) SAVF(${savf})`;
+            break;
+
+          default:
+            seedCommand = `QSYS/SAVOBJ OBJ(*ALL) DEV(*SAVF) SAVF(${savf})`;
+            break;
+        }
+
+        const promptedResult = await promptAndRunCommand(
+          connection,
+          clPrompter,
+          seedCommand,
+          { progressTitle: vscode.l10n.t("Save operation") },
+        );
+
+        if (!promptedResult) {
+          return false;
+        }
+
+        if (promptedResult.code === 0) {
+          vscode.window.showInformationMessage(
+            vscode.l10n.t("Save operation completed successfully"),
+          );
+          return true;
+        } else {
+          vscode.window.showErrorMessage(
+            vscode.l10n.t("Failed to save: {0}", String(promptedResult.stderr)),
+          );
+          return false;
+        }
       }
 
       const result = await vscode.window.withProgress(

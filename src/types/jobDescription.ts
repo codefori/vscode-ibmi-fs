@@ -18,10 +18,10 @@
 
 import Base from "./base";
 import { getInstance } from "../ibmi";
-import { getColumns, executeSqlIfExists, getProtected } from "../tools";
+import { getColumns, executeSqlIfExists, getProtected, promptAndRunCommand, requireCLPrompter } from "../tools";
 import { generateDetailTable } from "../ibmi";
 import * as vscode from 'vscode';
-import { CommandResult, IBMiObject } from "@halcyontech/vscode-ibmi-types";
+import { IBMiObject } from "@halcyontech/vscode-ibmi-types";
 import ObjectProvider from "../objectProvider";
 
 /**
@@ -70,33 +70,32 @@ export namespace JobDescriptionActions {
         return false;
       }
 
-      const clPrompterExt = vscode.extensions.getExtension('CozziResearch.clprompter');
-      if (clPrompterExt) {
-        // Use CLPrompter for advanced prompting
-        if (!clPrompterExt.isActive) {
-          await clPrompterExt.activate();
-        }
-        const { CLPrompter } = clPrompterExt.exports;
-        let command = await CLPrompter(`QSYS/CHGJOBD JOBD(${item.library}/${item.name})`);
+      const clPrompter = await requireCLPrompter();
+      if (!clPrompter) {
+        return false;
+      }
 
-        if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to change Job Description {0}/{1}?", item.library, item.name), { modal: true }, vscode.l10n.t("Change JOBD"))) {
-          const cmdrun: CommandResult = await connection.runCommand({
-            command: command,
-            environment: `ile`
-          });
-
-          if (cmdrun.code === 0) {
-            vscode.window.showInformationMessage(vscode.l10n.t("Job description changed successfully."));
-            return true;
-          } else {
-            vscode.window.showErrorMessage(vscode.l10n.t("Unable to change job description:\n{0}", String(cmdrun.stderr)));
-            return false;
+      const cmdrun = await promptAndRunCommand(
+        connection,
+        clPrompter,
+        `QSYS/CHGJOBD JOBD(${item.library}/${item.name})`,
+        {
+          confirmation: {
+            message: vscode.l10n.t("Are you sure you want to change Job Description {0}/{1}?", item.library, item.name),
+            confirmLabel: vscode.l10n.t("Change JOBD")
           }
-        } else {
-          return false;
         }
+      );
+
+      if (!cmdrun) {
+        return false;
+      }
+
+      if (cmdrun.code === 0) {
+        vscode.window.showInformationMessage(vscode.l10n.t("Job description changed successfully."));
+        return true;
       } else {
-        vscode.window.showErrorMessage(vscode.l10n.t(`This action requires "Bob Cozzi's CL Prompter and Formatter for IBM i" extension`));
+        vscode.window.showErrorMessage(vscode.l10n.t("Unable to change job description:\n{0}", String(cmdrun.stderr)));
         return false;
       }
     } else {

@@ -48,6 +48,8 @@ Save files are special file objects used to store saved objects and libraries.
 - 📊 Display save file contents (objects, members, spooled files, IFS directories)
 - 📋 View detailed information about saved items
 
+> 💡 **Tip:** when "Bob Cozzi's CL Prompter and Formatter for IBM i" extension is installed, save and restore prompt the CL command (SAV/SAVLIB/SAVOBJ, RST/RSTLIB/RSTOBJ) with the save file already filled in, instead of asking for each parameter one by one.
+
 ---
 
 ### 📨 Data Queues (*DTAQ)

@@ -19,7 +19,7 @@ import Base from "./base";
 import { CommandResult, IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
-import { executeSqlIfExists, getProtected } from "../tools";
+import { executeSqlIfExists, getProtected, promptAndRunCommand, requireCLPrompter } from "../tools";
 import { generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate } from "../ibmi";
 import * as vscode from 'vscode';
 import ObjectProvider from "../objectProvider";
@@ -64,30 +64,17 @@ export namespace MessageFileActions {
       return false;
     }
 
-    // Check if CLPrompter extension is installed
-    const clPrompterExt = vscode.extensions.getExtension('CozziResearch.clprompter');
-    if (clPrompterExt) {
-      // Use CLPrompter for advanced prompting
-      if (!clPrompterExt.isActive) {
-        await clPrompterExt.activate();
-      }
-      const { CLPrompter } = clPrompterExt.exports;
-      let command = await CLPrompter(`QSYS/ADDMSGD MSGF(${item.library}/${item.name})`);
+    const clPrompter = await requireCLPrompter();
+    if (!clPrompter) { return false; }
 
-      const cmdrun: CommandResult = await connection.runCommand({
-        command: command,
-        environment: `ile`
-      });
+    const cmdrun = await promptAndRunCommand(connection, clPrompter, `QSYS/ADDMSGD MSGF(${item.library}/${item.name})`);
+    if (!cmdrun) { return false; }
 
-      if (cmdrun.code === 0) {
-        vscode.window.showInformationMessage(vscode.l10n.t("Added new MSGID."));
-        return true;
-      } else {
-        vscode.window.showErrorMessage(vscode.l10n.t("Unable to add new MSGID:\n{0}", String(cmdrun.stderr)));
-        return false;
-      }
+    if (cmdrun.code === 0) {
+      vscode.window.showInformationMessage(vscode.l10n.t("Added new MSGID."));
+      return true;
     } else {
-      vscode.window.showErrorMessage(vscode.l10n.t(`This action requires "Bob Cozzi's CL Prompter and Formatter for IBM i" extension`));
+      vscode.window.showErrorMessage(vscode.l10n.t("Unable to add new MSGID:\n{0}", String(cmdrun.stderr)));
       return false;
     }
   };
@@ -100,18 +87,12 @@ export namespace MessageFileActions {
       return false;
     }
 
-    const clPrompterExt = vscode.extensions.getExtension('CozziResearch.clprompter');
-    if (!clPrompterExt) {
-      vscode.window.showErrorMessage(vscode.l10n.t(`This action requires "Bob Cozzi's CL Prompter and Formatter for IBM i" extension`));
-      return false;
-    }
+    const clPrompter = await requireCLPrompter();
+    if (!clPrompter) { return false; }
 
-    if (!clPrompterExt.isActive) { await clPrompterExt.activate(); }
-    const { CLPrompter } = clPrompterExt.exports;
-    const command = await CLPrompter(`QSYS/CHGMSGD MSGID(${entry.msgid}) MSGF(${entry.library}/${entry.name})`);
-    if (!command) { return false; }
+    const cmdrun = await promptAndRunCommand(connection, clPrompter, `QSYS/CHGMSGD MSGID(${entry.msgid}) MSGF(${entry.library}/${entry.name})`);
+    if (!cmdrun) { return false; }
 
-    const cmdrun: CommandResult = await connection.runCommand({ command, environment: `ile` });
     if (cmdrun.code === 0) {
       vscode.window.showInformationMessage(vscode.l10n.t("Message {0} changed.", entry.msgid));
       return true;

@@ -1,5 +1,5 @@
 import IBMi from '@halcyontech/vscode-ibmi-types/api/IBMi';
-import { ObjectFilters } from '@halcyontech/vscode-ibmi-types';
+import { CommandResult, ObjectFilters } from '@halcyontech/vscode-ibmi-types';
 import * as vscode from 'vscode';
 
 /** Regular expression for validating IBM i object names */
@@ -372,4 +372,115 @@ export async function executeSqlWithValidation(
       error: `SQL execution error: ${error}`
     };
   }
+}
+/** Extension id of Bob Cozzi's "CL Prompter and Formatter for IBM i". */
+export const CL_PROMPTER_EXTENSION_ID = 'CozziResearch.clprompter';
+
+/**
+ * Signature of the prompt function exported by the CL Prompter extension: it prompts the given
+ * CL command and resolves to the command the user confirmed, or to undefined when cancelled.
+ */
+export type CLPrompterFunction = (command: string) => Promise<string | undefined>;
+
+/**
+ * Get the CL Prompter function exported by the CL Prompter extension, activating it if needed.
+ *
+ * Returns undefined when the extension is not installed, so callers that only use the prompter
+ * as a shortcut can fall back to their own step-by-step prompts instead of failing. Actions that
+ * cannot work without it use {@link requireCLPrompter} instead.
+ *
+ * @returns The prompt function, or undefined when the extension is not installed
+ */
+export async function getCLPrompter(): Promise<CLPrompterFunction | undefined> {
+  const clPrompterExt = vscode.extensions.getExtension(CL_PROMPTER_EXTENSION_ID);
+  if (!clPrompterExt) {
+    return undefined;
+  }
+  if (!clPrompterExt.isActive) {
+    await clPrompterExt.activate();
+  }
+  return clPrompterExt.exports?.CLPrompter;
+}
+
+/**
+ * Get the CL Prompter function for an action that cannot work without it, telling the user which
+ * extension to install when it is missing.
+ *
+ * @returns The prompt function, or undefined when the extension is not installed
+ */
+export async function requireCLPrompter(): Promise<CLPrompterFunction | undefined> {
+  const clPrompter = await getCLPrompter();
+  if (!clPrompter) {
+    vscode.window.showErrorMessage(vscode.l10n.t(`This action requires "Bob Cozzi's CL Prompter and Formatter for IBM i" extension`));
+  }
+  return clPrompter;
+}
+
+/** Options for {@link promptAndRunCommand} */
+interface PromptAndRunOptions {
+  /** Title of the progress notification shown while the command runs; no notification when omitted */
+  progressTitle?: string;
+  /** Modal confirmation asked after the prompt and before the command runs */
+  confirmation?: {
+    /** Question shown in the modal */
+    message: string;
+    /** Label of the button that confirms the command */
+    confirmLabel: string;
+  };
+}
+
+/**
+ * Prompts a CL command with the CL Prompter and runs the command the user confirmed.
+ *
+ * The prompter shows every parameter of the command with its defaults and its own validation, so
+ * callers only have to build a command holding the parameters they already know; there is no need
+ * to ask for the other parameters one by one.
+ *
+ * @param connection - The IBM i connection
+ * @param clPrompter - The prompt function, from {@link getCLPrompter} or {@link requireCLPrompter}
+ * @param seedCommand - The command to prompt, with the parameters already known filled in
+ * @param options - Progress notification and confirmation shown around the command
+ * @returns The command result, or undefined when the user cancelled the prompt or the confirmation
+ */
+export async function promptAndRunCommand(
+  connection: IBMi,
+  clPrompter: CLPrompterFunction,
+  seedCommand: string,
+  options: PromptAndRunOptions = {}
+): Promise<CommandResult | undefined> {
+  /** Tells the user nothing ran, so a closed prompter is not mistaken for a command that did */
+  const cancelled = () => {
+    vscode.window.showWarningMessage(vscode.l10n.t("Operation cancelled by the user"));
+    return undefined;
+  };
+
+  const command = await clPrompter(seedCommand);
+
+  // The prompter never reports a cancellation: it hands back the command it was given when the
+  // user presses Cancel/F3/Esc, when the panel is closed and when the command definition cannot
+  // be read, and null only on an unexpected error. An unchanged command is therefore taken as
+  // "nothing to run" - the prompter rebuilds the command from its fields when the user submits,
+  // so a confirmed command is not the seed command.
+  if (!command || command.trim().length < 1 || command.trim() === seedCommand.trim()) {
+    return cancelled();
+  }
+
+  if (options.confirmation && !await vscode.window.showWarningMessage(
+    options.confirmation.message,
+    { modal: true },
+    options.confirmation.confirmLabel
+  )) {
+    return cancelled();
+  }
+
+  const run = async () => connection.runCommand({ command: command, environment: `ile` });
+
+  return options.progressTitle
+    ? vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: options.progressTitle
+      },
+      run)
+    : run();
 }
