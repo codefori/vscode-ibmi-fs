@@ -24,10 +24,40 @@ const USRJOB_TABLE_ID = 'wrkusrjob-jobs';
  */
 export namespace WrkusrjobActions {
   /**
+   * Refresh callback of every panel currently open, one entry per panel.
+   *
+   * Keyed by the panel itself rather than by user profile: the same profile can legitimately be
+   * open twice, and a name key would make the second panel evict the first from the map.
+   */
+  const panelRefreshers = new Map<vscode.WebviewPanel, (isAutoRefresh?: boolean) => Promise<void>>();
+
+  /**
+   * Last panel of this view to hold focus, i.e. the one the toolbar button acts on. The button
+   * is only visible while `activeWebviewPanelId == 'wrkusrjobView'`, so it always matches what
+   * the user is looking at.
+   */
+  let currentPanel: vscode.WebviewPanel | undefined;
+
+  /**
    * Register Work with User Jobs commands with VS Code
    * @param context - Extension context
    */
   export const register = (context: vscode.ExtensionContext) => {
+    // Registered once for the whole module. Registering it per panel instead threw
+    // `command already exists` on the second open, so a second profile could not be looked at
+    // until the first tab was closed -- and the failed attempt left an empty tab behind,
+    // the panel being created before the command.
+    context.subscriptions.push(
+      vscode.commands.registerCommand('vscode-ibmi-fs.refreshWrkusrjob', async (isAutoRefresh: boolean = false) => {
+        const refresh = currentPanel && panelRefreshers.get(currentPanel);
+        if (refresh) {
+          await refresh(isAutoRefresh);
+          return;
+        }
+        vscode.window.showWarningMessage(vscode.l10n.t("No user jobs view found to refresh"));
+      })
+    );
+
     context.subscriptions.push(
       vscode.commands.registerCommand("vscode-ibmi-fs.wrkusrjob", async (user?: string) => {
         // Called without a user (menu, command palette): ask which profile to look at.
@@ -217,14 +247,23 @@ export namespace WrkusrjobActions {
         }
       };
 
-      // Add refresh button to the webview toolbar
-      const refreshDisposable = vscode.commands.registerCommand('vscode-ibmi-fs.refreshWrkusrjob', async (isAutoRefresh: boolean = false) => {
-        await refresh(isAutoRefresh);
+      // Publish this panel's refresh to the toolbar command and claim focus; the auto-refresh
+      // timer below calls `refresh` directly, so it keeps updating its own panel even while
+      // another one is in front.
+      panelRefreshers.set(panel, refresh);
+      currentPanel = panel;
+      panel.onDidChangeViewState(event => {
+        if (event.webviewPanel.active) {
+          currentPanel = panel;
+        }
       });
 
-      // Clean up the command and the timer when panel is disposed
+      // Clean up the refresher and the timer when panel is disposed
       panel.onDidDispose(() => {
-        refreshDisposable.dispose();
+        panelRefreshers.delete(panel);
+        if (currentPanel === panel) {
+          currentPanel = undefined;
+        }
         if (autoRefreshTimer) {
           clearInterval(autoRefreshTimer);
           autoRefreshTimer = undefined;
