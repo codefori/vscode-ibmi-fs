@@ -31,7 +31,7 @@ The extension supports **22 different IBM i object types** with comprehensive vi
 | 🖥️ Subsystem Descriptions | `*SBSD` | ✅ |
 | 🎯 Classes | `*CLS` | ❌ |
 | 📁 Files | `*FILE` | ✅ |
-| 🔍 Query Definitions | `*QRYDFN` | ✅ |
+| 🔍 Query Definitions | `*QRYDFN` | ❌ |
 
 **Legend:**
 - ✅ **Actions Available** - Interactive operations (create, modify, delete, etc.)
@@ -42,6 +42,14 @@ The extension supports **22 different IBM i object types** with comprehensive vi
 ---
 
 ### Generic Actions
+
+Every object opened in the Object Editor gets these toolbar actions, whatever its type:
+
+| Action | Description |
+|--------|-------------|
+| 🔄 **Refresh Object** | Reload the object's data from the system |
+| ⚡ **Object Actions** | Quick pick listing every action available for the current object |
+| 🔧 **Additional Information** | Display Object Information (see below) |
 
 #### 🔧 Display Object Information
 
@@ -68,11 +76,25 @@ Click on **"FS Quick Start"** in the status bar (bottom left) to access these co
 | 📥 **DSPMSG** | Display User's message queue |
 | 💬 **DSPMSG QSYSOPR** | Display System Operator Messages |
 | 📋 **DSPOBJ** | Display Object Information (from context menu) |
-| 🔍 **DSPOBJ Detailed** | Display Object Information (single input prompt) |
+| 🔍 **DSPOBJ Detailed** | Display Object Information (prompts for library, name and type) |
 | 📄 **WRKSPLF** | Work with Spooled Files |
 | 💼 **WRKJOB** | Work with Job |
 | 🔄 **WRKACTJOB** | Work with Active Jobs |
 | 👥 **WRKUSRJOB** | Work with User Jobs |
+| 🏢 **WRKSBS** | Work with Subsystems |
+
+#### Customizing the menu
+
+The menu is fully customizable through the `vscode-ibmi-fs.quickStartMenu` setting. Click the ⚙️ **"Customize FS Quick Start Menu..."** entry at the bottom of the menu (or run `FS Quick Start: Configure FS Quick Start Menu` from the Command Palette) to open a guided wizard that lets you:
+
+- ➕ **Add** an entry pointing to any built-in or contributed VS Code command (with optional arguments)
+- ✏️ **Edit** an existing entry's label, description, icon or command
+- 🗑️ **Remove** one or more entries
+- ⬆️⬇️ **Move** entries up or down to reorder the menu
+- ♻️ **Reset** the menu back to the built-in defaults
+- ⚙️ **Open Settings** to edit the list as JSON
+
+Each entry needs a `label` and a `command`, and may also define a `description`, an `icon` (a codicon name, e.g. `server-process`) and `args`. When the setting is empty the built-in menu shown above is used; when it is set, it completely replaces the defaults.
 
 > 📖 **For detailed information** about all views and their features, see [**VIEWS.md**](VIEWS.md)
 
@@ -85,8 +107,9 @@ This extension requires the [Code for IBM i](https://marketplace.visualstudio.co
 ### Usage
 
 1. Connect to your IBM i system using Code for IBM i
-2. Navigate to the Object Browser
-3. Actions available inside the **Action Bar** (top right)
+2. Navigate to the Object Browser and open an object
+3. Object-level actions are available in the editor **Action Bar** (top right), or through the **Object Actions** quick pick
+4. Row-level actions (hold/release/end a job, reply to a message, open a spooled file, ...) are buttons inside the tables of the object view itself
 
 ### Requirements
 
@@ -112,7 +135,7 @@ This extension supports multiple languages through VSCode's built-in localizatio
 #### Features
 
 - 🌍 **Automatic language detection** - The extension automatically uses your VSCode display language
-- 📝 **1200+ translated strings** including:
+- 📝 **1600+ translated strings** including:
   - User interface messages and labels
   - Tab and panel titles
   - Table column headers

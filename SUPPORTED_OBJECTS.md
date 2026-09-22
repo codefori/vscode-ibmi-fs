@@ -27,7 +27,7 @@ This document provides detailed information about all IBM i object types support
 | Subsystem Descriptions | `*SBSD` | ✅ Yes | ❌ No |
 | Classes | `*CLS` | ❌ No | ✅ Yes |
 | Files | `*FILE` | ✅ Yes | ❌ No |
-| Query Definitions | `*QRYDFN` | ✅ Yes | ❌ No |
+| Query Definitions | `*QRYDFN` | ❌ No | ✅ Yes |
 
 ---
 
@@ -89,8 +89,12 @@ Output queues manage spooled files and printer output.
 - ⏸️ **Hold/Release Queue** - Hold or release output queues
 - 🗑️ **Clear Queue** - Clear output queue
 - ▶️ **Start/Stop Writer** - Start or stop printer writers
-- 📄 **Generate PDF** - Generate PDF from spooled files
-- 🗑️ **Delete Spooled Files** - Delete individual or old spooled files
+- 🗑️ **Delete Old Spooled Files** - Delete spooled files older than a given date
+
+**Per Spooled File Actions:**
+- 📖 **Open** - Open the spooled file content in a read-only editor
+- 📄 **Download** - Generate a PDF from the spooled file and download it
+- 🗑️ **Delete** - Delete the individual spooled file
 
 **Display Features:**
 - 📊 Display output queue information and statistics
@@ -106,8 +110,12 @@ Job queues manage batch jobs waiting to be processed.
 **Available Actions:**
 - ⏸️ **Hold/Release Queue** - Hold or release job queues
 - 🗑️ **Clear Queue** - Clear job queue
-- ⏸️ **Hold/Release Job** - Hold or release individual jobs
+
+**Per Job Actions:**
+- 🔍 **Details** - Open the Work with Job (WRKJOB) view for the selected job
+- ⏸️ **Hold/Release Job** - Hold or release individual jobs (the button shown depends on the job status)
 - 🛑 **End Job** - End individual jobs
+- 🐛 **Debug** - Start a service entry point to debug the job
 
 **Display Features:**
 - 📊 Display job queue information and statistics
@@ -175,6 +183,9 @@ Message queues store messages sent by programs, system functions, or users, prov
 - 📨 **Send Message** - Send message to the queue
 - 🗑️ **Clear Queue** - Clear all messages from the queue
 
+**Per Message Actions:**
+- ↩️ **Reply** - Reply to an inquiry message (SNDRPY), shown only for messages awaiting a reply
+
 **Display Features:**
 - 📊 Display message queue contents with detailed information
 - 📋 View message text (first and second level)
@@ -188,8 +199,8 @@ Message queues store messages sent by programs, system functions, or users, prov
 Binding directories contain lists of service programs and modules used during program binding.
 
 **Available Actions:**
-- ➕ **Add Entry** - Add new entries to binding directory
-- 🗑️ **Delete Entry** - Delete entries from binding directory
+- ➕ **Add Entry** - Add new entries to binding directory (ADDBNDDIRE)
+- 🗑️ **Remove Entry** - Remove entries from binding directory (RMVBNDDIRE)
 
 **Display Features:**
 - 📊 Display binding directory entries
@@ -259,7 +270,7 @@ Job descriptions define the runtime environment for batch jobs.
 **Available Actions:**
 - ✏️ **Change** - Change job description parameters
 
-> ‼️ **Actions requirements:** Message file actions require "Bob Cozzi's CL Prompter and Formatter for IBM i" extension
+> ‼️ **Actions requirements:** Job description actions require "Bob Cozzi's CL Prompter and Formatter for IBM i" extension
 
 **Display Features:**
 - 📊 Display job description attributes
@@ -333,7 +344,11 @@ Subsystem descriptions define independent operating environments within IBM i th
 **Available Actions:**
 - ▶️ **Start Subsystem** - Start subsystem
 - ⏹️ **End Subsystem** - End subsystem with multiple options (*IMMED, *CNTRLD)
-- 🛑 **End Job** - End individual jobs within the subsystem
+
+**Per Job Actions (active jobs in the subsystem):**
+- 🔍 **Details** - Open the Work with Job (WRKJOB) view for the selected job
+- ⏸️ **Hold/Release Job** - Hold or release a job (the button shown depends on the job status)
+- 🛑 **End Job** - End individual jobs within the subsystem (*IMMED)
 
 **Display Features:**
 - 📊 Display subsystem information and status (active/inactive)
@@ -375,7 +390,7 @@ Classes define the runtime attributes for batch jobs, controlling how jobs execu
 File objects include physical files (PF), logical files (LF), views, and indexes that store and organize data.
 
 **Available Actions:**
-- 🔍 **Query File** - Query file contents using SQL SELECT
+- 🔍 **Query File** - Query file contents using SQL SELECT (available for physical and logical files only)
 
 **Display Features:**
 - 📊 Display comprehensive file/table/view/index information
@@ -395,15 +410,27 @@ File objects include physical files (PF), logical files (LF), views, and indexes
 Query definitions are objects created by Query/400 or Query Manager that define database queries.
 
 **Available Actions:**
-- 📊 **Translate to SQL** - Translate *QRYDFN objects to SQL statements in text editor
+- ❌ None (View only)
 
 **Display Features:**
+- 📊 **Automatic translation to SQL** - Opening the object retrieves the query definition and shows the equivalent SQL statement directly in a read-only text editor (no webview)
 - 🔗 Automatic file reference conversion (LIB/FILE → LIB.FILE)
+- 🔍 Full VS Code find/replace and SQL syntax highlighting on the generated statement
 - 📖 Read-only view (use Query/400 or Query Manager to modify)
 
 ---
 
 ## Generic Actions
+
+These actions are contributed to the editor toolbar of **every** object opened in the Object Editor, regardless of its type.
+
+### 🔄 Refresh Object
+
+Reloads the object's data from the system and re-renders the view.
+
+### ⚡ Object Actions
+
+Opens a quick pick listing every action available for the object currently in the editor, so all the toolbar actions stay reachable when the toolbar is collapsed.
 
 ### 🔧 Display Object Information
 
@@ -420,10 +447,8 @@ A generic action that provides comprehensive information about any IBM i object,
 - 🔑 View authorization list information
 - 🎨 Multi-tab interface with Information, Locks, and Authorizations tabs
 - 🚀 Works with any IBM i object type (*PGM, *FILE, *DTAARA, etc.)
-- 📱 Available from Object Browser context menu and editor toolbar
-- ⌨️ **Keyboard shortcut**: `Ctrl+Shift+D` (Windows/Linux) or `Cmd+Shift+D` (Mac)
-  - Prompts for library name, object name, and object type
-  - Quick access to object information without navigating the Object Browser
+- 📱 Available from Object Browser context menu, editor toolbar and the FS Quick Start menu
+- 🔍 **Detailed variant** (`Display Object Information (Detailed)`, also in the FS Quick Start menu) prompts for library, object name and object type, giving quick access to any object without navigating the Object Browser. When added as a custom FS Quick Start entry it can also be pinned to a fixed library/name/type so it opens straight away.
 
 ---
 
