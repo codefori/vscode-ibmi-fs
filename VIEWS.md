@@ -9,6 +9,7 @@ This document provides detailed information about all interactive views availabl
 - [Work with Job (WRKJOB)](#work-with-job-wrkjob)
 - [Work with Spooled Files (WRKSPLF)](#work-with-spooled-files-wrksplf)
 - [Work with User Jobs (WRKUSRJOB)](#work-with-user-jobs-wrkusrjob)
+- [Work with Subsystems (WRKSBS)](#work-with-subsystems-wrksbs)
 
 ---
 
@@ -122,7 +123,7 @@ For each active job (except subsystem jobs):
 
 #### Auto-Refresh
 - Manual refresh available via toolbar button
-- Automatic refresh every 30 seconds (for active jobs only)
+- Automatic refresh controlled by the `code-for-ibmi.views.autoRefreshInterval` setting (set it to 0 to disable)
 
 ### Technical Details
 
@@ -258,7 +259,7 @@ Displays all job log messages:
 
 ### Auto-Refresh
 
-- Automatic refresh every 30 seconds
+- Automatic refresh controlled by the `code-for-ibmi.views.autoRefreshInterval` setting (set it to 0 to disable)
 - Auto-refresh stops when job status is OUTQ
 - Manual refresh available via toolbar button
 - Tab state is preserved during refresh
@@ -320,14 +321,15 @@ For each spool file:
 - Results update automatically as you type
 
 #### Pagination
-- Configurable items per page (default: 50)
+- Configurable items per page via the `code-for-ibmi.tables.itemsPerPage` setting
 - Navigate between pages
 - Shows total count and current page
 - Maintains search filter across pages
 
-#### Manual Refresh
+#### Refresh
 - Refresh button available in toolbar
 - Updates spool list with current search and pagination settings
+- Automatic refresh controlled by the `code-for-ibmi.views.autoRefreshInterval` setting (set it to 0 to disable)
 
 ### Technical Details
 
@@ -382,9 +384,10 @@ Actions are conditionally displayed based on job status:
 - Search by job name, job status, active status, type, completion status, or function
 - Results update automatically as you type
 
-#### Manual Refresh
+#### Refresh
 - Refresh button available in toolbar
 - Updates job list with current search settings
+- Automatic refresh controlled by the `code-for-ibmi.views.autoRefreshInterval` setting (set it to 0 to disable)
 
 ### Technical Details
 
@@ -396,6 +399,49 @@ Actions are conditionally displayed based on job status:
 - LEFT JOIN between JOB_INFO and ACTIVE_JOB_INFO
 - Provides complete job information including inactive jobs
 - Active status and function only available for active jobs
+
+---
+
+## Work with Subsystems (WRKSBS)
+
+**Command:** `vscode-ibmi-fs.wrksbs`
+
+### Overview
+
+Displays all the subsystems currently active on the system, with the number of jobs each one is running, and lets you drill into a subsystem or end it.
+
+### How to Access
+
+1. **From FS Quick Start Menu:** Click "FS Quick Start" in the status bar → Select "WRKSBS"
+2. **From Command Palette:** Run `Work with Subsystems`
+
+### Features
+
+#### Subsystem List Display
+Shows every active subsystem with the following information:
+- **Subsystem Description Library** - Library containing the subsystem description
+- **Subsystem Description** - Subsystem name
+- **Maximum Active Jobs** - Maximum number of active jobs allowed (`*NOMAX` when unlimited)
+- **Current Active Jobs** - Number of jobs currently active in the subsystem
+- **Text Description** - Subsystem text description
+
+Subsystems are sorted by name.
+
+#### Available Actions
+
+1. **Details** - Opens the Subsystem Description (*SBSD) view, with memory pools, autostart/workstation/job queue/routing/prestart entries and the list of active jobs
+2. **End** - Ends the subsystem, asking whether to use `*IMMED` or `*CNTRLD`
+
+After a subsystem is ended the list is refetched automatically.
+
+#### Refresh
+- Manual refresh available via toolbar button
+- Automatic refresh controlled by the `code-for-ibmi.views.autoRefreshInterval` setting (set it to 0 to disable)
+
+### Technical Details
+
+**SQL Services Used:**
+- `QSYS2.SUBSYSTEM_INFO` - Subsystem information (filtered on `STATUS = 'ACTIVE'`)
 
 ---
 

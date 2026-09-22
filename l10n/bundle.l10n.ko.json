@@ -1,5 +1,6 @@
 {
   "(No icon)": "(아이콘 없음)",
+  "Operation cancelled by the user": "사용자가 작업을 취소했습니다",
   "{0} command(s)": "{0}개 명령",
   "{0} Information": "{0} 정보",
   "{0}: {1}/{2}": "{0}: {1}/{2}",
