@@ -59,5 +59,16 @@
   "config.quickStartMenu.items.icon": "選用的 codicon 名稱（不含 `$()`），例如 `server-process`。",
   "config.quickStartMenu.items.label": "此選單項目顯示的文字。",
   "description": "IBM i 檔案系統",
-  "displayName": "IBM i FS"
+  "displayName": "IBM i FS",
+  "command.rowAction.open.title": "開啟",
+  "command.rowAction.download.title": "下載",
+  "command.rowAction.delete.title": "刪除",
+  "command.rowAction.details.title": "詳細資料",
+  "command.rowAction.end.title": "結束",
+  "command.rowAction.hold.title": "保留",
+  "command.rowAction.release.title": "釋放",
+  "command.rowAction.debug.title": "偵錯",
+  "command.rowAction.change.title": "修改",
+  "command.rowAction.reply.title": "回覆",
+  "command.rowAction.remove.title": "移除"
 }

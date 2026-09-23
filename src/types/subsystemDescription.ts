@@ -27,7 +27,7 @@ import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getColumns, getProtected, executeSqlIfExists } from "../tools";
-import { generateDetailTable, FastTableColumn, generateFastTable, generateFastTableUpdate, FastTableUpdate } from "../ibmi";
+import { generateDetailTable, FastTableColumn, FastTableRowActions, generateFastTable, generateFastTableUpdate, FastTableUpdate } from "../ibmi";
 import ObjectProvider from '../objectProvider';
 import { JobOperations } from '../commonOperations';
 
@@ -845,7 +845,7 @@ export class Sbsd extends Base {
       tables.push({ id: SBSD_TABLE_IDS.pjes, update: () => this.tableUpdate(SBSD_TABLE_IDS.pjes, pjeColumns(), this.pjes) });
     }
     if (this.sbs?.[0]?.STATUS === 'ACTIVE') {
-      tables.push({ id: SBSD_TABLE_IDS.jobs, update: () => this.tableUpdate(SBSD_TABLE_IDS.jobs, jobColumns(), this.jobs) });
+      tables.push({ id: SBSD_TABLE_IDS.jobs, update: () => this.tableUpdate(SBSD_TABLE_IDS.jobs, jobColumns(), this.jobs, jobActions()) });
     }
 
     return tables
@@ -854,9 +854,10 @@ export class Sbsd extends Base {
   }
 
   /** Build one table's update; the tables here neither search nor paginate. */
-  private tableUpdate<T>(tableId: string, columns: FastTableColumn<T>[], data: readonly T[]): FastTableUpdate {
+  private tableUpdate<T>(tableId: string, columns: FastTableColumn<T>[], data: readonly T[], rowActions?: FastTableRowActions<T>): FastTableUpdate {
     return generateFastTableUpdate({
       columns,
+      rowActions,
       data: [...data],
       totalItems: data.length,
       currentPage: 1,
@@ -1287,23 +1288,24 @@ function jobColumns(): FastTableColumn<Job>[] {
     { title: vscode.l10n.t("Elapsed CPU %"), width: "0.5fr", getValue: e => String(e.elapsedCpuPct) },
     { title: vscode.l10n.t("Elapsed I/O"), width: "0.5fr", getValue: e => String(e.elapsedIo) },
     { title: vscode.l10n.t("CPU Time"), width: "0.5fr", getValue: e => String(e.cpu) },
-    { title: vscode.l10n.t("Total I/O"), width: "0.5fr", getValue: e => String(e.io) },
-    {
-      title: vscode.l10n.t("Actions"),
-      width: "2fr",
-      getValue: e => {
-        // Encode job entry as URL parameter for action handlers
-        const arg = encodeURIComponent(JSON.stringify(e));
-        // Conditionally show Hold or Release button based on job status
-        // If job is HLD, show Release button; otherwise show Hold button
-        return `<vscode-button appearance="primary" href="action:wrkJob?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>
-                ${e.status !== 'HLD' ? `<vscode-button appearance="secondary" href="action:holdJob?entry=${arg}">${vscode.l10n.t("Hold")}</vscode-button>` :
-            `<vscode-button appearance="secondary" href="action:releaseJob?entry=${arg}">${vscode.l10n.t("Release")}</vscode-button>`}
-                <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>`;
-      }
-    }
+    { title: vscode.l10n.t("Total I/O"), width: "0.5fr", getValue: e => String(e.io) }
   ];
 
+}
+
+/** Job row actions, offered through the context menu (Details also on double click) */
+function jobActions(): FastTableRowActions<Job> {
+  return {
+    // Encode job entry as URL parameter for action handlers
+    getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+    actions: [
+      { action: "wrkJob", primary: true },
+      // Hold or Release, depending on whether the job is already held
+      { action: "holdJob", visible: e => e.status !== 'HLD' },
+      { action: "releaseJob", visible: e => e.status === 'HLD' },
+      { action: "endJob", destructive: true }
+    ]
+  };
 }
 
 function renderJobs(data: Job[]) {
@@ -1317,6 +1319,7 @@ function renderJobs(data: Job[]) {
     title: ``,
     subtitle: ``,
     columns: jobColumns(),
+    rowActions: jobActions(),
     data: data,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t("No running jobs for this subsystem."),

@@ -21,7 +21,7 @@ import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
 import { getColumns, getProtected, executeSqlIfExists } from "../tools";
-import { generateDetailTable, generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate } from "../ibmi";
+import { generateDetailTable, generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableRowActions, FastTableUpdate } from "../ibmi";
 
 /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
 const OUTQ_TABLE_ID = 'outq-entries';
@@ -740,19 +740,24 @@ export default class Outq extends Base {
       { title: vscode.l10n.t("Number"), width: "0.7fr", getValue: e => String(e.nbr) },
       { title: vscode.l10n.t("Timestamp"), width: "1.5fr", getValue: e => e.spoolts },
       { title: vscode.l10n.t("Pages"), width: "0.5fr", getValue: e => String(e.pages) },
-      { title: vscode.l10n.t("Size (KB)"), width: "1fr", getValue: e => String(e.spoolsiz) },
-      {
-        title: vscode.l10n.t("Actions"),
-        width: "1.5fr",
-        getValue: e => {
-          // Encode spool entry as URL parameter for action handlers
-          const arg = encodeURIComponent(JSON.stringify(e));
-          return `<vscode-button appearance="primary" href="action:openSpool?entry=${arg}">${vscode.l10n.t("Open")}</vscode-button>
-                <vscode-button appearance="primary" href="action:genPdf?entry=${arg}">${vscode.l10n.t("Download")}</vscode-button>
-                <vscode-button appearance="secondary" href="action:delPdf?entry=${arg}">${vscode.l10n.t("Delete")}</vscode-button>`;
-        }
-      }
+      { title: vscode.l10n.t("Size (KB)"), width: "1fr", getValue: e => String(e.spoolsiz) }
     ];
+  }
+
+  /**
+   * Row actions, offered through each row's context menu; the primary one also runs on
+   * double click. Passed to both the full render and the incremental update.
+   */
+  private getRowActions(): FastTableRowActions<Entry> {
+    return {
+      // Encode spool entry as URL parameter for action handlers
+      getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+      actions: [
+        { action: "openSpool", primary: true },
+        { action: "genPdf" },
+        { action: "delPdf", destructive: true }
+      ]
+    };
   }
 
   /** Subtitle text, kept in one place so the update carries the same wording as the render. */
@@ -764,6 +769,7 @@ export default class Outq extends Base {
   generateTableUpdate(): FastTableUpdate {
     return generateFastTableUpdate({
       columns: this.getColumns(),
+      rowActions: this.getRowActions(),
       data: this._entries,
       totalItems: this.totalItems,
       currentPage: this.currentPage,
@@ -786,6 +792,7 @@ export default class Outq extends Base {
       title: ``,
       subtitle: this.getSubtitle(),
       columns: this.getColumns(),
+      rowActions: this.getRowActions(),
       data: this._entries,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t("No spools found in this outq."),

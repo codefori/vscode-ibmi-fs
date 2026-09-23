@@ -56,6 +56,8 @@ export function getVSCodeTools(): typeof VscodeTools | undefined {
 export type FastTableColumn<T> = FrontendTables.FastTableColumn<T>;
 /** Options for generating a FastTable, re-exported from the base extension's frontendTables API */
 export type FastTableOptions<T> = FrontendTables.FastTableOptions<T>;
+/** Row actions (context menu + double click) of a FastTable, re-exported from the base extension's frontendTables API */
+export type FastTableRowActions<T> = FrontendTables.FastTableRowActions<T>;
 /** Options for generating a detail table, re-exported from the base extension's frontendTables API */
 export type DetailTableOptions = FrontendTables.DetailTableOptions;
 /** Action button configuration for detail tables, re-exported from the base extension's frontendTables API */
@@ -64,6 +66,8 @@ export type DetailTableAction = FrontendTables.DetailTableAction;
 export type FastTableUpdateOptions<T> = FrontendTables.FastTableUpdateOptions<T>;
 /** Message that replaces a live table's rows, re-exported from the base extension's frontendTables API */
 export type FastTableUpdate = FrontendTables.FastTableUpdate;
+/** Message that runs a fast table row action picked from the context menu, re-exported from the base extension's frontendTables API */
+export type FastTableRowActionMessage = FrontendTables.FastTableRowActionMessage;
 
 /**
  * Generate an enhanced detail table (key-value pairs) via the base extension's frontendTables API
@@ -96,4 +100,16 @@ export function generateFastTable<T>(options: FastTableOptions<T>): string {
  */
 export function generateFastTableUpdate<T>(options: FastTableUpdateOptions<T>): FastTableUpdate {
   return loadBase()!.frontendTables.generateFastTableUpdate(options);
+}
+
+/**
+ * Build the message a fast table row's `webview/context` command posts back to the webview,
+ * via the base extension's frontendTables API.
+ * @param action - Row action the command stands for
+ * @param context - Argument VS Code passed to the command
+ * @returns Message to pass to `webview.postMessage`, or undefined when the command was not
+ * invoked from a fast table row
+ */
+export function generateFastTableRowAction(action: string, context: unknown): FastTableRowActionMessage | undefined {
+  return loadBase()!.frontendTables.generateFastTableRowAction(action, context);
 }

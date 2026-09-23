@@ -59,5 +59,16 @@
   "config.quickStartMenu.items.icon": "Optionaler Codicon-Name (ohne `$()`), z. B. `server-process`.",
   "config.quickStartMenu.items.label": "Angezeigter Text für diesen Menüeintrag.",
   "description": "Dateisystem für IBM i",
-  "displayName": "IBM i FS"
+  "displayName": "IBM i FS",
+  "command.rowAction.open.title": "Öffnen",
+  "command.rowAction.download.title": "Herunterladen",
+  "command.rowAction.delete.title": "Löschen",
+  "command.rowAction.details.title": "Details",
+  "command.rowAction.end.title": "Beenden",
+  "command.rowAction.hold.title": "Halten",
+  "command.rowAction.release.title": "Freigeben",
+  "command.rowAction.debug.title": "Debug",
+  "command.rowAction.change.title": "Ändern",
+  "command.rowAction.reply.title": "Antworten",
+  "command.rowAction.remove.title": "Entfernen"
 }

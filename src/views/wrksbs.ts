@@ -11,10 +11,11 @@ import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import * as vscode from 'vscode';
 import { getInstance } from '../ibmi';
 import { executeSqlIfExists, checkViewExists } from "../tools";
-import { FastTableColumn, generateFastTable, generateFastTableUpdate } from "../ibmi";
+import { FastTableColumn, FastTableRowActions, generateFastTable, generateFastTableUpdate } from "../ibmi";
 import { generatePage } from "../webviewToolkit";
 import { getAutoRefreshInterval } from '../config';
 import { SubsystemActions } from '../types/subsystemDescription';
+import { trackRowActions } from "../rowActions";
 
 /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
 const WRKSBS_TABLE_ID = 'wrksbs-subsystems';
@@ -159,6 +160,7 @@ export namespace WrksbsActions {
           retainContextWhenHidden: true
         }
       );
+      trackRowActions(panel);
 
       // Auto-refresh configuration, from `code-for-ibmi.views.autoRefreshInterval`
       const autoRefreshInterval = getAutoRefreshInterval();
@@ -209,18 +211,18 @@ export namespace WrksbsActions {
         { title: columnTitle("SUBSYSTEM_DESCRIPTION", "Subsystem Description"), width: "1fr", getValue: e => e.subsystem },
         { title: columnTitle("MAXIMUM_ACTIVE_JOBS", "Maximum Active Jobs"), width: "0.8fr", getValue: e => e.maxActiveJobs },
         { title: columnTitle("CURRENT_ACTIVE_JOBS", "Current Active Jobs"), width: "0.8fr", getValue: e => String(e.currentActiveJobs) },
-        { title: columnTitle("TEXT_DESCRIPTION", "Text Description"), width: "1.5fr", getValue: e => e.text },
-        {
-          title: vscode.l10n.t("Actions"),
-          width: "1fr",
-          getValue: e => {
-            // Encode subsystem entry as URL parameter for the action handler
-            const arg = encodeURIComponent(JSON.stringify(e));
-            return `<vscode-button appearance="primary" href="action:sbsDetail?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>
-                  <vscode-button appearance="secondary" href="action:endSbs?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>`;
-          }
-        }
+        { title: columnTitle("TEXT_DESCRIPTION", "Text Description"), width: "1.5fr", getValue: e => e.text }
       ];
+
+      // Row actions, offered through the context menu (Details also on double click)
+      const subsystemActions: FastTableRowActions<Entry> = {
+        // Encode subsystem entry as URL parameter for the action handler
+        getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+        actions: [
+          { action: "sbsDetail", primary: true },
+          { action: "endSbs", destructive: true }
+        ]
+      };
 
       // Function to generate the table HTML
       const generateTableHtml = () => {
@@ -228,6 +230,7 @@ export namespace WrksbsActions {
           title: vscode.l10n.t("Work with Subsystems"),
           subtitle: vscode.l10n.t("Total Active Subsystems: {0}", String(subsystems?.length || 0)),
           columns: subsystemColumns,
+          rowActions: subsystemActions,
           data: subsystems || [],
           stickyHeader: true,
           emptyMessage: vscode.l10n.t("No active subsystems found."),
@@ -245,6 +248,7 @@ export namespace WrksbsActions {
         const rows = subsystems || [];
         await panel.webview.postMessage(generateFastTableUpdate({
           columns: subsystemColumns,
+          rowActions: subsystemActions,
           data: rows,
           totalItems: rows.length,
           currentPage: 1,

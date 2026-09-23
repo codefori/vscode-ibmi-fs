@@ -59,5 +59,16 @@
   "config.quickStartMenu.items.icon": "Optional codicon name (without `$()`), e.g. `server-process`.",
   "config.quickStartMenu.items.label": "Text shown for this menu entry.",
   "description": "File system provider for IBM i QSYS",
-  "displayName": "IBM i FileSystem"
+  "displayName": "IBM i FileSystem",
+  "command.rowAction.open.title": "Open",
+  "command.rowAction.download.title": "Download",
+  "command.rowAction.delete.title": "Delete",
+  "command.rowAction.details.title": "Details",
+  "command.rowAction.end.title": "End",
+  "command.rowAction.hold.title": "Hold",
+  "command.rowAction.release.title": "Release",
+  "command.rowAction.debug.title": "Debug",
+  "command.rowAction.change.title": "Change",
+  "command.rowAction.reply.title": "Reply",
+  "command.rowAction.remove.title": "Remove"
 }

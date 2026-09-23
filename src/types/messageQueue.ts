@@ -21,7 +21,7 @@ import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import { getProtected, executeSqlIfExists } from "../tools";
-import { generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate } from "../ibmi";
+import { generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableRowActions, FastTableUpdate } from "../ibmi";
 import * as vscode from 'vscode';
 import ObjectProvider from "../objectProvider";
 
@@ -409,20 +409,25 @@ export default class Msgq extends Base {
       { title: vscode.l10n.t("Sev."), getValue: e => String(e.severity), width: "0.2fr" },
       { title: vscode.l10n.t("Timestamp"), getValue: e => e.timestamp, width: "0.7fr" },
       { title: vscode.l10n.t("Job"), getValue: e => e.job, width: "1fr" },
-      { title: vscode.l10n.t("User"), getValue: e => e.user, width: "0.5fr" },
-      {
-        title: vscode.l10n.t("Actions"),
-        getValue: e => {
-          // Show "Rispondi" button only for INQUIRY messages without a reply
-          if (e.msgtype === 'INQUIRY' && (!e.reply || e.reply === 'null' || e.reply.trim() === '')) {
-            const arg = encodeURIComponent(JSON.stringify({ msgkey: e.msgkey, msgid: e.msgid, msgtxt: e.msgtxt1 }));
-            return `<vscode-button appearance="primary" href="action:reply?entry=${arg}">${vscode.l10n.t("Reply")}</vscode-button>`;
-          }
-          return '&nbsp;';
-        },
-        width: "0.5fr"
-      }
+      { title: vscode.l10n.t("User"), getValue: e => e.user, width: "0.5fr" }
     ];
+  }
+
+  /**
+   * Row actions, offered through each row's context menu; the primary one also runs on
+   * double click. Passed to both the full render and the incremental update.
+   */
+  private getRowActions(): FastTableRowActions<Entry> {
+    return {
+      getArgs: e => `entry=${encodeURIComponent(JSON.stringify({ msgkey: e.msgkey, msgid: e.msgid, msgtxt: e.msgtxt1 }))}`,
+      actions: [
+        // Only INQUIRY messages still waiting for a reply can be answered
+        {
+          action: "reply", primary: true,
+          visible: e => e.msgtype === 'INQUIRY' && (!e.reply || e.reply === 'null' || e.reply.trim() === '')
+        }
+      ]
+    };
   }
 
   /** Subtitle text, kept in one place so the update carries the same wording as the render. */
@@ -441,6 +446,7 @@ export default class Msgq extends Base {
       title: vscode.l10n.t("Message Queue: {0}/{1}", this.library, this.name),
       subtitle: this.getSubtitle(),
       columns: this.getColumns(),
+      rowActions: this.getRowActions(),
       data: this._entries,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t("No messages found in this message queue."),
@@ -460,6 +466,7 @@ export default class Msgq extends Base {
   generateTableUpdate(): FastTableUpdate {
     return generateFastTableUpdate({
       columns: this.getColumns(),
+      rowActions: this.getRowActions(),
       data: this._entries,
       totalItems: this.totalItems,
       currentPage: this.currentPage,

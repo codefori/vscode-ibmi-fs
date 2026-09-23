@@ -11,10 +11,11 @@
 import * as vscode from 'vscode';
 import { getInstance } from '../ibmi';
 import { executeSqlIfExists, checkTableFunctionExists, promptForUserFilter, resolveUserFilter } from "../tools";
-import { FastTableColumn, generateFastTable, generateFastTableUpdate } from "../ibmi";
+import { FastTableColumn, FastTableRowActions, generateFastTable, generateFastTableUpdate } from "../ibmi";
 import { generatePage } from "../webviewToolkit";
 import { SpoolOperations } from '../commonOperations';
 import { getAutoRefreshInterval, getItemsPerPage } from '../config';
+import { trackRowActions } from "../rowActions";
 
 /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
 const SPOOL_TABLE_ID = 'wrksplf-spools';
@@ -257,6 +258,7 @@ export namespace WrksplfActions {
           retainContextWhenHidden: true
         }
       );
+      trackRowActions(panel);
 
       // Auto-refresh configuration, from `code-for-ibmi.views.autoRefreshInterval`
       const autoRefreshInterval = getAutoRefreshInterval();
@@ -319,19 +321,19 @@ export namespace WrksplfActions {
         { title: vscode.l10n.t("Number"), width: "0.7fr", getValue: e => String(e.nbr) },
         { title: vscode.l10n.t("Timestamp"), width: "1.5fr", getValue: e => e.spoolts },
         { title: vscode.l10n.t("Pages"), width: "0.5fr", getValue: e => String(e.pages) },
-        { title: vscode.l10n.t("Size (KB)"), width: "1fr", getValue: e => String(e.spoolsiz) },
-        {
-          title: vscode.l10n.t("Actions"),
-          width: "1.5fr",
-          getValue: e => {
-            // Encode spool entry as URL parameter for action handlers
-            const arg = encodeURIComponent(JSON.stringify(e));
-            return `<vscode-button appearance="primary" href="action:openSpool?entry=${arg}">${vscode.l10n.t("Open")}</vscode-button>
-                  <vscode-button appearance="primary" href="action:genPdf?entry=${arg}">${vscode.l10n.t("Download")}</vscode-button>
-                  <vscode-button appearance="secondary" href="action:delSpool?entry=${arg}">${vscode.l10n.t("Delete")}</vscode-button>`;
-          }
-        }
+        { title: vscode.l10n.t("Size (KB)"), width: "1fr", getValue: e => String(e.spoolsiz) }
       ];
+
+      // Row actions, offered through the context menu (Open also on double click)
+      const spoolActions: FastTableRowActions<Entry> = {
+        // Encode spool entry as URL parameter for action handlers
+        getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+        actions: [
+          { action: "openSpool", primary: true },
+          { action: "genPdf" },
+          { action: "delSpool", destructive: true }
+        ]
+      };
 
       // Custom CSS styles for the spool files table
       const customStyles = `
@@ -347,6 +349,7 @@ export namespace WrksplfActions {
           title: viewTitle,
           subtitle: vscode.l10n.t("Total Spools: {0}", String(totalItems)),
           columns: spoolColumns,
+          rowActions: spoolActions,
           data: spooledFiles,
           stickyHeader: true,
           emptyMessage: vscode.l10n.t("No spooled files found."),
@@ -370,6 +373,7 @@ export namespace WrksplfActions {
       const postTableUpdate = async () => {
         await panel.webview.postMessage(generateFastTableUpdate({
           columns: spoolColumns,
+          rowActions: spoolActions,
           data: spooledFiles,
           totalItems: totalItems,
           currentPage: currentPage,

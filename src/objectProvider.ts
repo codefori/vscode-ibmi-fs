@@ -27,6 +27,7 @@ import DummyObj, { fetchQrydfn } from './types/dummyObject';
 import Msgq from './types/messageQueue';
 import { Usridx } from './types/userIndex';
 import { getAutoRefreshInterval } from './config';
+import { trackRowActions } from "./rowActions";
 
 
 /**
@@ -235,6 +236,7 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
     
     // Register the document and panel
     ObjectProvider._documentPanels.set(document.uri.toString(), { document, panel: webviewPanel });
+    trackRowActions(webviewPanel);
     
     // Setup auto-refresh for the types that opt in (see Base.autoRefresh)
     const autoRefreshInterval = getAutoRefreshInterval();

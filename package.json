@@ -416,6 +416,91 @@
         "title": "%command.refreshWrksbs.title%",
         "category": "IBM i FS",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.openSpool",
+        "title": "%command.rowAction.open.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.sbsDetail",
+        "title": "%command.rowAction.details.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.wrkJob",
+        "title": "%command.rowAction.details.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.chgMsgd",
+        "title": "%command.rowAction.change.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.reply",
+        "title": "%command.rowAction.reply.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.genPdf",
+        "title": "%command.rowAction.download.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.holdJob",
+        "title": "%command.rowAction.hold.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.hldJob",
+        "title": "%command.rowAction.hold.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.releaseJob",
+        "title": "%command.rowAction.release.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.rlsJob",
+        "title": "%command.rowAction.release.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.debugJob",
+        "title": "%command.rowAction.debug.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.delSpool",
+        "title": "%command.rowAction.delete.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.delPdf",
+        "title": "%command.rowAction.delete.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.rmvMsgd",
+        "title": "%command.rowAction.delete.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.endJob",
+        "title": "%command.rowAction.end.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.endSbs",
+        "title": "%command.rowAction.end.title%",
+        "category": "IBM i FS"
+      },
+      {
+        "command": "vscode-ibmi-fs.rowAction.remove",
+        "title": "%command.rowAction.remove.title%",
+        "category": "IBM i FS"
       }
     ],
     "menus": {
@@ -761,6 +846,161 @@
         {
           "command": "vscode-ibmi-fs.refreshWrksbs",
           "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.openSpool",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.sbsDetail",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.wrkJob",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.chgMsgd",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.reply",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.genPdf",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.holdJob",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.hldJob",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.releaseJob",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.rlsJob",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.debugJob",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.delSpool",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.delPdf",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.rmvMsgd",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.endJob",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.endSbs",
+          "when": "never"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.remove",
+          "when": "never"
+        }
+      ],
+      "webview/context": [
+        {
+          "command": "vscode-ibmi-fs.rowAction.openSpool",
+          "when": "webviewSection == fastTableRow && ftAction_openSpool",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.sbsDetail",
+          "when": "webviewSection == fastTableRow && ftAction_sbsDetail",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.wrkJob",
+          "when": "webviewSection == fastTableRow && ftAction_wrkJob",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.chgMsgd",
+          "when": "webviewSection == fastTableRow && ftAction_chgMsgd",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.reply",
+          "when": "webviewSection == fastTableRow && ftAction_reply",
+          "group": "navigation@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.genPdf",
+          "when": "webviewSection == fastTableRow && ftAction_genPdf",
+          "group": "1_actions@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.holdJob",
+          "when": "webviewSection == fastTableRow && ftAction_holdJob",
+          "group": "1_actions@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.hldJob",
+          "when": "webviewSection == fastTableRow && ftAction_hldJob",
+          "group": "1_actions@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.releaseJob",
+          "when": "webviewSection == fastTableRow && ftAction_releaseJob",
+          "group": "1_actions@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.rlsJob",
+          "when": "webviewSection == fastTableRow && ftAction_rlsJob",
+          "group": "1_actions@2"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.debugJob",
+          "when": "webviewSection == fastTableRow && ftAction_debugJob",
+          "group": "1_actions@3"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.delSpool",
+          "when": "webviewSection == fastTableRow && ftAction_delSpool",
+          "group": "9_destructive@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.delPdf",
+          "when": "webviewSection == fastTableRow && ftAction_delPdf",
+          "group": "9_destructive@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.rmvMsgd",
+          "when": "webviewSection == fastTableRow && ftAction_rmvMsgd",
+          "group": "9_destructive@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.endJob",
+          "when": "webviewSection == fastTableRow && ftAction_endJob",
+          "group": "9_destructive@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.endSbs",
+          "when": "webviewSection == fastTableRow && ftAction_endSbs",
+          "group": "9_destructive@1"
+        },
+        {
+          "command": "vscode-ibmi-fs.rowAction.remove",
+          "when": "webviewSection == fastTableRow && ftAction_remove",
+          "group": "9_destructive@1"
         }
       ]
     },

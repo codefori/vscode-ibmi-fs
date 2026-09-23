@@ -25,6 +25,7 @@ import { WrkactjobActions } from './views/wrkactjob';
 import { WrkusrjobActions } from './views/wrkusrjob';
 import { WrksbsActions } from './views/wrksbs';
 import { DocumentManager } from './documentManager';
+import { registerRowActionCommands } from './rowActions';
 
 /**
  * A single entry of the FS Quick Start menu.
@@ -569,6 +570,9 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     })
   );
+
+  // Commands behind the context menu of fast table rows
+  registerRowActionCommands(context);
 
   SaveFileActions.register(context);
   DataQueueActions.register(context);

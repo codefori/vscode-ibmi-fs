@@ -23,7 +23,7 @@ import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getProtected, executeSqlIfExists } from "../tools";
-import { FastTableColumn, generateFastTable } from "../ibmi";
+import { FastTableColumn, FastTableRowActions, generateFastTable } from "../ibmi";
 import ObjectProvider from '../objectProvider';
 
 /**
@@ -418,18 +418,17 @@ function renderEntries(entries: Entry[], name: string) {
     { title: vscode.l10n.t("Object"), width: "2fr", getValue: e => e.object },
     { title: vscode.l10n.t("Type"), width: "1fr", getValue: e => e.type },
     { title: vscode.l10n.t("Activation"), width: "1fr", getValue: e => e.activation },
-    { title: vscode.l10n.t("Creation"), width: "2fr", getValue: e => e.creation },
-    {
-      title: vscode.l10n.t("Actions"),
-      width: "1fr",
-      getValue: e => {
-        // Encode entry as URL parameter for action handlers
-        const arg = encodeURIComponent(JSON.stringify(e));
-
-        return `<vscode-button appearance="secondary" href="action:remove?entry=${arg}">${vscode.l10n.t("Remove")}</vscode-button>`;
-      }
-    }
+    { title: vscode.l10n.t("Creation"), width: "2fr", getValue: e => e.creation }
   ];
+
+  // Row actions, offered through the context menu
+  const actions: FastTableRowActions<Entry> = {
+    // Encode entry as URL parameter for action handlers
+    getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+    actions: [
+      { action: "remove", destructive: true }
+    ]
+  };
 
   const customStyles = `
     /* Custom styles for object name cells */
@@ -442,6 +441,7 @@ function renderEntries(entries: Entry[], name: string) {
     title: vscode.l10n.t("Binding Directory: {0}", name),
     subtitle: vscode.l10n.t("Total entries: {0}", String(entries.length)),
     columns: columnsmod,
+    rowActions: actions,
     data: entries,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t("No entries in this binding directory."),

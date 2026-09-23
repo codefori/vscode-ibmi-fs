@@ -11,10 +11,11 @@
 import * as vscode from 'vscode';
 import { getInstance } from '../ibmi';
 import { executeSqlIfExists, checkTableFunctionExists, promptForUserFilter, resolveUserFilter } from "../tools";
-import { FastTableColumn, generateFastTable, generateFastTableUpdate } from "../ibmi";
+import { FastTableColumn, FastTableRowActions, generateFastTable, generateFastTableUpdate } from "../ibmi";
 import { generatePage } from "../webviewToolkit";
 import { JobOperations } from '../commonOperations';
 import { getAutoRefreshInterval } from '../config';
+import { trackRowActions } from "../rowActions";
 
 /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
 const USRJOB_TABLE_ID = 'wrkusrjob-jobs';
@@ -219,6 +220,7 @@ export namespace WrkusrjobActions {
           retainContextWhenHidden: true
         }
       );
+      trackRowActions(panel);
 
       // Auto-refresh configuration, from `code-for-ibmi.views.autoRefreshInterval`
       const autoRefreshInterval = getAutoRefreshInterval();
@@ -278,32 +280,24 @@ export namespace WrkusrjobActions {
         { title: vscode.l10n.t("Type"), width: "0.5fr", getValue: e => e.jobType },
         { title: vscode.l10n.t("End Severity"), width: "0.7fr", getValue: e => String(e.endSeverity) },
         { title: vscode.l10n.t("Completion"), width: "1fr", getValue: e => e.completionStatus },
-        { title: vscode.l10n.t("Function"), width: "1fr", getValue: e => e.function },
-        {
-          title: vscode.l10n.t("Actions"),
-          width: "2.5fr",
-          getValue: e => {
-            // Encode job entry as URL parameter for action handlers
-            const arg = encodeURIComponent(JSON.stringify(e));
-            
-            // Build action buttons based on job status
-            let buttons = `<vscode-button appearance="primary" href="action:wrkJob?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>`;
-            
-            // If job is ACTIVE, show conditional Hold/Release and End buttons
-            if (e.jobStatus === 'ACTIVE') {
-              // If active status is HLD, show Release button; otherwise show Hold button
-              if (e.activeStatus === 'HLD') {
-                buttons += ` <vscode-button appearance="secondary" href="action:releaseJob?entry=${arg}">${vscode.l10n.t("Release")}</vscode-button>`;
-              } else {
-                buttons += ` <vscode-button appearance="secondary" href="action:holdJob?entry=${arg}">${vscode.l10n.t("Hold")}</vscode-button>`;
-              }
-              buttons += ` <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>`;
-            }
-            
-            return buttons;
-          }
-        }
+        { title: vscode.l10n.t("Function"), width: "1fr", getValue: e => e.function }
       ];
+
+      // Only ACTIVE jobs can be held, released or ended
+      const isActive = (e: Entry) => e.jobStatus === 'ACTIVE';
+
+      // Row actions, offered through the context menu (Details also on double click)
+      const jobActions: FastTableRowActions<Entry> = {
+        // Encode job entry as URL parameter for action handlers
+        getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+        actions: [
+          { action: "wrkJob", primary: true },
+          // Hold or Release, depending on whether the job is already held
+          { action: "holdJob", visible: e => isActive(e) && e.activeStatus !== 'HLD' },
+          { action: "releaseJob", visible: e => isActive(e) && e.activeStatus === 'HLD' },
+          { action: "endJob", destructive: true, visible: isActive }
+        ]
+      };
 
       // Custom CSS styles for the user jobs table
       const customStyles = `
@@ -319,6 +313,7 @@ export namespace WrkusrjobActions {
           title: viewTitle,
           subtitle: vscode.l10n.t("Total Jobs: {0}", String(userJobs?.length || 0)),
           columns: jobColumns,
+          rowActions: jobActions,
           data: userJobs || [],
           stickyHeader: true,
           emptyMessage: vscode.l10n.t("No jobs found."),
@@ -339,6 +334,7 @@ export namespace WrkusrjobActions {
         const rows = userJobs || [];
         await panel.webview.postMessage(generateFastTableUpdate({
           columns: jobColumns,
+          rowActions: jobActions,
           data: rows,
           totalItems: rows.length,
           currentPage: 1,

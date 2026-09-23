@@ -19,7 +19,7 @@ import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
 import { getColumns, getProtected, executeSqlIfExists } from "../tools";
-import { generateDetailTable, generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate } from "../ibmi";
+import { generateDetailTable, generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableRowActions, FastTableUpdate } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -534,24 +534,27 @@ export default class Jobq extends Base {
       { title: vscode.l10n.t("Submitter job"), width: "1fr", getValue: e => e.submitter },
       { title: vscode.l10n.t("Job entered time"), width: "1fr", getValue: e => e.jobts },
       { title: vscode.l10n.t("Job scheduled time"), width: "1fr", getValue: e => e.jobscd },
-      { title: vscode.l10n.t("Job status"), width: "1fr", getValue: e => e.jobsts },
-      {
-        title: vscode.l10n.t("Actions"),
-        width: "2fr",
-        getValue: e => {
-          // Encode job entry as URL parameter for action handlers
-          const arg = encodeURIComponent(JSON.stringify(e));
-
-          // Conditionally show Hold or Release button based on job status
-          // If job is HELD, show Release button; otherwise show Hold button
-          return `<vscode-button appearance="primary" href="action:wrkJob?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>
-                  ${e.jobsts !== 'HELD' ? `<vscode-button appearance="secondary" href="action:hldJob?entry=${arg}">${vscode.l10n.t("Hold")}</vscode-button>` :
-              `<vscode-button appearance="secondary" href="action:rlsJob?entry=${arg}">${vscode.l10n.t("Release")}</vscode-button>`}
-                  <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>
-                  <vscode-button appearance="secondary" href="action:debugJob?entry=${arg}">${vscode.l10n.t("Debug")}</vscode-button>`;
-        }
-      }
+      { title: vscode.l10n.t("Job status"), width: "1fr", getValue: e => e.jobsts }
     ];
+  }
+
+  /**
+   * Row actions, offered through each row's context menu; the primary one also runs on
+   * double click. Passed to both the full render and the incremental update.
+   */
+  private getRowActions(): FastTableRowActions<Entry> {
+    return {
+      // Encode job entry as URL parameter for action handlers
+      getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+      actions: [
+        { action: "wrkJob", primary: true },
+        // Hold or Release, depending on whether the job is already held
+        { action: "hldJob", visible: e => e.jobsts !== 'HELD' },
+        { action: "rlsJob", visible: e => e.jobsts === 'HELD' },
+        { action: "debugJob" },
+        { action: "endJob", destructive: true }
+      ]
+    };
   }
 
   /** Subtitle text, kept in one place so the update carries the same wording as the render. */
@@ -563,6 +566,7 @@ export default class Jobq extends Base {
   generateTableUpdate(): FastTableUpdate {
     return generateFastTableUpdate({
       columns: this.getColumns(),
+      rowActions: this.getRowActions(),
       data: this._entries,
       totalItems: this.totalItems,
       currentPage: this.currentPage,
@@ -585,6 +589,7 @@ export default class Jobq extends Base {
       title: ``,
       subtitle: this.getSubtitle(),
       columns: this.getColumns(),
+      rowActions: this.getRowActions(),
       data: this._entries,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t('No jobs found in this jobq.'),
