@@ -880,6 +880,10 @@ export namespace WrkjobActions {
       let joblogPage = 1;
       const joblogItemsPerPage = getItemsPerPage();
       let joblogTotal = 0;
+      // The Job Log tab is left out while the job has no messages. Once shown it stays: a
+      // search matching nothing also yields a zero total, and must not take the tab — and the
+      // search box in it — away from the user.
+      let joblogTabShown = false;
 
       // Fetch all data
       let jobInfo = await fetchJobInfo(jobName);
@@ -1020,6 +1024,21 @@ export namespace WrkjobActions {
         }));
       };
 
+      /**
+       * Show freshly fetched data. Rows are patched in place unless the page itself has to
+       * change: the caller asks for it, or the job logged its first message and the Job Log
+       * tab, absent until now, has to be added.
+       */
+      const showRefreshedData = async (rebuild: boolean = false) => {
+        if (rebuild || (!joblogTabShown && joblogTotal > 0)) {
+          await panel.webview.postMessage({ command: 'saveStateForRestore' });
+          await new Promise(resolve => setTimeout(resolve, 100));
+          panel.webview.html = generatePage(generateContent());
+        } else {
+          await postTableUpdates();
+        }
+      };
+
       // Define refresh function for this panel
       const refreshFunction = async (isAutoRefresh: boolean = false) => {
         const newJobInfo = await fetchJobInfo(jobName);
@@ -1041,7 +1060,7 @@ export namespace WrkjobActions {
           joblogTotal = newJoblog.total;
           libraries = newLibraries;
           activationGroups = newActivationGroups;
-          await postTableUpdates();
+          await showRefreshedData();
           // Show success message only for manual refresh
           if (!isAutoRefresh) {
             vscode.window.showInformationMessage(vscode.l10n.t('Job information refreshed successfully'));
@@ -1232,11 +1251,17 @@ export namespace WrkjobActions {
         `;
 
         // Create panels
-        return Components.panels([
+        const panels: Components.Panel[] = [
           { title: vscode.l10n.t("Job Info"), content: jobInfoHtml },
-          { title: vscode.l10n.t("Job Statistics"), content: statisticsHtml },
-          { title: vscode.l10n.t("Job Log"), content: joblogHtml, badge: joblogTotal }
-        ]);
+          { title: vscode.l10n.t("Job Statistics"), content: statisticsHtml }
+        ];
+
+        joblogTabShown = joblogTabShown || joblogTotal > 0;
+        if (joblogTabShown) {
+          panels.push({ title: vscode.l10n.t("Job Log"), content: joblogHtml, badge: joblogTotal });
+        }
+
+        return Components.panels(panels);
       };
 
       panel.webview.html = generatePage(generateContent());
@@ -1368,14 +1393,9 @@ export namespace WrkjobActions {
             libraries = newLibraries;
             activationGroups = newActivationGroups;
 
-            if (jobStateChanged) {
-              await panel.webview.postMessage({ command: 'saveStateForRestore' });
-              await new Promise(resolve => setTimeout(resolve, 100));
-              panel.webview.html = generatePage(generateContent());
-            } else {
-              // Only rows changed (a spooled file was deleted), so patch them in place.
-              await postTableUpdates();
-            }
+            // Unless the job itself changed, only rows did (a spooled file was deleted), so
+            // they are patched in place.
+            await showRefreshedData(jobStateChanged);
           }
         }
       });
