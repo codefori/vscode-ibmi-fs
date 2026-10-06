@@ -7,7 +7,7 @@
  *
  * Key Features:
  * - Job operations: hold, release, end, debug
- * - Spool operations: delete, download as PDF
+ * - Spool operations: delete, download as text or PDF
  * - Consistent error handling and user feedback
  * - Connection validation
  *
@@ -376,6 +376,116 @@ export namespace SpoolOperations {
     } catch (error) {
       vscode.window.showErrorMessage(
         vscode.l10n.t("Error opening spool: {0}", String(error))
+      );
+      return false;
+    }
+  };
+
+  /**
+   * Download a spooled file, letting the user choose between text and PDF format
+   * @param spoolId - Spooled file identifier
+   * @param defaultFileName - Default file name (without extension), defaults to the spool name
+   * @returns True if successful, false otherwise
+   */
+  export const downloadSpool = async (
+    spoolId: SpoolIdentifier,
+    defaultFileName: string = spoolId.spoolname
+  ): Promise<boolean> => {
+    const format = await vscode.window.showQuickPick(
+      [
+        { label: vscode.l10n.t("Text file (.txt)"), format: 'txt' },
+        { label: vscode.l10n.t("PDF file (.pdf)"), format: 'pdf' }
+      ],
+      { title: vscode.l10n.t("Select the download format") }
+    );
+
+    if (!format) {
+      return false;
+    }
+
+    return format.format === 'pdf'
+      ? downloadSpoolAsPdf(spoolId, defaultFileName)
+      : downloadSpoolAsText(spoolId, defaultFileName);
+  };
+
+  /**
+   * Download a spooled file as a text file
+   * Copies the spool to a temporary UTF-8 stream file and downloads it
+   * @param spoolId - Spooled file identifier
+   * @param defaultFileName - Default file name for the text file (without extension)
+   * @returns True if successful, false otherwise
+   */
+  export const downloadSpoolAsText = async (
+    spoolId: SpoolIdentifier,
+    defaultFileName: string = spoolId.spoolname
+  ): Promise<boolean> => {
+    const ibmi = getInstance();
+    const connection = ibmi?.getConnection();
+
+    if (!connection) {
+      vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
+      return false;
+    }
+
+    // Show save dialog
+    const saveLocation = await vscode.window.showSaveDialog({
+      title: vscode.l10n.t("Download Text File"),
+      defaultUri: vscode.Uri.file(`${defaultFileName}.txt`),
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      filters: { 'Text': ["txt"] }
+    });
+
+    if (!saveLocation) {
+      return false;
+    }
+
+    // Copy and download spool with progress indicator
+    const result = await vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: vscode.l10n.t("Spool download")
+    }, async progress => {
+      const result = {
+        successful: true,
+        error: ''
+      };
+
+      try {
+        // The temporary directory is removed once the download is done
+        await connection.withTempDirectory(async tempDir => {
+          const tempRemotePath = posix.join(tempDir, `${spoolId.job.replaceAll('/', '-')}_${spoolId.spoolname}_${spoolId.nbr}.txt`);
+
+          // Execute CPYSPLF command to copy spool to stream file
+          progress.report({ message: vscode.l10n.t("Copying spool to stream file...") });
+          const cpysplf = await connection.runCommand({
+            command: `QSYS/CPYSPLF FILE(${spoolId.spoolname}) JOB(${spoolId.job}) SPLNBR(${spoolId.nbr}) TOFILE(*TOSTMF) TOSTMF('${tempRemotePath}')
+              QSYS/CPY OBJ('${tempRemotePath}') TOOBJ('${tempRemotePath}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`,
+            environment: 'ile'
+          });
+
+          if (cpysplf.code === 0) {
+            // Download text file from IBM i
+            progress.report({ message: vscode.l10n.t("Downloading spool...") });
+            await connection.client.getFile(saveLocation.fsPath, tempRemotePath);
+          } else {
+            result.successful = false;
+            result.error = String(cpysplf.stderr);
+          }
+        });
+      } catch (error) {
+        result.successful = false;
+        result.error = String(error);
+      }
+
+      return result;
+    });
+
+    // Show result to user
+    if (result.successful) {
+      vscode.window.showInformationMessage(vscode.l10n.t("Spool successfully downloaded."));
+      return true;
+    } else {
+      vscode.window.showErrorMessage(
+        vscode.l10n.t("Failed to download spool: {0}", result.error)
       );
       return false;
     }

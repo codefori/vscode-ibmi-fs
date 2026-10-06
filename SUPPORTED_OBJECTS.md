@@ -93,7 +93,7 @@ Output queues manage spooled files and printer output.
 
 **Per Spooled File Actions:**
 - 📖 **Open** - Open the spooled file content in a read-only editor
-- 📄 **Download** - Generate a PDF from the spooled file and download it
+- 📄 **Download** - Download the spooled file as text (.txt) or as a generated PDF
 - 🗑️ **Delete** - Delete the individual spooled file
 
 **Display Features:**

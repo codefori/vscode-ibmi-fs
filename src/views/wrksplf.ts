@@ -450,11 +450,11 @@ export namespace WrksplfActions {
             break;
 
           case "genPdf":
-            await SpoolOperations.downloadSpoolAsPdf({
+            await SpoolOperations.downloadSpool({
               spoolname: entry.spoolname,
               nbr: entry.nbr,
               job: entry.job
-            }, 'generatedPDF');
+            });
             break;
 
           case "delSpool":
