@@ -1352,11 +1352,11 @@ export namespace WrkjobActions {
                 job: entry.job
               });
             } else if (uri.path === "genPdf") {
-              await SpoolOperations.downloadSpoolAsPdf({
+              await SpoolOperations.downloadSpool({
                 spoolname: entry.spoolname,
                 nbr: entry.nbr,
                 job: entry.job
-              }, 'generatedPDF');
+              });
             } else if (uri.path === "delSpool") {
               const deleted = await SpoolOperations.deleteSpool({
                 spoolname: entry.spoolname,

@@ -477,16 +477,16 @@ export namespace OutputQueueActions {
   };
 
   /**
-   * Generate and download a PDF from a spooled file
-   * @param item - The spool entry to convert to PDF
+   * Download a spooled file as text or PDF, according to the user's choice
+   * @param item - The spool entry to download
    * @returns True if successful, false otherwise
    */
   export const genPdf = async (item: Entry): Promise<boolean> => {
-    return SpoolOperations.downloadSpoolAsPdf({
+    return SpoolOperations.downloadSpool({
       spoolname: item.spoolname,
       nbr: item.nbr,
       job: item.job
-    }, 'generatedPDF');
+    });
   };
 }
 
@@ -827,7 +827,7 @@ export default class Outq extends Base {
         break;
 
       case "genPdf":
-        // Generate and download PDF from spool file
+        // Download spool file as text or PDF
         entryJson = params.get("entry");
         if (entryJson) {
           const entry: Entry = JSON.parse(decodeURIComponent(entryJson));

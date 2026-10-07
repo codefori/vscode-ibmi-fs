@@ -245,7 +245,7 @@ Shows all spool files created by the job:
 
 **Spool Actions:**
 - **Open** - Open spool file in editor
-- **Download** - Download spool as PDF
+- **Download** - Download spool as text (.txt) or PDF
 - **Delete** - Delete spool file
 
 #### Job Log Tab
@@ -312,7 +312,7 @@ Shows the spool files with the following information:
 For each spool file:
 
 1. **Open** - Opens the spool file in VS Code editor
-2. **Download** - Downloads the spool file as PDF
+2. **Download** - Downloads the spool file as text (.txt) or PDF
 3. **Delete** - Deletes the spool file with confirmation
 
 #### Search and Filter
