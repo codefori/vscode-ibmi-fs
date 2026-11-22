@@ -27,7 +27,7 @@ import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
 import { getColumns, getProtected, executeSqlIfExists } from "../tools";
-import { generateDetailTable, FastTableColumn, generateFastTable, generateFastTableUpdate, FastTableUpdate } from "../ibmi";
+import { generateDetailTable, FastTableColumn, generateFastTable, generateFastTableUpdate, FastTableUpdate, RowActions } from "../ibmi";
 import ObjectProvider from '../objectProvider';
 import { JobOperations } from '../commonOperations';
 
@@ -845,7 +845,7 @@ export class Sbsd extends Base {
       tables.push({ id: SBSD_TABLE_IDS.pjes, update: () => this.tableUpdate(SBSD_TABLE_IDS.pjes, pjeColumns(), this.pjes) });
     }
     if (this.sbs?.[0]?.STATUS === 'ACTIVE') {
-      tables.push({ id: SBSD_TABLE_IDS.jobs, update: () => this.tableUpdate(SBSD_TABLE_IDS.jobs, jobColumns(), this.jobs) });
+      tables.push({ id: SBSD_TABLE_IDS.jobs, update: () => this.tableUpdate(SBSD_TABLE_IDS.jobs, jobColumns(), this.jobs, jobRowActions()) });
     }
 
     return tables
@@ -854,13 +854,14 @@ export class Sbsd extends Base {
   }
 
   /** Build one table's update; the tables here neither search nor paginate. */
-  private tableUpdate<T>(tableId: string, columns: FastTableColumn<T>[], data: readonly T[]): FastTableUpdate {
+  private tableUpdate<T>(tableId: string, columns: FastTableColumn<T>[], data: readonly T[], rowActions?: RowActions<T>): FastTableUpdate {
     return generateFastTableUpdate({
       columns,
       data: [...data],
       totalItems: data.length,
       currentPage: 1,
-      tableId
+      tableId,
+      rowActions
     });
   }
 
@@ -1287,23 +1288,25 @@ function jobColumns(): FastTableColumn<Job>[] {
     { title: vscode.l10n.t("Elapsed CPU %"), width: "0.5fr", getValue: e => String(e.elapsedCpuPct) },
     { title: vscode.l10n.t("Elapsed I/O"), width: "0.5fr", getValue: e => String(e.elapsedIo) },
     { title: vscode.l10n.t("CPU Time"), width: "0.5fr", getValue: e => String(e.cpu) },
-    { title: vscode.l10n.t("Total I/O"), width: "0.5fr", getValue: e => String(e.io) },
-    {
-      title: vscode.l10n.t("Actions"),
-      width: "2fr",
-      getValue: e => {
-        // Encode job entry as URL parameter for action handlers
-        const arg = encodeURIComponent(JSON.stringify(e));
-        // Conditionally show Hold or Release button based on job status
-        // If job is HLD, show Release button; otherwise show Hold button
-        return `<vscode-button appearance="primary" href="action:wrkJob?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>
-                ${e.status !== 'HLD' ? `<vscode-button appearance="secondary" href="action:holdJob?entry=${arg}">${vscode.l10n.t("Hold")}</vscode-button>` :
-            `<vscode-button appearance="secondary" href="action:releaseJob?entry=${arg}">${vscode.l10n.t("Release")}</vscode-button>`}
-                <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>`;
-      }
-    }
+    { title: vscode.l10n.t("Total I/O"), width: "0.5fr", getValue: e => String(e.io) }
   ];
 
+}
+
+/** Row actions of the running jobs table, offered through the row's context menu */
+function jobRowActions(): RowActions<Job> {
+  return {
+    // The whole job entry travels to the action handlers
+    getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+    fallbackWidth: "2fr",
+    actions: [
+      { action: "wrkJob", label: vscode.l10n.t("Details"), primary: true },
+      // A HLD job can only be released, any other one only held
+      { action: "holdJob", label: vscode.l10n.t("Hold"), visible: e => e.status !== 'HLD' },
+      { action: "releaseJob", label: vscode.l10n.t("Release"), visible: e => e.status === 'HLD' },
+      { action: "endJob", label: vscode.l10n.t("End"), destructive: true }
+    ]
+  };
 }
 
 function renderJobs(data: Job[]) {
@@ -1322,6 +1325,7 @@ function renderJobs(data: Job[]) {
     emptyMessage: vscode.l10n.t("No running jobs for this subsystem."),
     customStyles: customStyles,
     customScript: "",
-    tableId: SBSD_TABLE_IDS.jobs
+    tableId: SBSD_TABLE_IDS.jobs,
+    rowActions: jobRowActions()
   }) + `</div>`;
 }

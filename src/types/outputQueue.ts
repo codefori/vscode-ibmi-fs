@@ -21,7 +21,7 @@ import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
 import { getColumns, getProtected, executeSqlIfExists } from "../tools";
-import { generateDetailTable, generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate } from "../ibmi";
+import { generateDetailTable, generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate, RowActions } from "../ibmi";
 
 /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
 const OUTQ_TABLE_ID = 'outq-entries';
@@ -740,19 +740,22 @@ export default class Outq extends Base {
       { title: vscode.l10n.t("Number"), width: "0.7fr", getValue: e => String(e.nbr) },
       { title: vscode.l10n.t("Timestamp"), width: "1.5fr", getValue: e => e.spoolts },
       { title: vscode.l10n.t("Pages"), width: "0.5fr", getValue: e => String(e.pages) },
-      { title: vscode.l10n.t("Size (KB)"), width: "1fr", getValue: e => String(e.spoolsiz) },
-      {
-        title: vscode.l10n.t("Actions"),
-        width: "1.5fr",
-        getValue: e => {
-          // Encode spool entry as URL parameter for action handlers
-          const arg = encodeURIComponent(JSON.stringify(e));
-          return `<vscode-button appearance="primary" href="action:openSpool?entry=${arg}">${vscode.l10n.t("Open")}</vscode-button>
-                <vscode-button appearance="primary" href="action:genPdf?entry=${arg}">${vscode.l10n.t("Download")}</vscode-button>
-                <vscode-button appearance="secondary" href="action:delPdf?entry=${arg}">${vscode.l10n.t("Delete")}</vscode-button>`;
-        }
-      }
+      { title: vscode.l10n.t("Size (KB)"), width: "1fr", getValue: e => String(e.spoolsiz) }
     ];
+  }
+
+  /** Row actions, offered through the row's context menu; shared by the render and the update. */
+  private getRowActions(): RowActions<Entry> {
+    return {
+      // The whole spool entry travels to the action handlers
+      getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+      fallbackWidth: "1.5fr",
+      actions: [
+        { action: "openSpool", label: vscode.l10n.t("Open"), primary: true },
+        { action: "genPdf", label: vscode.l10n.t("Download") },
+        { action: "delPdf", label: vscode.l10n.t("Delete"), destructive: true }
+      ]
+    };
   }
 
   /** Subtitle text, kept in one place so the update carries the same wording as the render. */
@@ -768,7 +771,8 @@ export default class Outq extends Base {
       totalItems: this.totalItems,
       currentPage: this.currentPage,
       subtitle: this.getSubtitle(),
-      tableId: OUTQ_TABLE_ID
+      tableId: OUTQ_TABLE_ID,
+      rowActions: this.getRowActions()
     });
   }
 
@@ -797,7 +801,8 @@ export default class Outq extends Base {
       totalItems: this.totalItems,
       currentPage: this.currentPage,
       searchTerm: this.searchTerm,
-      tableId: OUTQ_TABLE_ID
+      tableId: OUTQ_TABLE_ID,
+      rowActions: this.getRowActions()
     }) + `</div>`;
   }
 

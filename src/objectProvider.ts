@@ -27,6 +27,7 @@ import DummyObj, { fetchQrydfn } from './types/dummyObject';
 import Msgq from './types/messageQueue';
 import { Usridx } from './types/userIndex';
 import { getAutoRefreshInterval } from './config';
+import { trackRowActionPanel } from './ibmi';
 
 
 /**
@@ -235,6 +236,8 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
     
     // Register the document and panel
     ObjectProvider._documentPanels.set(document.uri.toString(), { document, panel: webviewPanel });
+    // Lets the row actions picked from the tables' context menu reach this panel
+    trackRowActionPanel(webviewPanel);
     
     // Setup auto-refresh for the types that opt in (see Base.autoRefresh)
     const autoRefreshInterval = getAutoRefreshInterval();

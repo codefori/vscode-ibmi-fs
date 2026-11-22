@@ -10,7 +10,7 @@
 import * as vscode from 'vscode';
 import { getInstance } from '../ibmi';
 import { executeSqlIfExists, checkTableFunctionExists } from "../tools";
-import { FastTableColumn, generateFastTable, generateFastTableUpdate } from "../ibmi";
+import { FastTableColumn, generateFastTable, generateFastTableUpdate, RowActions, trackRowActionPanel } from "../ibmi";
 import { generatePage } from "../webviewToolkit";
 import { JobOperations } from '../commonOperations';
 import { getAutoRefreshInterval } from '../config';
@@ -188,6 +188,8 @@ export namespace WrkactjobActions {
           retainContextWhenHidden: true
         }
       );
+      // Lets the row actions picked from the tables' context menu reach this panel
+      trackRowActionPanel(panel);
 
       // Auto-refresh configuration, from `code-for-ibmi.views.autoRefreshInterval`
       const autoRefreshInterval = getAutoRefreshInterval();
@@ -242,30 +244,26 @@ export namespace WrkactjobActions {
         { title: vscode.l10n.t("Elapsed CPU %"), width: "0.5fr", getValue: e => String(e.elapsedCpuPct) },
         { title: vscode.l10n.t("Elapsed I/O"), width: "0.5fr", getValue: e => String(e.elapsedIo) },
         { title: vscode.l10n.t("CPU Time"), width: "0.5fr", getValue: e => String(e.cpu) },
-        { title: vscode.l10n.t("Total I/O"), width: "0.5fr", getValue: e => String(e.io) },
-        {
-          title: vscode.l10n.t("Actions"),
-          width: "2fr",
-          getValue: e => {
-            // Encode job entry as URL parameter for action handlers
-            const arg = encodeURIComponent(JSON.stringify(e));
-            // Subsystem jobs (JOB_TYPE = 'SBS') only get the Subsystem Description detail
-            // action, not the Hold/Release/End/Debug actions meant for regular jobs.
-            if (e.type === 'SBS') {
-              return e.subsystemLibrary
-                ? `<vscode-button appearance="primary" href="action:sbsDetail?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>`
-                : '';
-            }
-            // Conditionally show Hold or Release button based on job status
-            // If job is HLD, show Release button; otherwise show Hold button
-            return `<vscode-button appearance="primary" href="action:wrkJob?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>
-                  ${e.status !== 'HLD' ? `<vscode-button appearance="secondary" href="action:holdJob?entry=${arg}">${vscode.l10n.t("Hold")}</vscode-button>` :
-                    `<vscode-button appearance="secondary" href="action:releaseJob?entry=${arg}">${vscode.l10n.t("Release")}</vscode-button>`}
-                  <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>
-                  <vscode-button appearance="secondary" href="action:debugJob?entry=${arg}">${vscode.l10n.t("Debug")}</vscode-button>`;
-          }
-        }
+        { title: vscode.l10n.t("Total I/O"), width: "0.5fr", getValue: e => String(e.io) }
       ];
+
+      // Row actions, offered through the row's context menu. Subsystem jobs (JOB_TYPE = 'SBS')
+      // only get the Subsystem Description detail, not the actions meant for regular jobs.
+      const isSubsystemJob = (e: Entry) => e.type === 'SBS';
+      const jobRowActions: RowActions<Entry> = {
+        // The whole job entry travels to the action handlers
+        getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+        fallbackWidth: "2fr",
+        actions: [
+          { action: "sbsDetail", label: vscode.l10n.t("Details"), primary: true, visible: e => isSubsystemJob(e) && !!e.subsystemLibrary },
+          { action: "wrkJob", label: vscode.l10n.t("Details"), primary: true, visible: e => !isSubsystemJob(e) },
+          // A HLD job can only be released, any other one only held
+          { action: "holdJob", label: vscode.l10n.t("Hold"), visible: e => !isSubsystemJob(e) && e.status !== 'HLD' },
+          { action: "releaseJob", label: vscode.l10n.t("Release"), visible: e => !isSubsystemJob(e) && e.status === 'HLD' },
+          { action: "debugJob", label: vscode.l10n.t("Debug"), visible: e => !isSubsystemJob(e) },
+          { action: "endJob", label: vscode.l10n.t("End"), destructive: true, visible: e => !isSubsystemJob(e) }
+        ]
+      };
 
       // Custom CSS styles for the active jobs table
       const customStyles = `
@@ -288,7 +286,8 @@ export namespace WrkactjobActions {
           enableSearch: true,
           searchPlaceholder: vscode.l10n.t("Search jobs..."),
           searchTerm: searchTerm,
-          tableId: ACTJOB_TABLE_ID
+          tableId: ACTJOB_TABLE_ID,
+          rowActions: jobRowActions
         }) + `</div>`;
       };
 
@@ -305,7 +304,8 @@ export namespace WrkactjobActions {
           totalItems: rows.length,
           currentPage: 1,
           subtitle: vscode.l10n.t("Total Active Jobs: {0}", String(rows.length)),
-          tableId: ACTJOB_TABLE_ID
+          tableId: ACTJOB_TABLE_ID,
+          rowActions: jobRowActions
         }));
       };
 

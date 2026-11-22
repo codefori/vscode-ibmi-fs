@@ -16,7 +16,7 @@
 import * as vscode from 'vscode';
 import { getInstance } from '../ibmi';
 import { executeSqlIfExists } from "../tools";
-import { FastTableColumn, generateFastTable, generateDetailTable } from "../ibmi";
+import { FastTableColumn, generateFastTable, generateDetailTable, RowActions, trackRowActionPanel } from "../ibmi";
 import { generatePage, Components } from "../webviewToolkit";
 import { JobOperations, SpoolOperations } from '../commonOperations';
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
@@ -109,18 +109,20 @@ export namespace WrkjobActions {
     { title: vscode.l10n.t("User Data"), width: "1fr", getValue: e => e.userdata },
     { title: vscode.l10n.t("Status"), width: "0.7fr", getValue: e => e.status },
     { title: vscode.l10n.t("Pages"), width: "0.5fr", getValue: e => String(e.pages) },
-    { title: vscode.l10n.t("Timestamp"), width: "1.2fr", getValue: e => e.timestamp },
-    {
-      title: vscode.l10n.t("Actions"),
-      width: "1.5fr",
-      getValue: e => {
-        const arg = encodeURIComponent(JSON.stringify(e));
-        return `<vscode-button appearance="primary" href="action:openSpool?entry=${arg}">${vscode.l10n.t("Open")}</vscode-button>
-                    <vscode-button appearance="primary" href="action:genPdf?entry=${arg}">${vscode.l10n.t("Download")}</vscode-button>
-                    <vscode-button appearance="secondary" href="action:delSpool?entry=${arg}">${vscode.l10n.t("Delete")}</vscode-button>`;
-      }
-    }
+    { title: vscode.l10n.t("Timestamp"), width: "1.2fr", getValue: e => e.timestamp }
   ];
+
+  /** Row actions of the spools table, offered through the row's context menu */
+  const spoolRowActions = (): RowActions<SpoolEntry> => ({
+    // The whole spool entry travels to the action handlers
+    getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+    fallbackWidth: "1.5fr",
+    actions: [
+      { action: "openSpool", label: vscode.l10n.t("Open"), primary: true },
+      { action: "genPdf", label: vscode.l10n.t("Download") },
+      { action: "delSpool", label: vscode.l10n.t("Delete"), destructive: true }
+    ]
+  });
 
   const joblogColumns = (): FastTableColumn<JoblogEntry>[] => [
     { title: vscode.l10n.t("MSGID"), width: "0.7fr", getValue: e => e.msgid },
@@ -951,6 +953,8 @@ export namespace WrkjobActions {
           retainContextWhenHidden: true
         }
       );
+      // Lets the row actions picked from the tables' context menu reach this panel
+      trackRowActionPanel(panel);
 
       // Auto-refresh configuration, from `code-for-ibmi.views.autoRefreshInterval`
       const autoRefreshInterval = getAutoRefreshInterval();
@@ -1007,7 +1011,8 @@ export namespace WrkjobActions {
         await panel.webview.postMessage(generateFastTableUpdate({
           columns: spoolColumns(), data: spools,
           totalItems: spools.length, currentPage: 1,
-          subtitle: subtitles.spools(), tableId: TABLE_IDS.spools
+          subtitle: subtitles.spools(), tableId: TABLE_IDS.spools,
+          rowActions: spoolRowActions()
         }));
         await postJoblogUpdate();
       };
@@ -1214,7 +1219,8 @@ export namespace WrkjobActions {
           data: spools,
           stickyHeader: true,
           emptyMessage: vscode.l10n.t("No spooled files found."),
-          tableId: TABLE_IDS.spools
+          tableId: TABLE_IDS.spools,
+          rowActions: spoolRowActions()
         });
 
         // Joblog tab

@@ -19,7 +19,7 @@ import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
 import { getColumns, getProtected, executeSqlIfExists } from "../tools";
-import { generateDetailTable, generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate } from "../ibmi";
+import { generateDetailTable, generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate, RowActions } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
@@ -534,24 +534,25 @@ export default class Jobq extends Base {
       { title: vscode.l10n.t("Submitter job"), width: "1fr", getValue: e => e.submitter },
       { title: vscode.l10n.t("Job entered time"), width: "1fr", getValue: e => e.jobts },
       { title: vscode.l10n.t("Job scheduled time"), width: "1fr", getValue: e => e.jobscd },
-      { title: vscode.l10n.t("Job status"), width: "1fr", getValue: e => e.jobsts },
-      {
-        title: vscode.l10n.t("Actions"),
-        width: "2fr",
-        getValue: e => {
-          // Encode job entry as URL parameter for action handlers
-          const arg = encodeURIComponent(JSON.stringify(e));
-
-          // Conditionally show Hold or Release button based on job status
-          // If job is HELD, show Release button; otherwise show Hold button
-          return `<vscode-button appearance="primary" href="action:wrkJob?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>
-                  ${e.jobsts !== 'HELD' ? `<vscode-button appearance="secondary" href="action:hldJob?entry=${arg}">${vscode.l10n.t("Hold")}</vscode-button>` :
-              `<vscode-button appearance="secondary" href="action:rlsJob?entry=${arg}">${vscode.l10n.t("Release")}</vscode-button>`}
-                  <vscode-button appearance="secondary" href="action:endJob?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>
-                  <vscode-button appearance="secondary" href="action:debugJob?entry=${arg}">${vscode.l10n.t("Debug")}</vscode-button>`;
-        }
-      }
+      { title: vscode.l10n.t("Job status"), width: "1fr", getValue: e => e.jobsts }
     ];
+  }
+
+  /** Row actions, offered through the row's context menu; shared by the render and the update. */
+  private getRowActions(): RowActions<Entry> {
+    return {
+      // The whole job entry travels to the action handlers
+      getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+      fallbackWidth: "2fr",
+      actions: [
+        { action: "wrkJob", label: vscode.l10n.t("Details"), primary: true },
+        // A HELD job can only be released, any other one only held
+        { action: "hldJob", label: vscode.l10n.t("Hold"), visible: e => e.jobsts !== 'HELD' },
+        { action: "rlsJob", label: vscode.l10n.t("Release"), visible: e => e.jobsts === 'HELD' },
+        { action: "debugJob", label: vscode.l10n.t("Debug") },
+        { action: "endJob", label: vscode.l10n.t("End"), destructive: true }
+      ]
+    };
   }
 
   /** Subtitle text, kept in one place so the update carries the same wording as the render. */
@@ -567,7 +568,8 @@ export default class Jobq extends Base {
       totalItems: this.totalItems,
       currentPage: this.currentPage,
       subtitle: this.getSubtitle(),
-      tableId: JOBQ_TABLE_ID
+      tableId: JOBQ_TABLE_ID,
+      rowActions: this.getRowActions()
     });
   }
 
@@ -596,7 +598,8 @@ export default class Jobq extends Base {
       totalItems: this.totalItems,
       currentPage: this.currentPage,
       searchTerm: this.searchTerm,
-      tableId: JOBQ_TABLE_ID
+      tableId: JOBQ_TABLE_ID,
+      rowActions: this.getRowActions()
     }) + `</div>`;
   }
 

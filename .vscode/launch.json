@@ -19,6 +19,20 @@
 			"preLaunchTask": "${defaultBuildTask}"
 		},
 		{
+			"name": "Test (Code4i-dev)",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--profile=Code4i-dev",
+				"--extensionDevelopmentPath=${workspaceFolder}"
+			],
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],
+			"sourceMaps": true,
+			"preLaunchTask": "${defaultBuildTask}"
+		},
+		{
 			"name": "Extension Tests",
 			"type": "extensionHost",
 			"request": "launch",
