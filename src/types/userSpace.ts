@@ -111,6 +111,9 @@ export namespace UserSpaceActions {
           }
         }
       });
+      if (start === undefined) {
+        return false;
+      }
 
       // Get the new value
       let newvalue = await vscode.window.showInputBox({
