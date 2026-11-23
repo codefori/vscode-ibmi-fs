@@ -177,7 +177,10 @@ export function registerRowActionCommands(context: ExtensionContext): void {
  * @param options - Detail table configuration options
  * @returns Complete HTML page string
  */
-export function generateDetailTable(options: DetailTableOptions): string {
+export function generateDetailTable(options: DetailTableOptions & {
+  /** Values rendered as links, by column key; ignored by base extensions that predate it */
+  valueLinks?: Record<string, string | { href: string, tooltip?: string } | undefined>
+}): string {
   return loadBase()!.frontendTables.generateDetailTable(options);
 }
 

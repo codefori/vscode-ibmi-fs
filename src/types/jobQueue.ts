@@ -24,6 +24,7 @@ import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
 import { JobOperations } from '../commonOperations';
+import { Links } from "../links";
 
 /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
 const JOBQ_TABLE_ID = 'jobq-entries';
@@ -493,7 +494,10 @@ export default class Jobq extends Base {
       title: `Job Queue: ${this.library}/${this.name}`,
       subtitle: vscode.l10n.t('Job Queue Information'),
       columns: this.columns,
-      data: this.jobq
+      data: this.jobq,
+      valueLinks: {
+        SUBSYSTEM_NAME: Links.qualifiedHref(this.jobq?.[0]?.SUBSYSTEM_NAME, '*SBSD')
+      }
     });
   }
 
@@ -530,8 +534,8 @@ export default class Jobq extends Base {
    */
   private getColumns(): FastTableColumn<Entry>[] {
     return [
-      { title: vscode.l10n.t("Job"), width: "1fr", getValue: e => e.job },
-      { title: vscode.l10n.t("Submitter job"), width: "1fr", getValue: e => e.submitter },
+      { title: vscode.l10n.t("Job"), width: "1fr", getValue: e => Links.jobLink(e.job) },
+      { title: vscode.l10n.t("Submitter job"), width: "1fr", getValue: e => Links.jobLink(e.submitter) },
       { title: vscode.l10n.t("Job entered time"), width: "1fr", getValue: e => e.jobts },
       { title: vscode.l10n.t("Job scheduled time"), width: "1fr", getValue: e => e.jobscd },
       { title: vscode.l10n.t("Job status"), width: "1fr", getValue: e => e.jobsts }
@@ -574,13 +578,6 @@ export default class Jobq extends Base {
   }
 
   renderEntries(entries: Entry[]) {
-    // Custom CSS styles for the job queue entries table
-    const customStyles = `
-      /* Highlight job names with link color for better visibility */
-      .jobqueue-entries-table vscode-table-cell:first-child {
-        color: var(--vscode-textLink-foreground);
-      }
-    `;
 
     // Generate and return the complete table HTML
     return `<div class="jobqueue-entries-table">` + generateFastTable({
@@ -590,7 +587,6 @@ export default class Jobq extends Base {
       data: this._entries,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t('No jobs found in this jobq.'),
-      customStyles: customStyles,
       enableSearch: true,
       searchPlaceholder: vscode.l10n.t("Search jobs..."),
       enablePagination: true,

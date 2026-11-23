@@ -24,6 +24,7 @@ import { DocumentManager } from "../documentManager";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
+import { Links } from "../links";
 
 /**
  * Namespace containing actions for Journal objects
@@ -366,7 +367,11 @@ export default class Jrn extends Base {
       subtitle: vscode.l10n.t('Journal Information'),
       columns: this.columns,
       data: this.jrn,
-      hideNullValues: true
+      hideNullValues: true,
+      valueLinks: {
+        ATTACHED_JOURNAL_RECEIVER_NAME: Links.qualifiedHref(this.jrn?.[0]?.ATTACHED_JOURNAL_RECEIVER_NAME, '*JRNRCV'),
+        MESSAGE_QUEUE: Links.qualifiedHref(this.jrn?.[0]?.MESSAGE_QUEUE, '*MSGQ')
+      }
     });
   }
 
@@ -400,7 +405,7 @@ export default class Jrn extends Base {
   renderEntries(entries: Entry[]) {
     // Define table columns with their properties
     const columns: FastTableColumn<Entry>[] = [
-      { title: vscode.l10n.t("Receiver"), width: "1.2fr", getValue: e => e.receiver },
+      { title: vscode.l10n.t("Receiver"), width: "1.2fr", getValue: e => Links.qualifiedLink(e.receiver, '*JRNRCV') },
       { title: vscode.l10n.t("iASP"), width: "0.7fr", getValue: e => e.iasp },
       { title: vscode.l10n.t("Threshold"), width: "0.5fr", getValue: e => e.threshold },
       { title: vscode.l10n.t("Size"), width: "0.5fr", getValue: e => String(e.size) },
@@ -412,13 +417,6 @@ export default class Jrn extends Base {
       { title: vscode.l10n.t("Save timestamp"), width: "1fr", getValue: e => e.save },
     ];
 
-    // Custom CSS styles for the journal receiver chain table
-    const customStyles = `
-      /* Highlight receiver names with link color for better visibility */
-      .jrn-entries-table vscode-table-cell:first-child {
-        color: var(--vscode-textLink-foreground);
-      }
-    `;
 
     // Generate and return the complete table HTML
     return `<div class="jrn-entries-table">` + generateFastTable({
@@ -428,7 +426,6 @@ export default class Jrn extends Base {
       data: this._entries,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t("No receivers found in this chain."),
-      customStyles: customStyles,
     }) + `</div>`;
   }
 

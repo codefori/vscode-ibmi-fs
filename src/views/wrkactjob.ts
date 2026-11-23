@@ -14,6 +14,7 @@ import { FastTableColumn, generateFastTable, generateFastTableUpdate, RowActions
 import { generatePage } from "../webviewToolkit";
 import { JobOperations } from '../commonOperations';
 import { getAutoRefreshInterval } from '../config';
+import { Links } from "../links";
 
 /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
 const ACTJOB_TABLE_ID = 'wrkactjob-jobs';
@@ -234,8 +235,8 @@ export namespace WrkactjobActions {
 
       // Define columns for active jobs table
       const jobColumns: FastTableColumn<Entry>[] = [
-        { title: vscode.l10n.t("Subsystem"), width: "1fr", getValue: e => e.subsystem },
-        { title: vscode.l10n.t("Job"), width: "1.5fr", getValue: e => e.job },
+        { title: vscode.l10n.t("Subsystem"), width: "1fr", getValue: e => Links.objectLink(e.subsystem, Links.object(e.subsystemLibrary, e.subsystem, '*SBSD')) },
+        { title: vscode.l10n.t("Job"), width: "1.5fr", getValue: e => Links.jobLink(e.job) },
         { title: vscode.l10n.t("User"), width: "0.7fr", getValue: e => e.user },
         { title: vscode.l10n.t("Type"), width: "0.5fr", getValue: e => e.type },
         { title: vscode.l10n.t("Function"), width: "0.7fr", getValue: e => e.function },
@@ -265,13 +266,6 @@ export namespace WrkactjobActions {
         ]
       };
 
-      // Custom CSS styles for the active jobs table
-      const customStyles = `
-        /* Highlight job names with link color for better visibility */
-        .active-jobs-table vscode-table-cell:nth-child(2) {
-            color: var(--vscode-textLink-foreground);
-        }
-      `;
 
       // Function to generate the table HTML
       const generateTableHtml = () => {
@@ -282,7 +276,6 @@ export namespace WrkactjobActions {
           data: activeJobs || [],
           stickyHeader: true,
           emptyMessage: vscode.l10n.t("No active jobs found."),
-          customStyles: customStyles,
           enableSearch: true,
           searchPlaceholder: vscode.l10n.t("Search jobs..."),
           searchTerm: searchTerm,
@@ -325,6 +318,10 @@ export namespace WrkactjobActions {
 
       // Handle messages from the webview
       panel.webview.onDidReceiveMessage(async (message) => {
+        // Links to jobs, objects and sources
+        if (await Links.handle(message)) {
+          return;
+        }
         // Handle search
         if (message.command === 'search') {
           if (message.searchTerm !== undefined) {

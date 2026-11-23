@@ -28,6 +28,7 @@ import Msgq from './types/messageQueue';
 import { Usridx } from './types/userIndex';
 import { getAutoRefreshInterval } from './config';
 import { trackRowActionPanel } from './ibmi';
+import { Links } from './links';
 
 
 /**
@@ -325,6 +326,10 @@ export default class ObjectProvider implements vscode.CustomEditorProvider<Base>
             vscode.window.showErrorMessage(vscode.l10n.t("Failed to load data: {0}", String(error)));
             await webviewPanel.webview.postMessage({ command: 'updateTableFailed', tableId: body.tableId });
           }
+          return;
+        }
+
+        if (await Links.handle(body)) {
           return;
         }
 

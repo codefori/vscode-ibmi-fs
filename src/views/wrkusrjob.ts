@@ -15,6 +15,7 @@ import { FastTableColumn, generateFastTable, generateFastTableUpdate, RowActions
 import { generatePage } from "../webviewToolkit";
 import { JobOperations } from '../commonOperations';
 import { getAutoRefreshInterval } from '../config';
+import { Links } from "../links";
 
 /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
 const USRJOB_TABLE_ID = 'wrkusrjob-jobs';
@@ -274,7 +275,7 @@ export namespace WrkusrjobActions {
 
       // Define columns for user jobs table
       const jobColumns: FastTableColumn<Entry>[] = [
-        { title: vscode.l10n.t("Job"), width: "2fr", getValue: e => e.job },
+        { title: vscode.l10n.t("Job"), width: "2fr", getValue: e => Links.jobLink(e.job) },
         { title: vscode.l10n.t("Job Status"), width: "1fr", getValue: e => e.jobStatus },
         { title: vscode.l10n.t("Active Status"), width: "1fr", getValue: e => e.activeStatus },
         { title: vscode.l10n.t("Type"), width: "0.5fr", getValue: e => e.jobType },
@@ -298,13 +299,6 @@ export namespace WrkusrjobActions {
         ]
       };
 
-      // Custom CSS styles for the user jobs table
-      const customStyles = `
-        /* Highlight job names with link color for better visibility */
-        .user-jobs-table vscode-table-cell:first-child {
-            color: var(--vscode-textLink-foreground);
-        }
-      `;
 
       // Function to generate the table HTML
       const generateTableHtml = () => {
@@ -315,7 +309,6 @@ export namespace WrkusrjobActions {
           data: userJobs || [],
           stickyHeader: true,
           emptyMessage: vscode.l10n.t("No jobs found."),
-          customStyles: customStyles,
           enableSearch: true,
           searchPlaceholder: vscode.l10n.t("Search jobs..."),
           searchTerm: searchTerm,
@@ -358,6 +351,10 @@ export namespace WrkusrjobActions {
 
       // Handle messages from the webview
       panel.webview.onDidReceiveMessage(async (message) => {
+        // Links to jobs, objects and sources
+        if (await Links.handle(message)) {
+          return;
+        }
         // Handle search
         if (message.command === 'search') {
           if (message.searchTerm !== undefined) {

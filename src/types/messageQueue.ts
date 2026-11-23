@@ -24,6 +24,7 @@ import { getProtected, executeSqlIfExists } from "../tools";
 import { generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate, RowActions } from "../ibmi";
 import * as vscode from 'vscode';
 import ObjectProvider from "../objectProvider";
+import { Links } from "../links";
 
 /**
  * Namespace containing actions for Message Queue objects
@@ -408,7 +409,7 @@ export default class Msgq extends Base {
       { title: vscode.l10n.t("Reply"), getValue: e => e.reply, width: "0.3fr"},
       { title: vscode.l10n.t("Sev."), getValue: e => String(e.severity), width: "0.2fr" },
       { title: vscode.l10n.t("Timestamp"), getValue: e => e.timestamp, width: "0.7fr" },
-      { title: vscode.l10n.t("Job"), getValue: e => e.job, width: "1fr" },
+      { title: vscode.l10n.t("Job"), getValue: e => Links.jobLink(e.job), width: "1fr" },
       { title: vscode.l10n.t("User"), getValue: e => e.user, width: "0.5fr" }
     ];
   }

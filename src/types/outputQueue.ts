@@ -29,6 +29,7 @@ import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
 import { SpoolOperations } from '../commonOperations';
+import { Links } from "../links";
 
 /**
  * Namespace containing actions for Output Queue objects
@@ -696,7 +697,11 @@ export default class Outq extends Base {
       subtitle: vscode.l10n.t('Output Queue Information'),
       columns: this.columns,
       data: this.outq,
-      hideNullValues: true
+      hideNullValues: true,
+      valueLinks: {
+        WRITER_JOB_NAME: Links.jobHref(this.outq?.[0]?.WRITER_JOB_NAME),
+        MESSAGE_QUEUE_NAME: Links.objectHref(Links.object(this.outq?.[0]?.MESSAGE_QUEUE_LIBRARY, this.outq?.[0]?.MESSAGE_QUEUE_NAME, '*MSGQ'))
+      }
     });
   }
 
@@ -736,7 +741,7 @@ export default class Outq extends Base {
       { title: vscode.l10n.t("Data"), width: "1fr", getValue: e => e.spooldta },
       { title: vscode.l10n.t("Status"), width: "0.5fr", getValue: e => e.spoolsts },
       { title: vscode.l10n.t("User"), width: "1fr", getValue: e => e.spooluser },
-      { title: vscode.l10n.t("Job"), width: "2fr", getValue: e => e.job },
+      { title: vscode.l10n.t("Job"), width: "2fr", getValue: e => Links.jobLink(e.job) },
       { title: vscode.l10n.t("Number"), width: "0.7fr", getValue: e => String(e.nbr) },
       { title: vscode.l10n.t("Timestamp"), width: "1.5fr", getValue: e => e.spoolts },
       { title: vscode.l10n.t("Pages"), width: "0.5fr", getValue: e => String(e.pages) },
@@ -777,13 +782,6 @@ export default class Outq extends Base {
   }
 
   renderEntries(entries: Entry[]) {
-    // Custom CSS styles for the output queue entries table
-    const customStyles = `
-        /* Highlight spool names with link color for better visibility */
-        .outq-entries-table vscode-table-cell:first-child {
-            color: var(--vscode-textLink-foreground);
-        }
-        `;
 
     // Generate and return the complete table HTML
     return `<div class="outq-entries-table">` + generateFastTable({
@@ -793,7 +791,6 @@ export default class Outq extends Base {
       data: this._entries,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t("No spools found in this outq."),
-      customStyles: customStyles,
       enableSearch: true,
       searchPlaceholder: vscode.l10n.t("Search spools..."),
       enablePagination: true,

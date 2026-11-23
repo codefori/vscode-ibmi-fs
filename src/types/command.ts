@@ -22,6 +22,7 @@ import Base from "./base";
 import { getInstance } from "../ibmi";
 import { getColumns, executeSqlIfExists } from "../tools";
 import { generateDetailTable } from "../ibmi";
+import { Links } from "../links";
 import * as vscode from 'vscode';
 
 /**
@@ -117,12 +118,25 @@ export default class Cmd extends Base {
    * @returns HTML string containing formatted command information
    */
   generateHTML(): string {
+    const info = this.cmd?.[0] ?? {};
+    const object = (prefix: string, type: string) => Links.objectHref(Links.object(info[`${prefix}_LIBRARY`], info[prefix], type));
+    const source = Links.sourceHref(Links.source(info.SOURCE_FILE_LIBRARY, info.SOURCE_FILE, info.SOURCE_FILE_MEMBER));
     return generateDetailTable({
       title: vscode.l10n.t("Command: {0}/{1}", this.library, this.name),
       subtitle: vscode.l10n.t('Command Information'),
       columns: this.columns,
       data: this.cmd,
-      hideNullValues: true
+      hideNullValues: true,
+      valueLinks: {
+        PROXY_TARGET_COMMAND: Links.objectHref(Links.object(info.PROXY_TARGET_COMMAND_LIBRARY, info.PROXY_TARGET_COMMAND, '*CMD')),
+        COMMAND_PROCESSING_PROGRAM: object('COMMAND_PROCESSING_PROGRAM', '*PGM'),
+        VALIDITY_CHECKING_PROGRAM: object('VALIDITY_CHECKING_PROGRAM', '*PGM'),
+        PROMPT_OVERRIDE_PROGRAM: object('PROMPT_OVERRIDE_PROGRAM', '*PGM'),
+        PROMPT_TEXT_MESSAGE_FILE: object('PROMPT_TEXT_MESSAGE_FILE', '*MSGF'),
+        MESSAGE_FILE: object('MESSAGE_FILE', '*MSGF'),
+        SOURCE_FILE: source,
+        SOURCE_FILE_MEMBER: source
+      }
     });
   }
 

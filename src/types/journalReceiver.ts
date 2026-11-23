@@ -23,6 +23,7 @@ import { getInstance } from "../ibmi";
 import { getColumns, executeSqlIfExists } from "../tools";
 import { generateDetailTable } from "../ibmi";
 import * as vscode from 'vscode';
+import { Links } from "../links";
 
 /**
  * Journal Receiver (JRNRCV) object class
@@ -112,12 +113,18 @@ export default class Jrnrcv extends Base {
    * @returns HTML string
    */
   generateHTML(): string {
+    const info = this.jrnrcv?.[0] ?? {};
     return generateDetailTable({
       title: `Journal Receiver: ${this.library}/${this.name}`,
       subtitle: vscode.l10n.t('Journal Receiver Information'),
       columns: this.columns,
       data: this.jrnrcv,
-      hideNullValues:true
+      hideNullValues:true,
+      valueLinks: {
+        JOURNAL_NAME: Links.qualifiedHref(info.JOURNAL_NAME, '*JRN'),
+        PREVIOUS_JOURNAL_RECEIVER: Links.qualifiedHref(info.PREVIOUS_JOURNAL_RECEIVER, '*JRNRCV'),
+        NEXT_JOURNAL_RECEIVER: Links.qualifiedHref(info.NEXT_JOURNAL_RECEIVER, '*JRNRCV')
+      }
     });
   }
 

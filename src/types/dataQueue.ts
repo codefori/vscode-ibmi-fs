@@ -536,16 +536,6 @@ function entryColumns(keyed: boolean, isUtf8: boolean): FastTableColumn<Entry>[]
 function renderEntries(keyed: boolean, entries: Entry[], isUtf8: boolean) {
   const columns = entryColumns(keyed, isUtf8);
 
-  let customStyles = "";
-
-  if (keyed) {
-    customStyles = `
-      /* Custom styles for cells - specific to dataqueue entries table */
-      .dataqueue-entries-table vscode-table-cell:nth-child(4) {
-        color: var(--vscode-textLink-foreground);
-      }
-    `;
-  }
 
   return `<div class="dataqueue-entries-table">` + generateFastTable({
     title: ``,
@@ -554,7 +544,6 @@ function renderEntries(keyed: boolean, entries: Entry[], isUtf8: boolean) {
     data: entries,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t("No messages in this dtaq."),
-    customStyles: customStyles,
     tableId: isUtf8 ? DTAQ_TABLE_IDS.messagesUtf8 : DTAQ_TABLE_IDS.messages
   }) + `</div>`;
 

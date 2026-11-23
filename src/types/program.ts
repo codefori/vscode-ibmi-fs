@@ -26,6 +26,7 @@ import { getInstance } from '../ibmi';
 import { getColumns, executeSqlIfExists } from "../tools";
 import { generateDetailTable, FastTableColumn, generateFastTable } from "../ibmi";
 import { PgmRefsComponent } from "../connection/components/pgmRefs";
+import { Links, ObjectRef, SourceRef } from "../links";
 
 /**
  * Interface representing a bound module within a program
@@ -49,6 +50,8 @@ interface Module {
   tgtrls: string
   /** Whether source can be retrieved */
   rtvclsrc: string
+  moduleRef?: ObjectRef
+  sourceRef?: SourceRef
 }
 
 /**
@@ -61,6 +64,7 @@ interface Srvpgm {
   signature: string
   /** Activation type (*IMMED or *DEFER) */
   activation: string
+  srvpgmRef?: ObjectRef
 }
 
 /**
@@ -93,6 +97,7 @@ interface Reference {
   lvlchk: string
   /** Field count in the referenced file */
   fields: string
+  objectRef?: ObjectRef
 }
 
 /**
@@ -193,12 +198,18 @@ export class Pgm extends Base {
           COPYRIGHT_STRINGS,
           COPYRIGHT_STRING_SIZE CONCAT ' / ' CONCAT MAXIMUM_COPYRIGHT_STRING_SIZE AS COPYRIGHT_STRING_SIZE,
           EXPORT_SOURCE_LIBRARY CONCAT ' / ' CONCAT EXPORT_SOURCE_FILE concat ', ' concat  EXPORT_SOURCE_FILE_MEMBER as EXPORT_SOURCE_FILE,
+          EXPORT_SOURCE_LIBRARY AS LNK_EXPSRCLIB,
+          EXPORT_SOURCE_FILE AS LNK_EXPSRCF,
+          EXPORT_SOURCE_FILE_MEMBER AS LNK_EXPSRCMBR,
           EXPORT_SOURCE_STREAM_FILE,
           PROCEDURE_EXPORTS CONCAT ' / ' CONCAT MAXIMUM_PROCEDURE_EXPORTS AS PROCEDURE_EXPORTS,
           DATA_EXPORTS CONCAT ' / ' CONCAT MAXIMUM_DATA_EXPORTS AS DATA_EXPORTS,
           SIGNATURES CONCAT ' / ' CONCAT MAXIMUM_SIGNATURES AS SIGNATURES,
           EXPORT_SIGNATURES,
           SOURCE_FILE_LIBRARY CONCAT '/' CONCAT SOURCE_FILE CONCAT ', ' CONCAT SOURCE_FILE_MEMBER as SOURCE_FILE,
+          SOURCE_FILE_LIBRARY AS LNK_SRCLIB,
+          SOURCE_FILE AS LNK_SRCF,
+          SOURCE_FILE_MEMBER AS LNK_SRCMBR,
           SOURCE_FILE_CHANGE_TIMESTAMP,
           SORT_SEQUENCE_LIBRARY,
           SORT_SEQUENCE,
@@ -275,6 +286,12 @@ export class Pgm extends Base {
               ELSE SOURCE_STREAM_FILE_PATH
           END AS src,
           to_char(SOURCE_CHANGE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS SOURCE_CHANGE_TIMESTAMP,
+          BOUND_MODULE_LIBRARY,
+          BOUND_MODULE,
+          SOURCE_FILE_LIBRARY,
+          SOURCE_FILE,
+          SOURCE_FILE_MEMBER,
+          SOURCE_STREAM_FILE_PATH,
           DEBUG_DATA,
           RELEASE_CREATED_ON,
           TARGET_RELEASE,
@@ -435,13 +452,20 @@ export class Pgm extends Base {
    * @returns HTML string for the detail panel
    */
   private renderPgmPanel(): string {
+    const info = this.pgm?.[0] ?? {};
     return generateDetailTable({
       title: vscode.l10n.t("{0}: {1}/{2}", this.isSrvpgm ? vscode.l10n.t('Service Program') : vscode.l10n.t('Program'), this.library, this.name),
       subtitle: vscode.l10n.t("{0} Information", this.isSrvpgm ? vscode.l10n.t('Service Program') : vscode.l10n.t('Program')),
       columns: this.columns,
       data: this.pgm,
       codeColumns: ['COPYRIGHT_STRINGS', 'EXPORT_SIGNATURES'],
-      hideNullValues: true
+      hideNullValues: true,
+      valueLinks: {
+        PROGRAM_ENTRY_PROCEDURE_MODULE: Links.objectHref(Links.qualifiedObject(info.PROGRAM_ENTRY_PROCEDURE_MODULE, '*MODULE')),
+        SOURCE_FILE: Links.sourceHref(Links.source(info.LNK_SRCLIB, info.LNK_SRCF, info.LNK_SRCMBR)),
+        EXPORT_SOURCE_FILE: Links.sourceHref(Links.source(info.LNK_EXPSRCLIB, info.LNK_EXPSRCF, info.LNK_EXPSRCMBR)),
+        EXPORT_SOURCE_STREAM_FILE: Links.sourceHref(Links.source(undefined, undefined, undefined, info.EXPORT_SOURCE_STREAM_FILE))
+      }
     });
   }
 }
@@ -462,6 +486,8 @@ function toModules(row: Tools.DB2Row): Module {
     crtrls: String(row.RELEASE_CREATED_ON),
     tgtrls: String(row.TARGET_RELEASE),
     rtvclsrc: String(row.ALLOW_RTVCLSRC),
+    moduleRef: Links.object(row.BOUND_MODULE_LIBRARY, row.BOUND_MODULE, '*MODULE'),
+    sourceRef: Links.source(row.SOURCE_FILE_LIBRARY, row.SOURCE_FILE, row.SOURCE_FILE_MEMBER, row.SOURCE_STREAM_FILE_PATH)
   };
 }
 
@@ -474,7 +500,8 @@ function toSrvpgm(row: Tools.DB2Row): Srvpgm {
   return {
     srvpgm: String(row.SRVPGM),
     signature: String(row.BOUND_SERVICE_PROGRAM_SIGNATURE),
-    activation: String(row.BOUND_SERVICE_PROGRAM_ACTIVATION)
+    activation: String(row.BOUND_SERVICE_PROGRAM_ACTIVATION),
+    srvpgmRef: Links.qualifiedObject(row.SRVPGM, '*SRVPGM')
   };
 }
 
@@ -504,7 +531,8 @@ function toReference(row: Tools.DB2Row): Reference {
     rcdfmtCount: String(row.RCDFMT_COUNT),
     usage: String(row.FILE_USAGE),
     lvlchk: String(row.LVLCHKID),
-    fields: String(row.FIELDS)
+    fields: String(row.FIELDS),
+    objectRef: Links.qualifiedObject(row.REFOBJNAME, row.REFOBJTYPE)
   };
 }
 
@@ -516,10 +544,10 @@ function toReference(row: Tools.DB2Row): Reference {
  */
 function renderBounds(modules: Module[], srvpgms: Srvpgm[]) {
   let columnsmod: FastTableColumn<Module>[] = [
-    { title: vscode.l10n.t("Module"), width: "1fr", getValue: e => e.module },
+    { title: vscode.l10n.t("Module"), width: "1fr", getValue: e => Links.objectLink(e.module, e.moduleRef) },
     { title: vscode.l10n.t("Type"), width: "0.5fr", getValue: e => e.type },
     { title: vscode.l10n.t("Creation"), width: "1fr", getValue: e => e.creation },
-    { title: vscode.l10n.t("Source"), width: "2fr", getValue: e => e.source },
+    { title: vscode.l10n.t("Source"), width: "2fr", getValue: e => Links.sourceLink(e.source, e.sourceRef) },
     { title: vscode.l10n.t("Source Change"), width: "1fr", getValue: e => e.sourcechg },
     { title: vscode.l10n.t("Debug Data"), width: "0.5fr", getValue: e => e.debug },
     { title: vscode.l10n.t("Creation Release"), width: "0.5fr", getValue: e => e.crtrls },
@@ -527,13 +555,6 @@ function renderBounds(modules: Module[], srvpgms: Srvpgm[]) {
     { title: vscode.l10n.t("RTVCLSRC"), width: "0.7fr", getValue: e => e.rtvclsrc },
   ];
 
-  const customStyles = `
-    /* Custom styles for module name cells */
-    .modules-entries-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-    }
-  `;
-  
   let html = `<div class="modules-entries-table">` + generateFastTable({
     title: vscode.l10n.t(`Modules`),
     subtitle: ``,
@@ -541,22 +562,14 @@ function renderBounds(modules: Module[], srvpgms: Srvpgm[]) {
     data: modules,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t('No modules in this pgm.'),
-    customStyles: customStyles,
   }) + `</div>${Components.divider()}`;
 
   let columnssrvpgm: FastTableColumn<Srvpgm>[] = [
-    { title: vscode.l10n.t("Service program"), width: "1.5fr", getValue: e => e.srvpgm },
+    { title: vscode.l10n.t("Service program"), width: "1.5fr", getValue: e => Links.objectLink(e.srvpgm, e.srvpgmRef) },
     { title: vscode.l10n.t("Signature"), width: "3fr", getValue: e => e.signature },
     { title: vscode.l10n.t("Activation"), width: "1fr", getValue: e => e.activation },
   ];
 
-  const customStylesSrvpgm = `
-    /* Custom styles for service program name cells */
-    .srvpgm-entries-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-    }
-  `;
-  
   html = html.trim() + `<div class="srvpgm-entries-table">` + generateFastTable({
     title: vscode.l10n.t(`Service Programs`),
     subtitle: ``,
@@ -564,7 +577,6 @@ function renderBounds(modules: Module[], srvpgms: Srvpgm[]) {
     data: srvpgms,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t('No service programs in this program.'),
-    customStyles: customStylesSrvpgm,
     customScript: ""
   }) + `</div>`;
 
@@ -582,12 +594,6 @@ function renderExports(exports: Export[]) {
     { title: vscode.l10n.t("Usage"), width: "0.5fr", getValue: e => e.usage },
   ];
 
-  const customStyles = `
-    /* Custom styles for procedure name cells */
-    .exports-entries-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-    }
-  `;
   
   return `<div class="exports-entries-table">` + generateFastTable({
     title: ``,
@@ -596,7 +602,6 @@ function renderExports(exports: Export[]) {
     data: exports,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t('No exports in this service program.'),
-    customStyles: customStyles,
     customScript: ""
   }) + `</div>`;
 }
@@ -608,7 +613,7 @@ function renderExports(exports: Export[]) {
  */
 function renderReferences(references: Reference[]) {
   const columns: FastTableColumn<Reference>[] = [
-    { title: vscode.l10n.t("Referenced object"), width: "1.5fr", getValue: e => e.object },
+    { title: vscode.l10n.t("Referenced object"), width: "1.5fr", getValue: e => Links.objectLink(e.object, e.objectRef) },
     { title: vscode.l10n.t("Type"), width: "0.7fr", getValue: e => e.type },
     { title: vscode.l10n.t("Source name"), width: "1fr", getValue: e => e.srcname },
     { title: vscode.l10n.t("Record format"), width: "1fr", getValue: e => e.rcdfmt },
@@ -618,13 +623,6 @@ function renderReferences(references: Reference[]) {
     { title: vscode.l10n.t("Field count"), width: "0.6fr", getValue: e => e.fields },
   ];
 
-  const customStyles = `
-    /* Custom styles for referenced object name cells */
-    .references-entries-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-    }
-  `;
-
   return `<div class="references-entries-table">` + generateFastTable({
     title: ``,
     subtitle: ``,
@@ -632,7 +630,6 @@ function renderReferences(references: Reference[]) {
     data: references,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t('No references found for this object.'),
-    customStyles: customStyles,
     customScript: ""
   }) + `</div>`;
 }

@@ -30,6 +30,7 @@ import { getColumns, getProtected, executeSqlIfExists } from "../tools";
 import { generateDetailTable, FastTableColumn, generateFastTable, generateFastTableUpdate, FastTableUpdate, RowActions } from "../ibmi";
 import ObjectProvider from '../objectProvider';
 import { JobOperations } from '../commonOperations';
+import { Links } from "../links";
 
 /** Explicit ids so refreshes can target these tables; see FastTableUpdateOptions.tableId. */
 const SBSD_TABLE_IDS = {
@@ -945,12 +946,17 @@ export class Sbsd extends Base {
    * @returns HTML string for the detail panel
    */
   private renderPgmPanel(): string {
+    const info = this.sbs?.[0] ?? {};
     return generateDetailTable({
       title: `Subsystem Description: ${this.library}/${this.name}`,
       subtitle: vscode.l10n.t(`Subsystem Description Information`),
       columns: this.columns,
       data: this.sbs,
-      hideNullValues: true
+      hideNullValues: true,
+      valueLinks: {
+        SUBSYSTEM_MONITOR_JOB: Links.jobHref(info.SUBSYSTEM_MONITOR_JOB),
+        SIGNON_DEVICE_FILE: Links.objectHref(Links.object(info.SIGNON_DEVICE_FILE_LIBRARY, info.SIGNON_DEVICE_FILE, '*FILE'))
+      }
     });
   }
 }
@@ -1103,16 +1109,11 @@ function renderPools(data: GenEntry[]) {
 function ajeColumns(): FastTableColumn<GenEntry>[] {
   return [
     { title: vscode.l10n.t("Autostart job"), width: "1fr", getValue: e => e.value2 },
-    { title: vscode.l10n.t("Job description"), width: "2fr", getValue: e => e.value1 },
+    { title: vscode.l10n.t("Job description"), width: "2fr", getValue: e => Links.qualifiedLink(e.value1, '*JOBD') },
   ];
 }
 
 function renderAjes(data: GenEntry[]) {
-  const customStyles = `
-    .aje-entries-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-    }
-  `;
 
   return `<div class="aje-entries-table">` + generateFastTable({
     title: ``,
@@ -1121,7 +1122,6 @@ function renderAjes(data: GenEntry[]) {
     data: data,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t("No AJE for this subsystem."),
-    customStyles: customStyles,
     customScript: "",
     tableId: SBSD_TABLE_IDS.ajes
   }) + `</div>`;
@@ -1136,7 +1136,7 @@ function wseColumns(): FastTableColumn<Wse>[] {
   return [
     { title: vscode.l10n.t("WS name"), width: "1fr", getValue: e => e.wsname },
     { title: vscode.l10n.t("WS type"), width: "1fr", getValue: e => e.wstype },
-    { title: vscode.l10n.t("Jobd"), width: "2fr", getValue: e => e.jobd },
+    { title: vscode.l10n.t("Jobd"), width: "2fr", getValue: e => Links.qualifiedLink(e.jobd, '*JOBD') },
     { title: vscode.l10n.t("Allocation"), width: "1fr", getValue: e => e.alloc },
     { title: vscode.l10n.t("Max Active jobs"), width: "1fr", getValue: e => e.maxact },
   ];
@@ -1162,7 +1162,7 @@ function renderWses(data: Wse[]) {
  */
 function jobqeColumns(): FastTableColumn<Jobqe>[] {
   return [
-    { title: vscode.l10n.t("Jobq"), width: "1.5fr", getValue: e => e.name },
+    { title: vscode.l10n.t("Jobq"), width: "1.5fr", getValue: e => Links.qualifiedLink(e.name, '*JOBQ') },
     { title: vscode.l10n.t("Status"), width: "0.7fr", getValue: e => e.status },
     { title: vscode.l10n.t("Sequence"), width: "0.5fr", getValue: e => String(e.seq) },
     { title: vscode.l10n.t("Max jobs"), width: "0.5fr", getValue: e => String(e.maxjobs) },
@@ -1174,11 +1174,6 @@ function jobqeColumns(): FastTableColumn<Jobqe>[] {
 }
 
 function renderJobqes(data: Jobqe[]) {
-  const customStyles = `
-    .jobqe-entries-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-    }
-  `;
 
   return `<div class="jobqe-entries-table">` + generateFastTable({
     title: ``,
@@ -1187,7 +1182,6 @@ function renderJobqes(data: Jobqe[]) {
     data: data,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t("No JOBQE for this subsystem."),
-    customStyles: customStyles,
     customScript: "",
     tableId: SBSD_TABLE_IDS.jobqes
   }) + `</div>`;
@@ -1201,8 +1195,8 @@ function renderJobqes(data: Jobqe[]) {
 function rtgeColumns(): FastTableColumn<Rtge>[] {
   return [
     { title: vscode.l10n.t("Sequence"), width: "0.5fr", getValue: e => String(e.seq) },
-    { title: vscode.l10n.t("Program"), width: "1.5fr", getValue: e => e.pgm },
-    { title: vscode.l10n.t("Class"), width: "1.5fr", getValue: e => e.class },
+    { title: vscode.l10n.t("Program"), width: "1.5fr", getValue: e => Links.qualifiedLink(e.pgm, '*PGM') },
+    { title: vscode.l10n.t("Class"), width: "1.5fr", getValue: e => Links.qualifiedLink(e.class, '*CLS') },
     { title: vscode.l10n.t("Step"), width: "0.5fr", getValue: e => String(e.steps) },
     { title: vscode.l10n.t("Pool"), width: "0.5fr", getValue: e => String(e.poolid) },
     { title: vscode.l10n.t("Comparison start"), width: "0.5fr", getValue: e => String(e.cmpstart) },
@@ -1211,11 +1205,6 @@ function rtgeColumns(): FastTableColumn<Rtge>[] {
 }
 
 function renderRtges(data: Rtge[]) {
-  const customStyles = `
-    .rtge-entries-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-    }
-  `;
 
   return `<div class="rtge-entries-table">` + generateFastTable({
     title: ``,
@@ -1224,7 +1213,6 @@ function renderRtges(data: Rtge[]) {
     data: data,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t("No RTGES for this subsystem."),
-    customStyles: customStyles,
     customScript: "",
     tableId: SBSD_TABLE_IDS.rtges
   }) + `</div>`;
@@ -1238,9 +1226,9 @@ function renderRtges(data: Rtge[]) {
 function pjeColumns(): FastTableColumn<Pje>[] {
   return [
     { title: vscode.l10n.t("Name"), width: "0.7fr", getValue: e => e.pjname },
-    { title: vscode.l10n.t("Program"), width: "1.5fr", getValue: e => e.pgm },
-    { title: vscode.l10n.t("Class"), width: "1.5fr", getValue: e => e.class },
-    { title: vscode.l10n.t("Jobd"), width: "1.5fr", getValue: e => e.jobd },
+    { title: vscode.l10n.t("Program"), width: "1.5fr", getValue: e => Links.qualifiedLink(e.pgm, '*PGM') },
+    { title: vscode.l10n.t("Class"), width: "1.5fr", getValue: e => Links.qualifiedLink(e.class, '*CLS') },
+    { title: vscode.l10n.t("Jobd"), width: "1.5fr", getValue: e => Links.qualifiedLink(e.jobd, '*JOBD') },
     { title: vscode.l10n.t("User"), width: "0.7fr", getValue: e => e.user },
     { title: vscode.l10n.t("Start"), width: "0.3fr", getValue: e => String(e.start) },
     { title: vscode.l10n.t("Initial"), width: "0.3fr", getValue: e => String(e.inl) },
@@ -1253,11 +1241,6 @@ function pjeColumns(): FastTableColumn<Pje>[] {
 }
 
 function renderPjes(data: Pje[]) {
-  const customStyles = `
-    .pje-entries-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-    }
-  `;
 
   return `<div class="pje-entries-table">` + generateFastTable({
     title: ``,
@@ -1266,7 +1249,6 @@ function renderPjes(data: Pje[]) {
     data: data,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t("No PJES for this subsystem."),
-    customStyles: customStyles,
     customScript: "",
     tableId: SBSD_TABLE_IDS.pjes
   }) + `</div>`;
@@ -1279,7 +1261,7 @@ function renderPjes(data: Pje[]) {
  */
 function jobColumns(): FastTableColumn<Job>[] {
   return [
-    { title: vscode.l10n.t("Job"), width: "1.5fr", getValue: e => e.job },
+    { title: vscode.l10n.t("Job"), width: "1.5fr", getValue: e => Links.jobLink(e.job) },
     { title: vscode.l10n.t("User"), width: "0.7fr", getValue: e => e.user },
     { title: vscode.l10n.t("Type"), width: "0.5fr", getValue: e => e.type },
     { title: vscode.l10n.t("Function"), width: "0.7fr", getValue: e => e.function },
@@ -1310,11 +1292,6 @@ function jobRowActions(): RowActions<Job> {
 }
 
 function renderJobs(data: Job[]) {
-  const customStyles = `
-    .job-entries-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-    }
-  `;
 
   return `<div class="job-entries-table">` + generateFastTable({
     title: ``,
@@ -1323,7 +1300,6 @@ function renderJobs(data: Job[]) {
     data: data,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t("No running jobs for this subsystem."),
-    customStyles: customStyles,
     customScript: "",
     tableId: SBSD_TABLE_IDS.jobs,
     rowActions: jobRowActions()

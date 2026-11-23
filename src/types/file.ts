@@ -25,6 +25,7 @@ import { generateDetailTable, generateFastTable, FastTableColumn } from "../ibmi
 import { DocumentManager } from "../documentManager";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
+import { Links, ObjectRef, SourceRef } from "../links";
 
 /**
  * Namespace containing actions for FILE objects
@@ -89,6 +90,7 @@ interface DepObj {
   text: string
   /** Last alteration timestamp */
   altered: string
+  objectRef?: ObjectRef
 }
 
 /**
@@ -107,6 +109,7 @@ interface Member {
   size: number
   /** Member text description */
   text: string
+  sourceRef?: SourceRef
 }
 
 /**
@@ -145,6 +148,11 @@ interface IndexKeyColumn {
   position: number
   /** Whether the index enforces uniqueness */
   unique: boolean
+}
+
+/** Whether a SYSTOOLS.RELATED_OBJECTS object type is a *FILE object */
+function isFileObjectType(sqlObjectType: unknown) {
+  return /^(ALIAS|INDEX|VIEW|.*TABLE|.*LOGICAL FILE)$/.test(String(sqlObjectType ?? '').trim());
 }
 
 /**
@@ -263,6 +271,7 @@ export default class File extends Base {
         ['IASP_NAME', vscode.l10n.t('iASP')],
         ['JOURNALED', vscode.l10n.t('Currently journaled')],
         ['JOURNAL_NAME', vscode.l10n.t('Current or last journal')],
+        ['SOURCE', vscode.l10n.t('Source')],
         ['ENABLED', vscode.l10n.t('Enabled')],
         ['MAINTENANCE', vscode.l10n.t('Maintained by')],
         ['REFRESH', vscode.l10n.t('Refresh type')],
@@ -289,6 +298,10 @@ export default class File extends Base {
             LIBX.IASP_NAME AS IASP_NAME,
             X.JOURNALED,
             X.JOURNAL_LIBRARY CONCAT '/' CONCAT X.JOURNAL_NAME AS JOURNAL_NAME,
+            X.SOURCE_LIBRARY CONCAT '/' CONCAT X.SOURCE_FILE CONCAT ', ' CONCAT X.SOURCE_MEMBER AS SOURCE,
+            X.SOURCE_LIBRARY AS LNK_SRCLIB,
+            X.SOURCE_FILE AS LNK_SRCF,
+            X.SOURCE_MEMBER AS LNK_SRCMBR,
             ENABLED,
             MAINTENANCE,
             "REFRESH",
@@ -330,6 +343,7 @@ export default class File extends Base {
           ['OBJATTRIBUTE', vscode.l10n.t('Object attribute')],
           ['OBJOWNER', vscode.l10n.t('Owner')],
           ['OBJTEXT', vscode.l10n.t('Text')],
+          ['SOURCE', vscode.l10n.t('Source')],
           ['OBJCREATED', vscode.l10n.t('Creation date/time')],
           ['OBJSIZE', vscode.l10n.t('Object size')]
         ]);
@@ -341,7 +355,11 @@ export default class File extends Base {
               OBJOWNER,
               OBJTEXT,
               TO_CHAR(OBJCREATED, 'yyyy-mm-dd HH24:mi') AS OBJCREATED,
-              OBJSIZE
+              OBJSIZE,
+              SOURCE_LIBRARY CONCAT '/' CONCAT SOURCE_FILE CONCAT ', ' CONCAT SOURCE_MEMBER AS SOURCE,
+              SOURCE_LIBRARY AS LNK_SRCLIB,
+              SOURCE_FILE AS LNK_SRCF,
+              SOURCE_MEMBER AS LNK_SRCMBR
             FROM TABLE (
                 QSYS2.OBJECT_STATISTICS('${this.library}', 'FILE', '${this.name}')
             )`,
@@ -581,6 +599,8 @@ export default class File extends Base {
         `SELECT SQL_OBJECT_TYPE,
           SCHEMA_NAME,
           SQL_NAME,
+          LIBRARY_NAME,
+          SYSTEM_NAME,
           OBJECT_OWNER,
           OBJECT_TEXT,
           TO_CHAR(LAST_ALTERED, 'yyyy-mm-dd HH24:mi') AS LAST_ALTERED
@@ -616,6 +636,7 @@ export default class File extends Base {
       const entryRows = await executeSqlIfExists(
         connection,
         `SELECT SYSTEM_TABLE_MEMBER,
+          SOURCE_TYPE,
           TO_CHAR(LAST_CHANGE_TIMESTAMP, 'yyyy-mm-dd HH24:mi') AS LAST_CHANGE_TIMESTAMP,
           NUMBER_ROWS,
           NUMBER_DELETED_ROWS,
@@ -634,7 +655,11 @@ export default class File extends Base {
         return;
       }
 
-      this.members.push(...entryRows.map(this.toMember));
+      // Members of source files open as sources
+      this.members.push(...entryRows.map(row => ({
+        ...this.toMember(row),
+        sourceRef: row.SOURCE_TYPE === null || row.SOURCE_TYPE === undefined ? undefined : Links.source(this.library, this.name, row.SYSTEM_TABLE_MEMBER)
+      })));
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
@@ -663,7 +688,8 @@ export default class File extends Base {
         ['OBJSIZE', vscode.l10n.t('Object size')],
         ['IASP_NAME', vscode.l10n.t('iASP')],
         ['JOURNALED', vscode.l10n.t('Currently journaled')],
-        ['JOURNAL_NAME', vscode.l10n.t('Current or last journal')]
+        ['JOURNAL_NAME', vscode.l10n.t('Current or last journal')],
+        ['SOURCE', vscode.l10n.t('Source')]
       ]);
 
       this.file = await executeSqlIfExists(
@@ -681,7 +707,11 @@ export default class File extends Base {
             X.OBJSIZE,
             LIBX.IASP_NAME,
             X.JOURNALED,
-            X.JOURNAL_LIBRARY CONCAT '/' CONCAT X.JOURNAL_NAME AS JOURNAL_NAME
+            X.JOURNAL_LIBRARY CONCAT '/' CONCAT X.JOURNAL_NAME AS JOURNAL_NAME,
+            X.SOURCE_LIBRARY CONCAT '/' CONCAT X.SOURCE_FILE CONCAT ', ' CONCAT X.SOURCE_MEMBER AS SOURCE,
+            X.SOURCE_LIBRARY AS LNK_SRCLIB,
+            X.SOURCE_FILE AS LNK_SRCF,
+            X.SOURCE_MEMBER AS LNK_SRCMBR
           FROM QSYS2.SYSINDEXES,
             TABLE (
                 QSYS2.OBJECT_STATISTICS('${this.library}', 'FILE', '${this.name}')
@@ -889,7 +919,11 @@ export default class File extends Base {
       columns: this.columns,
       data: this.file,
       codeColumns: ['MQT_DEFINITION'],
-      hideNullValues: true
+      hideNullValues: true,
+      valueLinks: {
+        JOURNAL_NAME: Links.qualifiedHref(this.file[0].JOURNAL_NAME, '*JRN'),
+        SOURCE: Links.sourceHref(Links.source(this.file[0].LNK_SRCLIB, this.file[0].LNK_SRCF, this.file[0].LNK_SRCMBR))
+      }
     });
   }
 
@@ -942,6 +976,7 @@ export default class File extends Base {
       owner: String(row.OBJECT_OWNER),
       text: String(row.OBJECT_TEXT),
       altered: String(row.LAST_ALTERED),
+      objectRef: isFileObjectType(row.SQL_OBJECT_TYPE) ? Links.object(row.LIBRARY_NAME, row.SYSTEM_NAME, '*FILE') : undefined
     };
   }
   /**
@@ -990,7 +1025,7 @@ export default class File extends Base {
     // Define table columns with their properties
     const columns: FastTableColumn<DepObj>[] = [
       { title: vscode.l10n.t("Schema"), width: "1fr", getValue: e => e.schema },
-      { title: vscode.l10n.t("Name"), width: "1fr", getValue: e => e.name },
+      { title: vscode.l10n.t("Name"), width: "1fr", getValue: e => Links.objectLink(e.name, e.objectRef) },
       { title: vscode.l10n.t("SQL type"), width: "0.7fr", getValue: e => e.type },
       { title: vscode.l10n.t("Owner"), width: "0.7fr", getValue: e => e.owner },
       { title: vscode.l10n.t("Text"), width: "2fr", getValue: e => e.text },
@@ -1017,7 +1052,7 @@ export default class File extends Base {
   renderMembers() {
     // Define table columns with their properties
     const columns: FastTableColumn<Member>[] = [
-      { title: vscode.l10n.t("Member"), width: "1fr", getValue: e => e.member },
+      { title: vscode.l10n.t("Member"), width: "1fr", getValue: e => Links.sourceLink(e.member, e.sourceRef) },
       { title: vscode.l10n.t("Rows"), width: "0.7fr", getValue: e => e.rows },
       { title: vscode.l10n.t("Deleted rows"), width: "0.7fr", getValue: e => e.delrows },
       { title: vscode.l10n.t("Size"), width: "0.7fr", getValue: e => e.size },

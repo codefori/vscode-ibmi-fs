@@ -25,6 +25,7 @@ import { getInstance } from '../ibmi';
 import { getProtected, executeSqlIfExists } from "../tools";
 import { FastTableColumn, generateFastTable, RowActions } from "../ibmi";
 import ObjectProvider from '../objectProvider';
+import { Links, ObjectRef } from '../links';
 
 /**
  * Namespace containing Binding Directory action commands
@@ -190,6 +191,7 @@ interface Entry {
   activation: string
   /** Entry creation timestamp */
   creation: string
+  objectRef?: ObjectRef
 }
 
 /**
@@ -202,6 +204,7 @@ interface Export {
   usage: string
   /** Object that exports this symbol */
   object: string
+  objectRef?: ObjectRef
 }
 
 /**
@@ -391,6 +394,7 @@ function toEntry(row: Tools.DB2Row): Entry {
     type: String(row.ENTRY_TYPE),
     activation: String(row.ENTRY_ACTIVATION),
     creation: String(row.ENTRY_CREATE_TIMESTAMP),
+    objectRef: Links.qualifiedObject(row.ENTRY, row.ENTRY_TYPE)
   };
 }
 
@@ -404,6 +408,7 @@ function toExport(row: Tools.DB2Row): Export {
     method: String(row.SYMBOL_NAME),
     usage: String(row.SYMBOL_USAGE),
     object: String(row.ENTRY),
+    objectRef: Links.qualifiedObject(row.ENTRY, row.OBJTYPE)
   };
 }
 
@@ -415,7 +420,7 @@ function toExport(row: Tools.DB2Row): Export {
  */
 function renderEntries(entries: Entry[], name: string) {
   const columnsmod: FastTableColumn<Entry>[] = [
-    { title: vscode.l10n.t("Object"), width: "2fr", getValue: e => e.object },
+    { title: vscode.l10n.t("Object"), width: "2fr", getValue: e => Links.objectLink(e.object, e.objectRef) },
     { title: vscode.l10n.t("Type"), width: "1fr", getValue: e => e.type },
     { title: vscode.l10n.t("Activation"), width: "1fr", getValue: e => e.activation },
     { title: vscode.l10n.t("Creation"), width: "2fr", getValue: e => e.creation }
@@ -429,13 +434,6 @@ function renderEntries(entries: Entry[], name: string) {
     ]
   };
 
-  const customStyles = `
-    /* Custom styles for object name cells */
-    .modules-entries-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-    }
-  `;
-
   return `<div class="modules-entries-table">` + generateFastTable({
     title: vscode.l10n.t("Binding Directory: {0}", name),
     subtitle: vscode.l10n.t("Total entries: {0}", String(entries.length)),
@@ -443,7 +441,6 @@ function renderEntries(entries: Entry[], name: string) {
     data: entries,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t("No entries in this binding directory."),
-    customStyles: customStyles,
     customScript: "",
     rowActions
   }) + `</div>`;
@@ -457,16 +454,10 @@ function renderEntries(entries: Entry[], name: string) {
 function renderExports(exports: Export[]) {
   const columns: FastTableColumn<Export>[] = [
     { title: vscode.l10n.t("Procedure"), width: "1.5fr", getValue: e => e.method },
-    { title: vscode.l10n.t("Object"), width: "1.5fr", getValue: e => e.object },
+    { title: vscode.l10n.t("Object"), width: "1.5fr", getValue: e => Links.objectLink(e.object, e.objectRef) },
     { title: vscode.l10n.t("Usage"), width: "0.5fr", getValue: e => e.usage },
   ];
 
-  const customStyles = `
-    /* Custom styles for procedure name cells */
-    .exports-entries-bd-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-    }
-  `;
 
   return `<div class="exports-entries-bd-table">` + generateFastTable({
     title: ``,
@@ -475,7 +466,6 @@ function renderExports(exports: Export[]) {
     data: exports,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t("No exports in this binding directory."),
-    customStyles: customStyles,
     customScript: ""
   }) + `</div>`;
 }

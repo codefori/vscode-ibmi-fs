@@ -15,6 +15,7 @@ import { FastTableColumn, generateFastTable, generateFastTableUpdate, RowActions
 import { generatePage } from "../webviewToolkit";
 import { getAutoRefreshInterval } from '../config';
 import { SubsystemActions } from '../types/subsystemDescription';
+import { Links } from "../links";
 
 /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
 const WRKSBS_TABLE_ID = 'wrksbs-subsystems';
@@ -208,7 +209,7 @@ export namespace WrksbsActions {
       // English UI, where VS Code loads no bundle and l10n.t() echoes the key back.
       const subsystemColumns: FastTableColumn<Entry>[] = [
         { title: columnTitle("SUBSYSTEM_DESCRIPTION_LIBRARY", "Subsystem Description Library"), width: "1fr", getValue: e => e.library },
-        { title: columnTitle("SUBSYSTEM_DESCRIPTION", "Subsystem Description"), width: "1fr", getValue: e => e.subsystem },
+        { title: columnTitle("SUBSYSTEM_DESCRIPTION", "Subsystem Description"), width: "1fr", getValue: e => Links.objectLink(e.subsystem, Links.object(e.library, e.subsystem, '*SBSD')) },
         { title: columnTitle("MAXIMUM_ACTIVE_JOBS", "Maximum Active Jobs"), width: "0.8fr", getValue: e => e.maxActiveJobs },
         { title: columnTitle("CURRENT_ACTIVE_JOBS", "Current Active Jobs"), width: "0.8fr", getValue: e => String(e.currentActiveJobs) },
         { title: columnTitle("TEXT_DESCRIPTION", "Text Description"), width: "1.5fr", getValue: e => e.text }
@@ -273,6 +274,10 @@ export namespace WrksbsActions {
 
       // Handle messages from the webview
       panel.webview.onDidReceiveMessage(async (message) => {
+        // Links to jobs, objects and sources
+        if (await Links.handle(message)) {
+          return;
+        }
         // Handle search
         if (message.command === 'search') {
           if (message.searchTerm !== undefined) {

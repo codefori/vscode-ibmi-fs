@@ -315,12 +315,6 @@ export default class Msgf extends Base {
    * @returns HTML string
    */
   generateHTML(): string {
-    const customStyles = `
-      /* Custom styles for cells - specific to messagefile entries table */
-      .messagefile-entries-table vscode-table-cell:first-child {
-        color: var(--vscode-textLink-foreground);
-      }
-    `;
 
     return `<div class="messagefile-entries-table">` + generateFastTable({
       title: vscode.l10n.t("Message File: {0}/{1}", this.library, this.name),
@@ -329,7 +323,6 @@ export default class Msgf extends Base {
       data: this._entries,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t("No messages found in this message file."),
-      customStyles: customStyles,
       enableSearch: true,
       searchPlaceholder: vscode.l10n.t("Search messages..."),
       enablePagination: true,

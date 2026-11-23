@@ -15,6 +15,7 @@ import { FastTableColumn, generateFastTable, generateFastTableUpdate, RowActions
 import { generatePage } from "../webviewToolkit";
 import { SpoolOperations } from '../commonOperations';
 import { getAutoRefreshInterval, getItemsPerPage } from '../config';
+import { Links } from "../links";
 
 /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
 const SPOOL_TABLE_ID = 'wrksplf-spools';
@@ -317,7 +318,7 @@ export namespace WrksplfActions {
         { title: vscode.l10n.t("Data"), width: "1fr", getValue: e => e.spooldta },
         { title: vscode.l10n.t("Status"), width: "0.5fr", getValue: e => e.spoolsts },
         { title: vscode.l10n.t("User"), width: "1fr", getValue: e => e.spooluser },
-        { title: vscode.l10n.t("Job"), width: "2fr", getValue: e => e.job },
+        { title: vscode.l10n.t("Job"), width: "2fr", getValue: e => Links.jobLink(e.job) },
         { title: vscode.l10n.t("Number"), width: "0.7fr", getValue: e => String(e.nbr) },
         { title: vscode.l10n.t("Timestamp"), width: "1.5fr", getValue: e => e.spoolts },
         { title: vscode.l10n.t("Pages"), width: "0.5fr", getValue: e => String(e.pages) },
@@ -336,13 +337,6 @@ export namespace WrksplfActions {
         ]
       };
 
-      // Custom CSS styles for the spool files table
-      const customStyles = `
-        /* Highlight spool names with link color for better visibility */
-        .spool-files-table vscode-table-cell:first-child {
-            color: var(--vscode-textLink-foreground);
-        }
-      `;
 
       // Function to generate the table HTML
       const generateTableHtml = () => {
@@ -353,7 +347,6 @@ export namespace WrksplfActions {
           data: spooledFiles,
           stickyHeader: true,
           emptyMessage: vscode.l10n.t("No spooled files found."),
-          customStyles: customStyles,
           enableSearch: true,
           searchPlaceholder: vscode.l10n.t("Search spools..."),
           enablePagination: true,
@@ -399,6 +392,10 @@ export namespace WrksplfActions {
 
       // Handle messages from the webview
       panel.webview.onDidReceiveMessage(async (message) => {
+        // Links to jobs, objects and sources
+        if (await Links.handle(message)) {
+          return;
+        }
         // Handle search and pagination
         if (message.command === 'search' || message.command === 'paginate') {
           if (message.searchTerm !== undefined) {
