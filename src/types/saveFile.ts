@@ -528,6 +528,14 @@ export namespace SaveFileActions {
           const result = {
             successful: true,
             error: "",
+            cancelled: false,
+          };
+
+          // Escape on any prompt cancels the whole operation without further prompts
+          const cancel = () => {
+            result.successful = false;
+            result.cancelled = true;
+            return result;
           };
 
           let lib,
@@ -553,6 +561,9 @@ export namespace SaveFileActions {
               title: vscode.l10n.t("Command for restore"),
               canPickMany: false,
             });
+            if (savcmd2 === undefined) {
+              return cancel();
+            }
 
             savcmd2 = savcmd2 === "RSTOBJ" ? "SAVOBJ" : "SAVLIB";
           } else {
@@ -572,6 +583,9 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (path === undefined) {
+                return cancel();
+              }
 
               tgtpath = await vscode.window.showInputBox({
                 placeHolder: "/yyy",
@@ -587,6 +601,9 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (tgtpath === undefined) {
+                return cancel();
+              }
 
               objdif = await vscode.window.showQuickPick(
                 ["*NONE", "*ALL", "*AUTL", "*OWNER", "*PGP"],
@@ -596,6 +613,9 @@ export namespace SaveFileActions {
                   canPickMany: true,
                 },
               );
+              if (objdif === undefined) {
+                return cancel();
+              }
 
               option = await vscode.window.showQuickPick(
                 ["*ALL", "*NEW", "*OLD"],
@@ -605,6 +625,9 @@ export namespace SaveFileActions {
                   canPickMany: false,
                 },
               );
+              if (option === undefined) {
+                return cancel();
+              }
 
               if (path && tgtpath && objdif && option) {
                 cmd = `QSYS/RST DEV('${getQSYSObjectPath(target.library, target.name, "FILE")}') OBJ(('${path}' *INCLUDE '${tgtpath}')) OPTION(${option}) ALWOBJDIF(${objdif.toString().replace(",", " ")})`;
@@ -628,6 +651,9 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (lib === undefined) {
+                return cancel();
+              }
 
               tgtlib = await vscode.window.showInputBox({
                 placeHolder: "LIBYYY",
@@ -639,6 +665,9 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (tgtlib === undefined) {
+                return cancel();
+              }
 
               objdif = await vscode.window.showQuickPick(
                 [
@@ -656,6 +685,9 @@ export namespace SaveFileActions {
                   canPickMany: true,
                 },
               );
+              if (objdif === undefined) {
+                return cancel();
+              }
 
               option = await vscode.window.showQuickPick(
                 ["*ALL", "*NEW", "*OLD"],
@@ -665,6 +697,9 @@ export namespace SaveFileActions {
                   canPickMany: false,
                 },
               );
+              if (option === undefined) {
+                return cancel();
+              }
 
               dbmbropt = await vscode.window.showQuickPick(
                 ["*MATCH", "*ALL", "*NEW", "*OLD"],
@@ -674,6 +709,9 @@ export namespace SaveFileActions {
                   canPickMany: false,
                 },
               );
+              if (dbmbropt === undefined) {
+                return cancel();
+              }
 
               if (lib && tgtlib && objdif && option && dbmbropt) {
                 cmd =
@@ -713,6 +751,9 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (object === undefined) {
+                return cancel();
+              }
 
               objtype = await vscode.window.showInputBox({
                 placeHolder: "*ALL",
@@ -728,6 +769,9 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (objtype === undefined) {
+                return cancel();
+              }
 
               lib = await vscode.window.showInputBox({
                 placeHolder: "LIBXXX",
@@ -739,6 +783,9 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (lib === undefined) {
+                return cancel();
+              }
 
               tgtlib = await vscode.window.showInputBox({
                 placeHolder: "LIBYYY",
@@ -750,6 +797,9 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (tgtlib === undefined) {
+                return cancel();
+              }
 
               objdif = await vscode.window.showQuickPick(
                 [
@@ -767,6 +817,9 @@ export namespace SaveFileActions {
                   canPickMany: true,
                 },
               );
+              if (objdif === undefined) {
+                return cancel();
+              }
 
               option = await vscode.window.showQuickPick(
                 ["*ALL", "*NEW", "*OLD"],
@@ -776,6 +829,9 @@ export namespace SaveFileActions {
                   canPickMany: false,
                 },
               );
+              if (option === undefined) {
+                return cancel();
+              }
 
               dbmbropt = await vscode.window.showQuickPick(
                 ["*MATCH", "*ALL", "*NEW", "*OLD"],
@@ -785,6 +841,9 @@ export namespace SaveFileActions {
                   canPickMany: false,
                 },
               );
+              if (dbmbropt === undefined) {
+                return cancel();
+              }
 
               if (
                 object &&
@@ -838,6 +897,9 @@ export namespace SaveFileActions {
               }
             },
           });
+          if (cmd === undefined) {
+            return cancel();
+          }
 
           // Execute the restore command
           if (!cmd || cmd.length < 1) {
@@ -862,6 +924,10 @@ export namespace SaveFileActions {
           return result;
         },
       );
+
+      if (result.cancelled) {
+        return false;
+      }
 
       // Display result to user
       if (result.successful) {
@@ -983,6 +1049,14 @@ export namespace SaveFileActions {
           const result = {
             successful: true,
             error: "",
+            cancelled: false,
+          };
+
+          // Escape on any prompt cancels the whole operation without further prompts
+          const cancel = () => {
+            result.successful = false;
+            result.cancelled = true;
+            return result;
           };
 
           // Prompt user to choose save type
@@ -994,6 +1068,9 @@ export namespace SaveFileActions {
               canPickMany: false,
             },
           );
+          if (choice === undefined) {
+            return cancel();
+          }
 
           let lib, object, objtype, spool, tgtrls, path, compression;
           let cmd: string | undefined;
@@ -1011,6 +1088,9 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (path === undefined) {
+                return cancel();
+              }
 
               tgtrls = await vscode.window.showInputBox({
                 placeHolder: "VXRXMX or *CURRENT or *PRV",
@@ -1026,6 +1106,9 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (tgtrls === undefined) {
+                return cancel();
+              }
 
               compression = await vscode.window.showQuickPick(
                 ["*NO", "*LOW", "*MEDIUM", "*HIGH", "*ZLIB"],
@@ -1035,6 +1118,9 @@ export namespace SaveFileActions {
                   canPickMany: false,
                 },
               );
+              if (compression === undefined) {
+                return cancel();
+              }
 
               if (path && tgtrls && compression) {
                 cmd = `QSYS/SAV DEV('${getQSYSObjectPath(target.library, target.name, "FILE")}') OBJ(('${path}')) DTACPR(${compression}) TGTRLS(${tgtrls})`;
@@ -1057,6 +1143,9 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (lib === undefined) {
+                return cancel();
+              }
 
               tgtrls = await vscode.window.showInputBox({
                 placeHolder: "VXRXMX or *CURRENT or *PRV",
@@ -1072,12 +1161,18 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (tgtrls === undefined) {
+                return cancel();
+              }
 
               spool = await vscode.window.showQuickPick(["*NONE", "*ALL"], {
                 placeHolder: vscode.l10n.t("Spooled file data"),
                 title: vscode.l10n.t("Spooled file data"),
                 canPickMany: false,
               });
+              if (spool === undefined) {
+                return cancel();
+              }
 
               compression = await vscode.window.showQuickPick(
                 ["*NO", "*LOW", "*MEDIUM", "*HIGH", "*ZLIB"],
@@ -1087,6 +1182,9 @@ export namespace SaveFileActions {
                   canPickMany: false,
                 },
               );
+              if (compression === undefined) {
+                return cancel();
+              }
 
               if (lib && spool && tgtrls && compression) {
                 cmd =
@@ -1124,6 +1222,9 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (object === undefined) {
+                return cancel();
+              }
 
               objtype = await vscode.window.showInputBox({
                 placeHolder: "*ALL",
@@ -1139,6 +1240,9 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (objtype === undefined) {
+                return cancel();
+              }
 
               lib = await vscode.window.showInputBox({
                 placeHolder: "LIBXXX",
@@ -1149,6 +1253,9 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (lib === undefined) {
+                return cancel();
+              }
 
               tgtrls = await vscode.window.showInputBox({
                 placeHolder: "VXRXMX or *CURRENT or *PRV",
@@ -1164,12 +1271,18 @@ export namespace SaveFileActions {
                   }
                 },
               });
+              if (tgtrls === undefined) {
+                return cancel();
+              }
 
               spool = await vscode.window.showQuickPick(["*NONE", "*ALL"], {
                 placeHolder: vscode.l10n.t("Spooled file data"),
                 title: vscode.l10n.t("Spooled file data"),
                 canPickMany: false,
               });
+              if (spool === undefined) {
+                return cancel();
+              }
 
               compression = await vscode.window.showQuickPick(
                 ["*NO", "*LOW", "*MEDIUM", "*HIGH", "*ZLIB"],
@@ -1179,6 +1292,9 @@ export namespace SaveFileActions {
                   canPickMany: false,
                 },
               );
+              if (compression === undefined) {
+                return cancel();
+              }
 
               if (object && objtype && lib && spool && tgtrls && compression) {
                 cmd =
@@ -1222,6 +1338,9 @@ export namespace SaveFileActions {
               }
             },
           });
+          if (cmd === undefined) {
+            return cancel();
+          }
 
           // Execute the save command
           if (!cmd || cmd.length < 1) {
@@ -1246,6 +1365,10 @@ export namespace SaveFileActions {
           return result;
         },
       );
+
+      if (result.cancelled) {
+        return false;
+      }
 
       // Display result to user
       if (result.successful) {

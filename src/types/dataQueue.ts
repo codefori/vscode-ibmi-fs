@@ -189,6 +189,9 @@ export namespace DataQueueActions {
           canPickMany: false,
         },
       );
+      if (fmt === undefined) {
+        return false;
+      }
 
       // Get the message data
       const data = await vscode.window.showInputBox({

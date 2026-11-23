@@ -416,6 +416,9 @@ export namespace OutputQueueActions {
           }
         }
       });
+      if (days === undefined) {
+        return false;
+      }
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to delete spools that are older than {0} days from Output Queue {1}/{2}?", String(days), library, name), { modal: true }, vscode.l10n.t("Delete old spools"))) {
         try {

@@ -127,6 +127,9 @@ export namespace DataAreaActions {
             canPickMany: false,
           },
         );
+        if (startend === undefined) {
+          return false;
+        }
 
         if(startend&&startend===vscode.l10n.t("YES")){
           const start = await vscode.window.showInputBox({
@@ -139,6 +142,9 @@ export namespace DataAreaActions {
               }
             }
           });
+          if (start === undefined) {
+            return false;
+          }
 
           const lenght = await vscode.window.showInputBox({
             title: vscode.l10n.t("Enter substring length"),
@@ -150,6 +156,9 @@ export namespace DataAreaActions {
               }
             }
           });
+          if (lenght === undefined) {
+            return false;
+          }
 
           newvalue = await vscode.window.showInputBox({
             title: vscode.l10n.t("Change DTAARA value"),

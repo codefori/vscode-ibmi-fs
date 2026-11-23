@@ -340,7 +340,8 @@ export class Pgm extends Base {
         connection,
         `
         select SYMBOL_NAME, SYMBOL_USAGE 
-        FROM TABLE(QSYS2.PROGRAM_EXPORT_IMPORT_INFO(PROGRAM_LIBRARY => '${this.library}', PROGRAM_NAME => '${this.name}'))`,
+        FROM TABLE(QSYS2.PROGRAM_EXPORT_IMPORT_INFO(PROGRAM_LIBRARY => '${this.library}', PROGRAM_NAME => '${this.name}', 
+          OBJECT_TYPE=> '${this.isSrvpgm?'*SRVPGM':'*PGM'}'))`,
         'QSYS2',
         'PROGRAM_EXPORT_IMPORT_INFO',
         'FUNCTION'

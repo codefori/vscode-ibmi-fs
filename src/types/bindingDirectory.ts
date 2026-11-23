@@ -132,6 +132,9 @@ export namespace BindingDirectoryActions {
           }
         },
       });
+      if (obj === undefined) {
+        return false;
+      }
 
       objtype = await vscode.window.showQuickPick(
         ["*SRVPGM", "*MODULE"],
@@ -141,6 +144,9 @@ export namespace BindingDirectoryActions {
           canPickMany: false,
         },
       );
+      if (objtype === undefined) {
+        return false;
+      }
 
       activation = await vscode.window.showQuickPick(
         ["*IMMED", "*DEFER"],
