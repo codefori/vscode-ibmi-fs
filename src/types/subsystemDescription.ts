@@ -20,13 +20,13 @@
  * @module subsystemdescription
  */
 
-import { CommandResult, IBMiObject } from '@halcyontech/vscode-ibmi-types';
+import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getColumns, getProtected, executeSqlIfExists } from "../tools";
+import { getColumns, getProtected, executeSqlIfExists, getCLError } from "../tools";
 import { generateDetailTable, FastTableColumn, generateFastTable, generateFastTableUpdate, FastTableUpdate, RowActions } from "../ibmi";
 import ObjectProvider from '../objectProvider';
 import { JobOperations } from '../commonOperations';
@@ -128,16 +128,13 @@ export namespace SubsystemActions {
       }
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to start {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Start SBSD"))) {
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: `QSYS/STRSBS SBSD(${library}/${name})`,
-          environment: `ile`
-        });
+        const cmdrun = await connection.runCL(`QSYS/STRSBS SBSD(${library}/${name})`);
 
-        if (cmdrun.code === 0) {
+        if (cmdrun.success) {
           vscode.window.showInformationMessage(vscode.l10n.t("Subsystem {0}/{1} activated.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t("Unable to start subsystem {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to start subsystem {0}/{1}:\n{2}", library, name, getCLError(cmdrun)));
           return false;
         }
       }
@@ -205,16 +202,13 @@ export namespace SubsystemActions {
 
       if (endOption) {
         if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to end {0}/{1} with option {2}?", library, name, endOption.label), { modal: true }, vscode.l10n.t("End SBSD"))) {
-          const cmdrun: CommandResult = await connection.runCommand({
-            command: `QSYS/ENDSBS SBS(${name}) OPTION(${endOption.value})`,
-            environment: `ile`
-          });
+          const cmdrun = await connection.runCL(`QSYS/ENDSBS SBS(${name}) OPTION(${endOption.value})`);
 
-          if (cmdrun.code === 0) {
+          if (cmdrun.success) {
             vscode.window.showInformationMessage(vscode.l10n.t("Subsystem {0}/{1} ended.", library, name));
             return true;
           } else {
-            vscode.window.showErrorMessage(vscode.l10n.t("Unable to end subsystem {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+            vscode.window.showErrorMessage(vscode.l10n.t("Unable to end subsystem {0}/{1}:\n{2}", library, name, getCLError(cmdrun)));
             return false;
           }
         } else {

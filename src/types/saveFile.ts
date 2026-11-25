@@ -22,7 +22,7 @@ import { Tools } from "@halcyontech/vscode-ibmi-types/api/Tools";
 import * as vscode from "vscode";
 import { getInstance } from "../ibmi";
 import ObjectProvider from '../objectProvider';
-import { executeSqlIfExists, getCLPrompter, getProtected, getQSYSObjectPath, promptAndRunCommand } from "../tools";
+import { executeSqlIfExists, getCLPrompter, getProtected, getQSYSObjectPath, promptAndRunCommand, getCLError } from "../tools";
 import { FastTableColumn, FastTableUpdate, generateDetailTable, generateFastTable, generateFastTableUpdate } from "../ibmi";
 import { getItemsPerPage } from "../config";
 import { Components } from "../webviewToolkit";
@@ -192,14 +192,9 @@ export namespace SaveFileActions {
 
             // Step 1: Copy save file to temporary stream file
             progress.report({ message: vscode.l10n.t("Copying to temporary stream file...") });
-            const copyToStreamFile: CommandResult = await connection.runCommand(
-              {
-                command: `QSYS/CPYTOSTMF FROMMBR('${qsysPath}') TOSTMF('${tempRemotePath}') STMFOPT(*REPLACE)`,
-                environment: `ile`,
-              },
-            );
+            const copyToStreamFile = await connection.runCL(`QSYS/CPYTOSTMF FROMMBR('${qsysPath}') TOSTMF('${tempRemotePath}') STMFOPT(*REPLACE)`);
 
-            if (copyToStreamFile.code === 0) {
+            if (copyToStreamFile.success) {
               try {
                 // Step 2: Download the stream file to local system
                 progress.report({ message: vscode.l10n.t("downloading stream file...") });
@@ -219,7 +214,7 @@ export namespace SaveFileActions {
               }
             } else {
               result.successful = false;
-              result.error = vscode.l10n.t("CPYTOSTMF failed.\n{0}", String(copyToStreamFile.stderr));
+              result.error = vscode.l10n.t("CPYTOSTMF failed.\n{0}", getCLError(copyToStreamFile));
             }
 
             return result;
@@ -329,14 +324,12 @@ export namespace SaveFileActions {
 
             // Step 2: Copy from stream file to save file member
             progress.report({ message: vscode.l10n.t("Copying Save File...") });
-            const copyFromStreamFile = await connection.runCommand({
-              command: `QSYS/CPYFRMSTMF FROMSTMF('${rmtpath}') TOMBR('${qsysPath}') MBROPT(*REPLACE)`,
-            });
+            const copyFromStreamFile = await connection.runCL(`QSYS/CPYFRMSTMF FROMSTMF('${rmtpath}') TOMBR('${qsysPath}') MBROPT(*REPLACE)`);
 
-            if (copyFromStreamFile.code !== 0) {
+            if (!copyFromStreamFile.success) {
               result.successful = false;
               result.error =
-                vscode.l10n.t("Unable to copy Save File: \n{0}", String(copyFromStreamFile.stderr));
+                vscode.l10n.t("Unable to copy Save File: \n{0}", getCLError(copyFromStreamFile));
             } else {
               result.successful = true;
               result.error = "";
@@ -391,12 +384,10 @@ export namespace SaveFileActions {
       }
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Save File {0}/{1}?", target.library, target.name), { modal: true }, vscode.l10n.t("Clear SAVF"))) {
-        const clrsavf = await connection.runCommand({
-          command: `QSYS/CLRSAVF FILE(${target.library}/${target.name})`,
-        });
+        const clrsavf = await connection.runCL(`QSYS/CLRSAVF FILE(${target.library}/${target.name})`);
 
-        if (clrsavf.code !== 0) {
-          vscode.window.showErrorMessage(vscode.l10n.t("Failed to clear Save File:\n{0}", String(clrsavf.stderr)));
+        if (!clrsavf.success) {
+          vscode.window.showErrorMessage(vscode.l10n.t("Failed to clear Save File:\n{0}", getCLError(clrsavf)));
           return false;
         } else {
           vscode.window.showInformationMessage(vscode.l10n.t("Successfully cleared Save File"));
@@ -506,14 +497,14 @@ export namespace SaveFileActions {
           return false;
         }
 
-        if (promptedResult.code === 0) {
+        if (promptedResult.success) {
           vscode.window.showInformationMessage(
             vscode.l10n.t("Restore operation completed successfully"),
           );
           return true;
         } else {
           vscode.window.showErrorMessage(
-            vscode.l10n.t("Failed to Restore: {0}", String(promptedResult.stderr)),
+            vscode.l10n.t("Failed to Restore: {0}", getCLError(promptedResult)),
           );
           return false;
         }
@@ -907,13 +898,11 @@ export namespace SaveFileActions {
             result.error = vscode.l10n.t("Command not valid");
           } else {
             progress.report({ message: vscode.l10n.t("Command confirmed...") });
-            const savecmd = await connection.runCommand({
-              command: cmd,
-            });
+            const savecmd = await connection.runCL(cmd);
 
-            if (savecmd.code !== 0) {
+            if (!savecmd.success) {
               result.successful = false;
-              result.error = vscode.l10n.t("Unable to restore: \n{0}", String(savecmd.stderr));
+              result.error = vscode.l10n.t("Unable to restore: \n{0}", getCLError(savecmd));
             } else {
               result.successful = true;
               result.error = "";
@@ -1027,14 +1016,14 @@ export namespace SaveFileActions {
           return false;
         }
 
-        if (promptedResult.code === 0) {
+        if (promptedResult.success) {
           vscode.window.showInformationMessage(
             vscode.l10n.t("Save operation completed successfully"),
           );
           return true;
         } else {
           vscode.window.showErrorMessage(
-            vscode.l10n.t("Failed to save: {0}", String(promptedResult.stderr)),
+            vscode.l10n.t("Failed to save: {0}", getCLError(promptedResult)),
           );
           return false;
         }
@@ -1348,13 +1337,11 @@ export namespace SaveFileActions {
             result.error = vscode.l10n.t("Command not valid");
           } else {
             progress.report({ message: vscode.l10n.t("Command confirmed...") });
-            const savecmd = await connection.runCommand({
-              command: cmd,
-            });
+            const savecmd = await connection.runCL(cmd);
 
-            if (savecmd.code !== 0) {
+            if (!savecmd.success) {
               result.successful = false;
-              result.error = vscode.l10n.t("Unable to save: \n{0}", String(savecmd.stderr));
+              result.error = vscode.l10n.t("Unable to save: \n{0}", getCLError(savecmd));
             } else {
               result.successful = true;
               result.error = "";

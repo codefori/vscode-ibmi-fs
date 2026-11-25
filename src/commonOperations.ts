@@ -14,11 +14,10 @@
  * @module commonOperations
  */
 
-import { CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { posix } from 'path';
 import * as vscode from 'vscode';
 import { getInstance } from './ibmi';
-import { checkTableFunctionExists } from './tools';
+import { checkTableFunctionExists, getCLError } from './tools';
 
 /**
  * Interface representing a job identifier
@@ -74,18 +73,15 @@ export namespace JobOperations {
 
     try {
       // Execute HLDJOB command on IBM i
-      const cmdrun: CommandResult = await connection.runCommand({
-        command: `QSYS/HLDJOB JOB(${jobId.job})`,
-        environment: `ile`
-      });
+      const cmdrun = await connection.runCL(`QSYS/HLDJOB JOB(${jobId.job})`);
 
       // Check command execution result
-      if (cmdrun.code === 0) {
+      if (cmdrun.success) {
         vscode.window.showInformationMessage(vscode.l10n.t("Job held."));
         return true;
       } else {
         vscode.window.showErrorMessage(
-          vscode.l10n.t("Unable to hold selected job:\n{0}", String(cmdrun.stderr))
+          vscode.l10n.t("Unable to hold selected job:\n{0}", getCLError(cmdrun))
         );
         return false;
       }
@@ -127,18 +123,15 @@ export namespace JobOperations {
 
     try {
       // Execute RLSJOB command on IBM i
-      const cmdrun: CommandResult = await connection.runCommand({
-        command: `QSYS/RLSJOB JOB(${jobId.job})`,
-        environment: `ile`
-      });
+      const cmdrun = await connection.runCL(`QSYS/RLSJOB JOB(${jobId.job})`);
 
       // Check command execution result
-      if (cmdrun.code === 0) {
+      if (cmdrun.success) {
         vscode.window.showInformationMessage(vscode.l10n.t("Job released."));
         return true;
       } else {
         vscode.window.showErrorMessage(
-          vscode.l10n.t("Unable to release selected job:\n{0}", String(cmdrun.stderr))
+          vscode.l10n.t("Unable to release selected job:\n{0}", getCLError(cmdrun))
         );
         return false;
       }
@@ -185,18 +178,15 @@ export namespace JobOperations {
 
     try {
       // Execute ENDJOB command on IBM i
-      const cmdrun: CommandResult = await connection.runCommand({
-        command: `QSYS/ENDJOB JOB(${jobId.job}) OPTION(${option})`,
-        environment: `ile`
-      });
+      const cmdrun = await connection.runCL(`QSYS/ENDJOB JOB(${jobId.job}) OPTION(${option})`);
 
       // Check command execution result
-      if (cmdrun.code === 0) {
+      if (cmdrun.success) {
         vscode.window.showInformationMessage(vscode.l10n.t("Job ended."));
         return true;
       } else {
         vscode.window.showErrorMessage(
-          vscode.l10n.t("Unable to end selected job:\n{0}", String(cmdrun.stderr))
+          vscode.l10n.t("Unable to end selected job:\n{0}", getCLError(cmdrun))
         );
         return false;
       }
@@ -302,18 +292,15 @@ export namespace SpoolOperations {
 
     try {
       // Execute DLTSPLF command on IBM i
-      const cmdrun: CommandResult = await connection.runCommand({
-        command: `QSYS/DLTSPLF FILE(${spoolId.spoolname}) JOB(${spoolId.job}) SPLNBR(${spoolId.nbr})`,
-        environment: `ile`
-      });
+      const cmdrun = await connection.runCL(`QSYS/DLTSPLF FILE(${spoolId.spoolname}) JOB(${spoolId.job}) SPLNBR(${spoolId.nbr})`);
 
       // Check command execution result
-      if (cmdrun.code === 0) {
+      if (cmdrun.success) {
         vscode.window.showInformationMessage(vscode.l10n.t("Spool deleted."));
         return true;
       } else {
         vscode.window.showErrorMessage(
-          vscode.l10n.t("Unable to delete selected spool:\n{0}", String(cmdrun.stderr))
+          vscode.l10n.t("Unable to delete selected spool:\n{0}", getCLError(cmdrun))
         );
         return false;
       }
@@ -349,13 +336,12 @@ export namespace SpoolOperations {
         const tempSourcePath = posix.join(tempDir, `${spoolId.job.replaceAll('/', '-')}_${spoolId.spoolname}_${spoolId.nbr}.txt`);
 
         // Execute CPYSPLF command to copy spool to stream file
-        const result = await connection.runCommand({
-          command: `QSYS/CPYSPLF FILE(${spoolId.spoolname}) JOB(${spoolId.job}) SPLNBR(${spoolId.nbr}) TOFILE(*TOSTMF) TOSTMF('${tempSourcePath}')
-            QSYS/CPY OBJ('${tempSourcePath}') TOOBJ('${tempSourcePath}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`,
-          environment: 'ile'
-        });
+        const result = await connection.runCL([
+          `QSYS/CPYSPLF FILE(${spoolId.spoolname}) JOB(${spoolId.job}) SPLNBR(${spoolId.nbr}) TOFILE(*TOSTMF) TOSTMF('${tempSourcePath}')`,
+          `QSYS/CPY OBJ('${tempSourcePath}') TOOBJ('${tempSourcePath}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
+        ]);
 
-        if (result.code === 0) {
+        if (result.success) {
           // Create URI for the temporary file and open it in VS Code as readonly
           const uri = vscode.Uri.parse(tempSourcePath).with({
             scheme: `streamfile`
@@ -368,7 +354,7 @@ export namespace SpoolOperations {
           return true;
         } else {
           vscode.window.showErrorMessage(
-            vscode.l10n.t("Error opening spool: {0}", String(result.stderr))
+            vscode.l10n.t("Error opening spool: {0}", getCLError(result))
           );
           return false;
         }
@@ -456,19 +442,18 @@ export namespace SpoolOperations {
 
           // Execute CPYSPLF command to copy spool to stream file
           progress.report({ message: vscode.l10n.t("Copying spool to stream file...") });
-          const cpysplf = await connection.runCommand({
-            command: `QSYS/CPYSPLF FILE(${spoolId.spoolname}) JOB(${spoolId.job}) SPLNBR(${spoolId.nbr}) TOFILE(*TOSTMF) TOSTMF('${tempRemotePath}')
-              QSYS/CPY OBJ('${tempRemotePath}') TOOBJ('${tempRemotePath}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`,
-            environment: 'ile'
-          });
+          const cpysplf = await connection.runCL([
+            `QSYS/CPYSPLF FILE(${spoolId.spoolname}) JOB(${spoolId.job}) SPLNBR(${spoolId.nbr}) TOFILE(*TOSTMF) TOSTMF('${tempRemotePath}')`,
+            `QSYS/CPY OBJ('${tempRemotePath}') TOOBJ('${tempRemotePath}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
+          ]);
 
-          if (cpysplf.code === 0) {
+          if (cpysplf.success) {
             // Download text file from IBM i
             progress.report({ message: vscode.l10n.t("Downloading spool...") });
             await connection.client.getFile(saveLocation.fsPath, tempRemotePath);
           } else {
             result.successful = false;
-            result.error = String(cpysplf.stderr);
+            result.error = getCLError(cpysplf);
           }
         });
       } catch (error) {

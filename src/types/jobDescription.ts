@@ -18,7 +18,7 @@
 
 import Base from "./base";
 import { getInstance } from "../ibmi";
-import { getColumns, executeSqlIfExists, getProtected, promptAndRunCommand, requireCLPrompter } from "../tools";
+import { getColumns, executeSqlIfExists, getProtected, promptAndRunCommand, requireCLPrompter, getCLError } from "../tools";
 import { generateDetailTable } from "../ibmi";
 import * as vscode from 'vscode';
 import { IBMiObject } from "@halcyontech/vscode-ibmi-types";
@@ -92,11 +92,11 @@ export namespace JobDescriptionActions {
         return false;
       }
 
-      if (cmdrun.code === 0) {
+      if (cmdrun.success) {
         vscode.window.showInformationMessage(vscode.l10n.t("Job description changed successfully."));
         return true;
       } else {
-        vscode.window.showErrorMessage(vscode.l10n.t("Unable to change job description:\n{0}", String(cmdrun.stderr)));
+        vscode.window.showErrorMessage(vscode.l10n.t("Unable to change job description:\n{0}", getCLError(cmdrun)));
         return false;
       }
     } else {

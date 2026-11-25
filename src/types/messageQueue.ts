@@ -17,10 +17,10 @@
  */
 
 import Base from "./base";
-import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
+import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
-import { getProtected, executeSqlIfExists } from "../tools";
+import { getProtected, executeSqlIfExists, getCLError } from "../tools";
 import { generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate, RowActions } from "../ibmi";
 import * as vscode from 'vscode';
 import ObjectProvider from "../objectProvider";
@@ -201,16 +201,13 @@ export namespace MessageQueueActions {
       }
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Message Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Clear MSGQ"))) {
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: `QSYS/CLRMSGQ ${library}/${name}`,
-          environment: `ile`
-        });
+        const cmdrun = await connection.runCL(`QSYS/CLRMSGQ ${library}/${name}`);
 
-        if (cmdrun.code === 0) {
+        if (cmdrun.success) {
           vscode.window.showInformationMessage(vscode.l10n.t("Message Queue {0}/{1} cleared.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t("Unable to clear Message Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to clear Message Queue {0}/{1}:\n{2}", library, name, getCLError(cmdrun)));
           return false;
         }
       } else {
@@ -239,16 +236,13 @@ export namespace MessageQueueActions {
       return false;
     }
 
-    const cmdrun: CommandResult = await connection.runCommand({
-      command: `QSYS/SNDRPY MSGKEY(x'${msgkey}') MSGQ(${library}/${name}) RPY('${replyText}') RMV(*NO)`,
-      environment: `ile`
-    });
+    const cmdrun = await connection.runCL(`QSYS/SNDRPY MSGKEY(x'${msgkey}') MSGQ(${library}/${name}) RPY('${replyText}') RMV(*NO)`);
 
-    if (cmdrun.code === 0) {
+    if (cmdrun.success) {
       vscode.window.showInformationMessage(vscode.l10n.t("Message Answered."));
       return true;
     } else {
-      vscode.window.showErrorMessage(vscode.l10n.t("Unable to answeree message:\n{0}", String(cmdrun.stderr)));
+      vscode.window.showErrorMessage(vscode.l10n.t("Unable to answeree message:\n{0}", getCLError(cmdrun)));
       return false;
     }
   };

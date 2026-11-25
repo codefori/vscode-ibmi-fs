@@ -16,10 +16,10 @@
  */
 
 import Base from "./base";
-import { CommandResult, IBMiObject } from '@halcyontech/vscode-ibmi-types';
+import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
-import { executeSqlIfExists, getProtected, promptAndRunCommand, requireCLPrompter } from "../tools";
+import { executeSqlIfExists, getProtected, promptAndRunCommand, requireCLPrompter, getCLError } from "../tools";
 import { generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate, RowActions } from "../ibmi";
 import * as vscode from 'vscode';
 import ObjectProvider from "../objectProvider";
@@ -70,11 +70,11 @@ export namespace MessageFileActions {
     const cmdrun = await promptAndRunCommand(connection, clPrompter, `QSYS/ADDMSGD MSGF(${item.library}/${item.name})`);
     if (!cmdrun) { return false; }
 
-    if (cmdrun.code === 0) {
+    if (cmdrun.success) {
       vscode.window.showInformationMessage(vscode.l10n.t("Added new MSGID."));
       return true;
     } else {
-      vscode.window.showErrorMessage(vscode.l10n.t("Unable to add new MSGID:\n{0}", String(cmdrun.stderr)));
+      vscode.window.showErrorMessage(vscode.l10n.t("Unable to add new MSGID:\n{0}", getCLError(cmdrun)));
       return false;
     }
   };
@@ -93,11 +93,11 @@ export namespace MessageFileActions {
     const cmdrun = await promptAndRunCommand(connection, clPrompter, `QSYS/CHGMSGD MSGID(${entry.msgid}) MSGF(${entry.library}/${entry.name})`);
     if (!cmdrun) { return false; }
 
-    if (cmdrun.code === 0) {
+    if (cmdrun.success) {
       vscode.window.showInformationMessage(vscode.l10n.t("Message {0} changed.", entry.msgid));
       return true;
     } else {
-      vscode.window.showErrorMessage(vscode.l10n.t("Unable to change message {0}:\n{1}", entry.msgid, String(cmdrun.stderr)));
+      vscode.window.showErrorMessage(vscode.l10n.t("Unable to change message {0}:\n{1}", entry.msgid, getCLError(cmdrun)));
       return false;
     }
   };
@@ -116,15 +116,12 @@ export namespace MessageFileActions {
       vscode.l10n.t("Remove")
     )) { return false; }
 
-    const cmdrun: CommandResult = await connection.runCommand({
-      command: `QSYS/RMVMSGD MSGID(${entry.msgid}) MSGF(${entry.library}/${entry.name})`,
-      environment: `ile`
-    });
-    if (cmdrun.code === 0) {
+    const cmdrun = await connection.runCL(`QSYS/RMVMSGD MSGID(${entry.msgid}) MSGF(${entry.library}/${entry.name})`);
+    if (cmdrun.success) {
       vscode.window.showInformationMessage(vscode.l10n.t("Message {0} removed.", entry.msgid));
       return true;
     } else {
-      vscode.window.showErrorMessage(vscode.l10n.t("Unable to remove message {0}:\n{1}", entry.msgid, String(cmdrun.stderr)));
+      vscode.window.showErrorMessage(vscode.l10n.t("Unable to remove message {0}:\n{1}", entry.msgid, getCLError(cmdrun)));
       return false;
     }
   };

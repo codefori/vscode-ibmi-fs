@@ -17,7 +17,7 @@
  */
 
 import Base from "./base";
-import { CommandResult, IBMiObject } from '@halcyontech/vscode-ibmi-types';
+import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
 import { getColumns, executeSqlIfExists, generateRandomString } from "../tools";
@@ -453,12 +453,9 @@ export default class File extends Base {
     this.keys.clear();
     const tmpfile = generateRandomString(10);
 
-    const cmdrun: CommandResult = await connection.runCommand({
-      command: `QSYS/DSPFD FILE(${this.library}/${this.name}) TYPE(*ACCPTH) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile}) OUTMBR(*FIRST *REPLACE)`,
-      environment: `ile`
-    });
+    const cmdrun = await connection.runCL(`QSYS/DSPFD FILE(${this.library}/${this.name}) TYPE(*ACCPTH) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile}) OUTMBR(*FIRST *REPLACE)`, true);
 
-    if (cmdrun.code !== 0) {
+    if (!cmdrun.success) {
       return;
     }
 
@@ -476,10 +473,7 @@ export default class File extends Base {
         });
       }
     } finally {
-      await connection.runCommand({
-        command: `QSYS/DLTF FILE(QTEMP/${tmpfile})`,
-        environment: `ile`
-      });
+      await connection.runCL(`QSYS/DLTF FILE(QTEMP/${tmpfile})`, true);
     }
   }
 
