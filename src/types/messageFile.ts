@@ -20,7 +20,7 @@ import { CommandResult, IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import { executeSqlIfExists, getProtected, promptAndRunCommand, requireCLPrompter } from "../tools";
-import { generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate } from "../ibmi";
+import { generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate, RowActions } from "../ibmi";
 import * as vscode from 'vscode';
 import ObjectProvider from "../objectProvider";
 
@@ -275,17 +275,20 @@ export default class Msgf extends Base {
       { title: vscode.l10n.t("Reply Type"), getValue: e => e.replytype, width: "0.2fr" },
       { title: vscode.l10n.t("Reply Dft"), getValue: e => e.replydft, width: "0.3fr" },
       { title: vscode.l10n.t("Reply Valid"), getValue: e => e.replyvalid, width: "0.3fr" },
-      { title: vscode.l10n.t("Parameters"), getValue: e => e.parameters, width: "0.3fr", collapsible: true, showTitle: true },
-      {
-        title: vscode.l10n.t("Actions"),
-        width: "0.7fr",
-        getValue: e => {
-          const arg = encodeURIComponent(JSON.stringify({ msgid: e.msgid, library: this.library, name: this.name }));
-          return `<vscode-button appearance="primary" href="action:chgMsgd?entry=${arg}">${vscode.l10n.t("Change")}</vscode-button>
-                  <vscode-button appearance="secondary" href="action:rmvMsgd?entry=${arg}">${vscode.l10n.t("Delete")}</vscode-button>`;
-        }
-      }
+      { title: vscode.l10n.t("Parameters"), getValue: e => e.parameters, width: "0.3fr", collapsible: true, showTitle: true }
     ];
+  }
+
+  /** Row actions, offered through the row's context menu; shared by the render and the update. */
+  private getRowActions(): RowActions<Entry> {
+    return {
+      getArgs: e => `entry=${encodeURIComponent(JSON.stringify({ msgid: e.msgid, library: this.library, name: this.name }))}`,
+      fallbackWidth: "0.7fr",
+      actions: [
+        { action: "chgMsgd", label: vscode.l10n.t("Change"), primary: true },
+        { action: "rmvMsgd", label: vscode.l10n.t("Delete"), destructive: true }
+      ]
+    };
   }
 
   /** Subtitle text, kept in one place so the update carries the same wording as the render. */
@@ -301,7 +304,8 @@ export default class Msgf extends Base {
       totalItems: this.totalItems,
       currentPage: this.currentPage,
       subtitle: this.getSubtitle(),
-      tableId: MSGF_TABLE_ID
+      tableId: MSGF_TABLE_ID,
+      rowActions: this.getRowActions()
     });
   }
 
@@ -311,12 +315,6 @@ export default class Msgf extends Base {
    * @returns HTML string
    */
   generateHTML(): string {
-    const customStyles = `
-      /* Custom styles for cells - specific to messagefile entries table */
-      .messagefile-entries-table vscode-table-cell:first-child {
-        color: var(--vscode-textLink-foreground);
-      }
-    `;
 
     return `<div class="messagefile-entries-table">` + generateFastTable({
       title: vscode.l10n.t("Message File: {0}/{1}", this.library, this.name),
@@ -325,7 +323,6 @@ export default class Msgf extends Base {
       data: this._entries,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t("No messages found in this message file."),
-      customStyles: customStyles,
       enableSearch: true,
       searchPlaceholder: vscode.l10n.t("Search messages..."),
       enablePagination: true,
@@ -333,7 +330,8 @@ export default class Msgf extends Base {
       totalItems: this.totalItems,
       currentPage: this.currentPage,
       searchTerm: this.searchTerm,
-      tableId: MSGF_TABLE_ID
+      tableId: MSGF_TABLE_ID,
+      rowActions: this.getRowActions()
     }) + `</div>`;
   }
 

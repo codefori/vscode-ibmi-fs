@@ -14,6 +14,21 @@ const head = /*html*/`
     vscode-tab-panel {
       flex-direction: column;
     }
+
+    a.fs-link {
+      color: var(--vscode-textLink-foreground);
+      text-decoration: none;
+    }
+
+    a.fs-link:hover {
+      color: var(--vscode-textLink-activeForeground);
+      text-decoration: underline;
+    }
+
+    a.fs-link:focus-visible {
+      outline: 1px solid var(--vscode-focusBorder);
+      outline-offset: 2px;
+    }
     .center-screen {
       display: flex;
       justify-content: center;

@@ -11,10 +11,11 @@ import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import * as vscode from 'vscode';
 import { getInstance } from '../ibmi';
 import { executeSqlIfExists, checkViewExists } from "../tools";
-import { FastTableColumn, generateFastTable, generateFastTableUpdate } from "../ibmi";
+import { FastTableColumn, generateFastTable, generateFastTableUpdate, RowActions, trackRowActionPanel } from "../ibmi";
 import { generatePage } from "../webviewToolkit";
 import { getAutoRefreshInterval } from '../config';
 import { SubsystemActions } from '../types/subsystemDescription';
+import { Links } from "../links";
 
 /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
 const WRKSBS_TABLE_ID = 'wrksbs-subsystems';
@@ -159,6 +160,8 @@ export namespace WrksbsActions {
           retainContextWhenHidden: true
         }
       );
+      // Lets the row actions picked from the tables' context menu reach this panel
+      trackRowActionPanel(panel);
 
       // Auto-refresh configuration, from `code-for-ibmi.views.autoRefreshInterval`
       const autoRefreshInterval = getAutoRefreshInterval();
@@ -206,21 +209,21 @@ export namespace WrksbsActions {
       // English UI, where VS Code loads no bundle and l10n.t() echoes the key back.
       const subsystemColumns: FastTableColumn<Entry>[] = [
         { title: columnTitle("SUBSYSTEM_DESCRIPTION_LIBRARY", "Subsystem Description Library"), width: "1fr", getValue: e => e.library },
-        { title: columnTitle("SUBSYSTEM_DESCRIPTION", "Subsystem Description"), width: "1fr", getValue: e => e.subsystem },
+        { title: columnTitle("SUBSYSTEM_DESCRIPTION", "Subsystem Description"), width: "1fr", getValue: e => Links.objectLink(e.subsystem, Links.object(e.library, e.subsystem, '*SBSD')) },
         { title: columnTitle("MAXIMUM_ACTIVE_JOBS", "Maximum Active Jobs"), width: "0.8fr", getValue: e => e.maxActiveJobs },
         { title: columnTitle("CURRENT_ACTIVE_JOBS", "Current Active Jobs"), width: "0.8fr", getValue: e => String(e.currentActiveJobs) },
-        { title: columnTitle("TEXT_DESCRIPTION", "Text Description"), width: "1.5fr", getValue: e => e.text },
-        {
-          title: vscode.l10n.t("Actions"),
-          width: "1fr",
-          getValue: e => {
-            // Encode subsystem entry as URL parameter for the action handler
-            const arg = encodeURIComponent(JSON.stringify(e));
-            return `<vscode-button appearance="primary" href="action:sbsDetail?entry=${arg}">${vscode.l10n.t("Details")}</vscode-button>
-                  <vscode-button appearance="secondary" href="action:endSbs?entry=${arg}">${vscode.l10n.t("End")}</vscode-button>`;
-          }
-        }
+        { title: columnTitle("TEXT_DESCRIPTION", "Text Description"), width: "1.5fr", getValue: e => e.text }
       ];
+
+      // Row actions, offered through the row's context menu
+      const subsystemRowActions: RowActions<Entry> = {
+        // The whole subsystem entry travels to the action handler
+        getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+        actions: [
+          { action: "sbsDetail", label: vscode.l10n.t("Details"), primary: true },
+          { action: "endSbs", label: vscode.l10n.t("End"), destructive: true }
+        ]
+      };
 
       // Function to generate the table HTML
       const generateTableHtml = () => {
@@ -232,7 +235,8 @@ export namespace WrksbsActions {
           stickyHeader: true,
           emptyMessage: vscode.l10n.t("No active subsystems found."),
           enableSearch: false,
-          tableId: WRKSBS_TABLE_ID
+          tableId: WRKSBS_TABLE_ID,
+          rowActions: subsystemRowActions
         });
       };
 
@@ -249,7 +253,8 @@ export namespace WrksbsActions {
           totalItems: rows.length,
           currentPage: 1,
           subtitle: vscode.l10n.t("Total Active Subsystems: {0}", String(rows.length)),
-          tableId: WRKSBS_TABLE_ID
+          tableId: WRKSBS_TABLE_ID,
+          rowActions: subsystemRowActions
         }));
       };
 
@@ -269,6 +274,10 @@ export namespace WrksbsActions {
 
       // Handle messages from the webview
       panel.webview.onDidReceiveMessage(async (message) => {
+        // Links to jobs, objects and sources
+        if (await Links.handle(message)) {
+          return;
+        }
         // Handle search
         if (message.command === 'search') {
           if (message.searchTerm !== undefined) {

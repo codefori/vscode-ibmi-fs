@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import ObjectProvider from './objectProvider';
 import { DataQueueActions } from './types/dataQueue';
 import { SaveFileActions } from './types/saveFile';
-import { getInstance, getVSCodeTools, loadBase } from './ibmi';
+import { getInstance, getVSCodeTools, loadBase, registerRowActionCommands } from './ibmi';
 import { DataAreaActions } from './types/dataArea';
 import { JobQueueActions } from './types/jobQueue';
 import { OutputQueueActions } from './types/outputQueue';
@@ -590,6 +590,9 @@ export async function activate(context: vscode.ExtensionContext) {
   WrkactjobActions.register(context);
   WrkusrjobActions.register(context);
   WrksbsActions.register(context);
+
+  // Context menu entries of the table rows (webview/context in package.json)
+  registerRowActionCommands(context);
 
   // Register refresh command
   context.subscriptions.push(

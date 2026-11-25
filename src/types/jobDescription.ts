@@ -23,6 +23,7 @@ import { generateDetailTable } from "../ibmi";
 import * as vscode from 'vscode';
 import { IBMiObject } from "@halcyontech/vscode-ibmi-types";
 import ObjectProvider from "../objectProvider";
+import { Links } from "../links";
 
 /**
  * Namespace containing actions for Journal objects
@@ -158,11 +159,16 @@ export default class Jobd extends Base {
    * @returns HTML string
    */
   generateHTML(): string {
+    const info = this.jobd?.[0] ?? {};
     return generateDetailTable({
       title: vscode.l10n.t("Job Description: {0}/{1}", this.library, this.name),
       subtitle: vscode.l10n.t('Job Description Information'),
       columns: this.columns,
-      data: this.jobd
+      data: this.jobd,
+      valueLinks: {
+        JOB_QUEUE: Links.qualifiedHref(info.JOB_QUEUE, '*JOBQ'),
+        OUTPUT_QUEUE: Links.qualifiedHref(info.OUTPUT_QUEUE, '*OUTQ')
+      }
     });
   }
 

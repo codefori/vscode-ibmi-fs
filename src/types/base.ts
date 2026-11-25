@@ -105,8 +105,8 @@ export default abstract class Base implements CustomDocument {
    *
    * Example usage:
    * ```html
-   * <vscode-link href="action:create">Create</vscode-link>
-   * <vscode-link href="action:delete" item="${node.name}">Delete</vscode-link>
+   * <vscode-button href="action:create">Create</vscode-button>
+   * <a href="action:delete?item=${node.name}">Delete</a>
    * ```
    *
    * Elements with `readonly="false"` are passed into a `bindings` property.

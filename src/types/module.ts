@@ -27,6 +27,7 @@ import { getInstance } from '../ibmi';
 import { getColumns, generateRandomString } from "../tools";
 import { generateDetailTable, FastTableColumn, generateFastTable } from "../ibmi";
 import { PgmRefsComponent } from "../connection/components/pgmRefs";
+import { Links, ObjectRef } from "../links";
 
 /**
  * Interface representing a procedure entry in a module
@@ -38,6 +39,8 @@ interface Entry {
   type: string
   /** Argument optimization level */
   arg3: string
+  /** Referenced system object (system objects only) */
+  objectRef?: ObjectRef
 }
 
 /**
@@ -82,6 +85,7 @@ interface Reference {
   lvlchk: string
   /** Field count in the referenced file */
   fields: string
+  objectRef?: ObjectRef
 }
 
 /**
@@ -169,6 +173,10 @@ export class Module extends Base {
               WHEN TRIM(bastmf) = '' THEN TRIM(basrcl) CONCAT '/' CONCAT TRIM(basrcf) CONCAT ', ' CONCAT TRIM(basrcm)
               ELSE TRIM(bastmf)
           END AS basrcf,
+          TRIM(basrcl) AS LNK_SRCLIB,
+          TRIM(basrcf) AS LNK_SRCF,
+          TRIM(basrcm) AS LNK_SRCMBR,
+          TRIM(bastmf) AS LNK_STMF,
           to_char(TO_DATE(basrcd concat ' ' concat basrct, 'YYMMDD hh24miss'), 'yyyy-mm-dd HH24:mi') as basrcd,
           bamown,
           baccsi,
@@ -610,12 +618,16 @@ export class Module extends Base {
    * @returns HTML string for the detail panel
    */
   private renderModule(): string {
+    const info = this.module?.[0] ?? {};
     return generateDetailTable({
       title: vscode.l10n.t("Module: {0}/{1}", this.library, this.name),
       subtitle: vscode.l10n.t(`Module Information`),
       columns: this.columns,
       data: this.module,
-      hideNullValues: true
+      hideNullValues: true,
+      valueLinks: {
+        BASRCF: Links.sourceHref(Links.source(info.LNK_SRCLIB, info.LNK_SRCF, info.LNK_SRCMBR, info.LNK_STMF))
+      }
     });
   }
 
@@ -675,6 +687,7 @@ function toEntry2(row: Tools.DB2Row): Entry {
     entry: String(row.REOBNM),
     type: String(row.REOBTY),
     arg3: String(row.REOLNM),
+    objectRef: Links.object(row.REOLNM, row.REOBNM, row.REOBTY)
   };
 }
 
@@ -704,7 +717,8 @@ function toReference(row: Tools.DB2Row): Reference {
     rcdfmtCount: String(row.RCDFMT_COUNT),
     usage: String(row.FILE_USAGE),
     lvlchk: String(row.LVLCHKID),
-    fields: String(row.FIELDS)
+    fields: String(row.FIELDS),
+    objectRef: Links.qualifiedObject(row.REFOBJNAME, row.REFOBJTYPE)
   };
 }
 
@@ -721,12 +735,6 @@ function renderProcs(exports: Entry[]) {
     { title: vscode.l10n.t("Optimization"), width: "0.5fr", getValue: e => e.arg3 },
   ];
 
-  const customStyles = `
-    /* Custom styles for procedure name cells */
-    .procs-entries-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-    }
-  `;
   
   return `<div class="procs-entries-table">` + generateFastTable({
     title: ``,
@@ -735,7 +743,6 @@ function renderProcs(exports: Entry[]) {
     data: exports,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t('No procedures in this module.'),
-    customStyles: customStyles,
   }) + `</div>`;
 }
 
@@ -748,10 +755,10 @@ function renderProcs(exports: Entry[]) {
 function renderSysobj(exports: Entry[]) {
   const columns: FastTableColumn<Entry>[] = [
     { title: vscode.l10n.t("Library"), width: "1fr", getValue: e => e.arg3 },
-    { title: vscode.l10n.t("Object"), width: "1fr", getValue: e => e.entry },
+    { title: vscode.l10n.t("Object"), width: "1fr", getValue: e => Links.objectLink(e.entry, e.objectRef) },
     { title: vscode.l10n.t("Object type"), width: "0.5fr", getValue: e => e.type },
   ];
-  
+
   return `<div class="exports-sysobj-table">` + generateFastTable({
     title: ``,
     subtitle: ``,
@@ -776,12 +783,6 @@ function renderExports(exports: ImpExport[]) {
     { title: vscode.l10n.t("Category"), width: "0.5fr", getValue: e => e.impexp },
   ];
 
-  const customStyles = `
-    /* Custom styles for procedure name cells */
-    .exports-entries-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-    }
-  `;
   
   return `<div class="exports-entries-table">` + generateFastTable({
     title: ``,
@@ -790,7 +791,6 @@ function renderExports(exports: ImpExport[]) {
     data: exports,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t('No imports/exports in this module.'),
-    customStyles: customStyles,
   }) + `</div>`;
 }
 
@@ -822,7 +822,7 @@ function renderCopyright(crs: Copyright[]) {
  */
 function renderReferences(references: Reference[]) {
   const columns: FastTableColumn<Reference>[] = [
-    { title: vscode.l10n.t("Referenced object"), width: "1.5fr", getValue: e => e.object },
+    { title: vscode.l10n.t("Referenced object"), width: "1.5fr", getValue: e => Links.objectLink(e.object, e.objectRef) },
     { title: vscode.l10n.t("Type"), width: "0.7fr", getValue: e => e.type },
     { title: vscode.l10n.t("Source name"), width: "1fr", getValue: e => e.srcname },
     { title: vscode.l10n.t("Record format"), width: "1fr", getValue: e => e.rcdfmt },
@@ -832,13 +832,6 @@ function renderReferences(references: Reference[]) {
     { title: vscode.l10n.t("Field count"), width: "0.6fr", getValue: e => e.fields },
   ];
 
-  const customStyles = `
-    /* Custom styles for referenced object name cells */
-    .references-entries-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-    }
-  `;
-
   return `<div class="references-entries-table">` + generateFastTable({
     title: ``,
     subtitle: ``,
@@ -846,6 +839,5 @@ function renderReferences(references: Reference[]) {
     data: references,
     stickyHeader: true,
     emptyMessage: vscode.l10n.t('No references found for this object.'),
-    customStyles: customStyles,
   }) + `</div>`;
 }

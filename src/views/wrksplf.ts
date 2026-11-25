@@ -11,10 +11,11 @@
 import * as vscode from 'vscode';
 import { getInstance } from '../ibmi';
 import { executeSqlIfExists, checkTableFunctionExists, promptForUserFilter, resolveUserFilter } from "../tools";
-import { FastTableColumn, generateFastTable, generateFastTableUpdate } from "../ibmi";
+import { FastTableColumn, generateFastTable, generateFastTableUpdate, RowActions, trackRowActionPanel } from "../ibmi";
 import { generatePage } from "../webviewToolkit";
 import { SpoolOperations } from '../commonOperations';
 import { getAutoRefreshInterval, getItemsPerPage } from '../config';
+import { Links } from "../links";
 
 /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
 const SPOOL_TABLE_ID = 'wrksplf-spools';
@@ -257,6 +258,8 @@ export namespace WrksplfActions {
           retainContextWhenHidden: true
         }
       );
+      // Lets the row actions picked from the tables' context menu reach this panel
+      trackRowActionPanel(panel);
 
       // Auto-refresh configuration, from `code-for-ibmi.views.autoRefreshInterval`
       const autoRefreshInterval = getAutoRefreshInterval();
@@ -315,31 +318,25 @@ export namespace WrksplfActions {
         { title: vscode.l10n.t("Data"), width: "1fr", getValue: e => e.spooldta },
         { title: vscode.l10n.t("Status"), width: "0.5fr", getValue: e => e.spoolsts },
         { title: vscode.l10n.t("User"), width: "1fr", getValue: e => e.spooluser },
-        { title: vscode.l10n.t("Job"), width: "2fr", getValue: e => e.job },
+        { title: vscode.l10n.t("Job"), width: "2fr", getValue: e => Links.jobLink(e.job) },
         { title: vscode.l10n.t("Number"), width: "0.7fr", getValue: e => String(e.nbr) },
         { title: vscode.l10n.t("Timestamp"), width: "1.5fr", getValue: e => e.spoolts },
         { title: vscode.l10n.t("Pages"), width: "0.5fr", getValue: e => String(e.pages) },
-        { title: vscode.l10n.t("Size (KB)"), width: "1fr", getValue: e => String(e.spoolsiz) },
-        {
-          title: vscode.l10n.t("Actions"),
-          width: "1.5fr",
-          getValue: e => {
-            // Encode spool entry as URL parameter for action handlers
-            const arg = encodeURIComponent(JSON.stringify(e));
-            return `<vscode-button appearance="primary" href="action:openSpool?entry=${arg}">${vscode.l10n.t("Open")}</vscode-button>
-                  <vscode-button appearance="primary" href="action:genPdf?entry=${arg}">${vscode.l10n.t("Download")}</vscode-button>
-                  <vscode-button appearance="secondary" href="action:delSpool?entry=${arg}">${vscode.l10n.t("Delete")}</vscode-button>`;
-          }
-        }
+        { title: vscode.l10n.t("Size (KB)"), width: "1fr", getValue: e => String(e.spoolsiz) }
       ];
 
-      // Custom CSS styles for the spool files table
-      const customStyles = `
-        /* Highlight spool names with link color for better visibility */
-        .spool-files-table vscode-table-cell:first-child {
-            color: var(--vscode-textLink-foreground);
-        }
-      `;
+      // Row actions, offered through the row's context menu
+      const spoolRowActions: RowActions<Entry> = {
+        // The whole spool entry travels to the action handlers
+        getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+        fallbackWidth: "1.5fr",
+        actions: [
+          { action: "openSpool", label: vscode.l10n.t("Open"), primary: true },
+          { action: "genPdf", label: vscode.l10n.t("Download") },
+          { action: "delSpool", label: vscode.l10n.t("Delete"), destructive: true }
+        ]
+      };
+
 
       // Function to generate the table HTML
       const generateTableHtml = () => {
@@ -350,7 +347,6 @@ export namespace WrksplfActions {
           data: spooledFiles,
           stickyHeader: true,
           emptyMessage: vscode.l10n.t("No spooled files found."),
-          customStyles: customStyles,
           enableSearch: true,
           searchPlaceholder: vscode.l10n.t("Search spools..."),
           enablePagination: true,
@@ -358,7 +354,8 @@ export namespace WrksplfActions {
           totalItems: totalItems,
           currentPage: currentPage,
           searchTerm: searchTerm,
-          tableId: SPOOL_TABLE_ID
+          tableId: SPOOL_TABLE_ID,
+          rowActions: spoolRowActions
         }) + `</div>`;
       };
 
@@ -374,7 +371,8 @@ export namespace WrksplfActions {
           totalItems: totalItems,
           currentPage: currentPage,
           subtitle: vscode.l10n.t("Total Spools: {0}", String(totalItems)),
-          tableId: SPOOL_TABLE_ID
+          tableId: SPOOL_TABLE_ID,
+          rowActions: spoolRowActions
         }));
       };
 
@@ -394,6 +392,10 @@ export namespace WrksplfActions {
 
       // Handle messages from the webview
       panel.webview.onDidReceiveMessage(async (message) => {
+        // Links to jobs, objects and sources
+        if (await Links.handle(message)) {
+          return;
+        }
         // Handle search and pagination
         if (message.command === 'search' || message.command === 'paginate') {
           if (message.searchTerm !== undefined) {

@@ -21,7 +21,7 @@ import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
 import { getColumns, getProtected, executeSqlIfExists } from "../tools";
-import { generateDetailTable, generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate } from "../ibmi";
+import { generateDetailTable, generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate, RowActions } from "../ibmi";
 
 /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
 const OUTQ_TABLE_ID = 'outq-entries';
@@ -29,6 +29,7 @@ import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import ObjectProvider from '../objectProvider';
 import { SpoolOperations } from '../commonOperations';
+import { Links } from "../links";
 
 /**
  * Namespace containing actions for Output Queue objects
@@ -699,7 +700,11 @@ export default class Outq extends Base {
       subtitle: vscode.l10n.t('Output Queue Information'),
       columns: this.columns,
       data: this.outq,
-      hideNullValues: true
+      hideNullValues: true,
+      valueLinks: {
+        WRITER_JOB_NAME: Links.jobHref(this.outq?.[0]?.WRITER_JOB_NAME),
+        MESSAGE_QUEUE_NAME: Links.objectHref(Links.object(this.outq?.[0]?.MESSAGE_QUEUE_LIBRARY, this.outq?.[0]?.MESSAGE_QUEUE_NAME, '*MSGQ'))
+      }
     });
   }
 
@@ -739,23 +744,26 @@ export default class Outq extends Base {
       { title: vscode.l10n.t("Data"), width: "1fr", getValue: e => e.spooldta },
       { title: vscode.l10n.t("Status"), width: "0.5fr", getValue: e => e.spoolsts },
       { title: vscode.l10n.t("User"), width: "1fr", getValue: e => e.spooluser },
-      { title: vscode.l10n.t("Job"), width: "2fr", getValue: e => e.job },
+      { title: vscode.l10n.t("Job"), width: "2fr", getValue: e => Links.jobLink(e.job) },
       { title: vscode.l10n.t("Number"), width: "0.7fr", getValue: e => String(e.nbr) },
       { title: vscode.l10n.t("Timestamp"), width: "1.5fr", getValue: e => e.spoolts },
       { title: vscode.l10n.t("Pages"), width: "0.5fr", getValue: e => String(e.pages) },
-      { title: vscode.l10n.t("Size (KB)"), width: "1fr", getValue: e => String(e.spoolsiz) },
-      {
-        title: vscode.l10n.t("Actions"),
-        width: "1.5fr",
-        getValue: e => {
-          // Encode spool entry as URL parameter for action handlers
-          const arg = encodeURIComponent(JSON.stringify(e));
-          return `<vscode-button appearance="primary" href="action:openSpool?entry=${arg}">${vscode.l10n.t("Open")}</vscode-button>
-                <vscode-button appearance="primary" href="action:genPdf?entry=${arg}">${vscode.l10n.t("Download")}</vscode-button>
-                <vscode-button appearance="secondary" href="action:delPdf?entry=${arg}">${vscode.l10n.t("Delete")}</vscode-button>`;
-        }
-      }
+      { title: vscode.l10n.t("Size (KB)"), width: "1fr", getValue: e => String(e.spoolsiz) }
     ];
+  }
+
+  /** Row actions, offered through the row's context menu; shared by the render and the update. */
+  private getRowActions(): RowActions<Entry> {
+    return {
+      // The whole spool entry travels to the action handlers
+      getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+      fallbackWidth: "1.5fr",
+      actions: [
+        { action: "openSpool", label: vscode.l10n.t("Open"), primary: true },
+        { action: "genPdf", label: vscode.l10n.t("Download") },
+        { action: "delPdf", label: vscode.l10n.t("Delete"), destructive: true }
+      ]
+    };
   }
 
   /** Subtitle text, kept in one place so the update carries the same wording as the render. */
@@ -771,18 +779,12 @@ export default class Outq extends Base {
       totalItems: this.totalItems,
       currentPage: this.currentPage,
       subtitle: this.getSubtitle(),
-      tableId: OUTQ_TABLE_ID
+      tableId: OUTQ_TABLE_ID,
+      rowActions: this.getRowActions()
     });
   }
 
   renderEntries(entries: Entry[]) {
-    // Custom CSS styles for the output queue entries table
-    const customStyles = `
-        /* Highlight spool names with link color for better visibility */
-        .outq-entries-table vscode-table-cell:first-child {
-            color: var(--vscode-textLink-foreground);
-        }
-        `;
 
     // Generate and return the complete table HTML
     return `<div class="outq-entries-table">` + generateFastTable({
@@ -792,7 +794,6 @@ export default class Outq extends Base {
       data: this._entries,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t("No spools found in this outq."),
-      customStyles: customStyles,
       enableSearch: true,
       searchPlaceholder: vscode.l10n.t("Search spools..."),
       enablePagination: true,
@@ -800,7 +801,8 @@ export default class Outq extends Base {
       totalItems: this.totalItems,
       currentPage: this.currentPage,
       searchTerm: this.searchTerm,
-      tableId: OUTQ_TABLE_ID
+      tableId: OUTQ_TABLE_ID,
+      rowActions: this.getRowActions()
     }) + `</div>`;
   }
 

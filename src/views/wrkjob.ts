@@ -16,12 +16,13 @@
 import * as vscode from 'vscode';
 import { getInstance } from '../ibmi';
 import { executeSqlIfExists } from "../tools";
-import { FastTableColumn, generateFastTable, generateDetailTable } from "../ibmi";
+import { FastTableColumn, generateFastTable, generateDetailTable, RowActions, trackRowActionPanel } from "../ibmi";
 import { generatePage, Components } from "../webviewToolkit";
 import { JobOperations, SpoolOperations } from '../commonOperations';
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import { generateFastTableUpdate } from "../ibmi";
 import { getAutoRefreshInterval, getItemsPerPage } from '../config';
+import { Links } from "../links";
 
 /**
  * Namespace containing actions for Work with Job
@@ -63,7 +64,7 @@ export namespace WrkjobActions {
 
   const stackColumns = (): FastTableColumn<StackEntry>[] => [
     { title: vscode.l10n.t("Position"), width: "0.5fr", getValue: e => String(e.position) },
-    { title: vscode.l10n.t("Program"), width: "2fr", getValue: e => e.program },
+    { title: vscode.l10n.t("Program"), width: "2fr", getValue: e => Links.qualifiedLink(e.program, '*PGM *SRVPGM') },
     { title: vscode.l10n.t("Statement"), width: "1fr", getValue: e => String(e.statement) },
     { title: vscode.l10n.t("Procedure"), width: "2fr", getValue: e => e.procedure }
   ];
@@ -76,7 +77,7 @@ export namespace WrkjobActions {
   ];
 
   const lockColumns = (): FastTableColumn<LockEntry>[] => [
-    { title: vscode.l10n.t("Object"), width: "2fr", getValue: e => e.object },
+    { title: vscode.l10n.t("Object"), width: "2fr", getValue: e => Links.qualifiedLink(e.object, e.type) },
     { title: vscode.l10n.t("Type"), width: "1fr", getValue: e => e.type },
     { title: vscode.l10n.t("State"), width: "1fr", getValue: e => e.state },
     { title: vscode.l10n.t("Status"), width: "1fr", getValue: e => e.status },
@@ -85,7 +86,7 @@ export namespace WrkjobActions {
   ];
 
   const fileColumns = (): FastTableColumn<OpenFileEntry>[] => [
-    { title: vscode.l10n.t("File"), width: "2fr", getValue: e => e.file },
+    { title: vscode.l10n.t("File"), width: "2fr", getValue: e => Links.qualifiedLink(e.file, '*FILE') },
     { title: vscode.l10n.t("Member"), width: "1fr", getValue: e => e.member },
     { title: vscode.l10n.t("Type"), width: "1fr", getValue: e => e.type },
     { title: vscode.l10n.t("Option"), width: "1fr", getValue: e => e.option },
@@ -99,7 +100,7 @@ export namespace WrkjobActions {
     { title: vscode.l10n.t("Number"), width: "0.7fr", getValue: e => String(e.number) },
     { title: vscode.l10n.t("State"), width: "0.8fr", getValue: e => e.state },
     { title: vscode.l10n.t("Library"), width: "1fr", getValue: e => e.library },
-    { title: vscode.l10n.t("Program"), width: "1fr", getValue: e => e.program },
+    { title: vscode.l10n.t("Program"), width: "1fr", getValue: e => Links.objectLink(e.program, Links.object(e.library, e.program, e.programType)) },
     { title: vscode.l10n.t("Type"), width: "0.8fr", getValue: e => e.programType },
     { title: vscode.l10n.t("In Use"), width: "0.8fr", getValue: e => e.inUse }
   ];
@@ -109,25 +110,27 @@ export namespace WrkjobActions {
     { title: vscode.l10n.t("User Data"), width: "1fr", getValue: e => e.userdata },
     { title: vscode.l10n.t("Status"), width: "0.7fr", getValue: e => e.status },
     { title: vscode.l10n.t("Pages"), width: "0.5fr", getValue: e => String(e.pages) },
-    { title: vscode.l10n.t("Timestamp"), width: "1.2fr", getValue: e => e.timestamp },
-    {
-      title: vscode.l10n.t("Actions"),
-      width: "1.5fr",
-      getValue: e => {
-        const arg = encodeURIComponent(JSON.stringify(e));
-        return `<vscode-button appearance="primary" href="action:openSpool?entry=${arg}">${vscode.l10n.t("Open")}</vscode-button>
-                    <vscode-button appearance="primary" href="action:genPdf?entry=${arg}">${vscode.l10n.t("Download")}</vscode-button>
-                    <vscode-button appearance="secondary" href="action:delSpool?entry=${arg}">${vscode.l10n.t("Delete")}</vscode-button>`;
-      }
-    }
+    { title: vscode.l10n.t("Timestamp"), width: "1.2fr", getValue: e => e.timestamp }
   ];
+
+  /** Row actions of the spools table, offered through the row's context menu */
+  const spoolRowActions = (): RowActions<SpoolEntry> => ({
+    // The whole spool entry travels to the action handlers
+    getArgs: e => `entry=${encodeURIComponent(JSON.stringify(e))}`,
+    fallbackWidth: "1.5fr",
+    actions: [
+      { action: "openSpool", label: vscode.l10n.t("Open"), primary: true },
+      { action: "genPdf", label: vscode.l10n.t("Download") },
+      { action: "delSpool", label: vscode.l10n.t("Delete"), destructive: true }
+    ]
+  });
 
   const joblogColumns = (): FastTableColumn<JoblogEntry>[] => [
     { title: vscode.l10n.t("MSGID"), width: "0.7fr", getValue: e => e.msgid },
     { title: vscode.l10n.t("Message"), width: "2fr", getValue: e => e.msgtext },
     { title: vscode.l10n.t("Second Level"), width: "0.3fr", getValue: e => e.msgtext2.replaceAll('&N', '\n').replaceAll('&B', '\n\t').replaceAll('&P', '\n\t'), collapsible: true },
     { title: vscode.l10n.t("Sev."), width: "0.3fr", getValue: e => String(e.severity) },
-    { title: vscode.l10n.t("From Program"), width: "1.5fr", getValue: e => e.fromProgram },
+    { title: vscode.l10n.t("From Program"), width: "1.5fr", getValue: e => Links.qualifiedLink(e.fromProgram, '*PGM *SRVPGM') },
     { title: vscode.l10n.t("Timestamp"), width: "1.2fr", getValue: e => e.timestamp }
   ];
 
@@ -951,6 +954,8 @@ export namespace WrkjobActions {
           retainContextWhenHidden: true
         }
       );
+      // Lets the row actions picked from the tables' context menu reach this panel
+      trackRowActionPanel(panel);
 
       // Auto-refresh configuration, from `code-for-ibmi.views.autoRefreshInterval`
       const autoRefreshInterval = getAutoRefreshInterval();
@@ -1007,7 +1012,8 @@ export namespace WrkjobActions {
         await panel.webview.postMessage(generateFastTableUpdate({
           columns: spoolColumns(), data: spools,
           totalItems: spools.length, currentPage: 1,
-          subtitle: subtitles.spools(), tableId: TABLE_IDS.spools
+          subtitle: subtitles.spools(), tableId: TABLE_IDS.spools,
+          rowActions: spoolRowActions()
         }));
         await postJoblogUpdate();
       };
@@ -1214,7 +1220,8 @@ export namespace WrkjobActions {
           data: spools,
           stickyHeader: true,
           emptyMessage: vscode.l10n.t("No spooled files found."),
-          tableId: TABLE_IDS.spools
+          tableId: TABLE_IDS.spools,
+          rowActions: spoolRowActions()
         });
 
         // Joblog tab
@@ -1268,6 +1275,10 @@ export namespace WrkjobActions {
 
       // Handle messages from webview
       panel.webview.onDidReceiveMessage(async (message) => {
+        // Links to jobs, objects and sources
+        if (await Links.handle(message)) {
+          return;
+        }
         // Handle Job Log search / pagination (server-side)
         if (message.command === 'search' || message.command === 'paginate') {
           if (message.searchTerm !== undefined) {

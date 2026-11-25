@@ -2057,13 +2057,6 @@ function renderObjects(
 ) {
   const columns = objectColumns();
 
-  // Custom CSS styles for the objects table
-  const customStyles = `
-      /* Highlight object names with link color for better visibility */
-      .savf-object-table vscode-table-cell:first-child {
-      color: var(--vscode-textLink-foreground);
-      }
-  `;
 
   // Generate and return the complete table HTML
   return (
@@ -2075,7 +2068,6 @@ function renderObjects(
       data: entries,
       stickyHeader: true,
       emptyMessage: vscode.l10n.t("No objects found in this savf."),
-      customStyles: customStyles,
       enablePagination: true,
       itemsPerPage: itemsPerPage,
       totalItems: totalItems,
