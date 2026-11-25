@@ -23,7 +23,7 @@
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
-				"--profile=Code4i-dev",
+				"--profile=Code4i-Dev",
 				"--extensionDevelopmentPath=${workspaceFolder}"
 			],
 			"outFiles": [

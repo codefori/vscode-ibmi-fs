@@ -1060,7 +1060,8 @@
     "pseudo-nls": "npx @vscode/l10n-dev generate-pseudo -o ./l10n/ ./l10n/bundle.l10n.json ./package.nls.json"
   },
   "devDependencies": {
-    "@halcyontech/vscode-ibmi-types": "^3.0.13",
+    "@halcyontech/vscode-ibmi-types": "^3.0.14-dev.0",
+    "@ibm/mapepire-js": "^1.1.0",
     "@types/node": "^20",
     "@types/vscode": "^1.90.0",
     "@vscode/l10n-dev": "^0.0.35",

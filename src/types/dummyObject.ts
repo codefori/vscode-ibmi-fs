@@ -14,7 +14,6 @@
 import Base from "./base";
 import { getInstance } from "../ibmi";
 import * as vscode from 'vscode';
-import { CommandResult } from "@halcyontech/vscode-ibmi-types";
 
 /**
  * Dummy Object class
@@ -108,29 +107,20 @@ export async function fetchQrydfn(library: string, object: string): Promise<stri
   if (connection) {
     let sql ='--SQL translation for *QRYDFN: '+library+'/'+object+'\n\n';
 
-    let cmdrun: CommandResult = await connection.runCommand({
-      command: `CHKOBJ OBJ(QTEMP/DUMMYSRCPF) OBJTYPE(*FILE)`,
-      environment: `ile`
-    });
+    let cmdrun = await connection.runCL(`CHKOBJ OBJ(QTEMP/DUMMYSRCPF) OBJTYPE(*FILE)`, true);
 
     // Check command execution result
-    if (cmdrun.code !== 0) {
-      cmdrun = await connection.runCommand({
-        command: `CRTSRCPF FILE(QTEMP/DUMMYSRCPF) RCDLEN(200)`,
-        environment: `ile`
-      });
-      if (cmdrun.code !== 0) {
+    if (!cmdrun.success) {
+      cmdrun = await connection.runCL(`CRTSRCPF FILE(QTEMP/DUMMYSRCPF) RCDLEN(200)`, true);
+      if (!cmdrun.success) {
         vscode.window.showErrorMessage(vscode.l10n.t("Unable to create necessary objects for displaying query definitions."));
         return '';
       }
     } 
     
-    cmdrun = await connection.runCommand({
-      command: `RTVQMQRY QMQRY(${library}/${object}) SRCFILE(QTEMP/DUMMYSRCPF) ALWQRYDFN(*YES)`,
-      environment: `ile`
-    });
+    cmdrun = await connection.runCL(`RTVQMQRY QMQRY(${library}/${object}) SRCFILE(QTEMP/DUMMYSRCPF) ALWQRYDFN(*YES)`, true);
 
-    if (cmdrun.code !== 0) {
+    if (!cmdrun.success) {
       vscode.window.showErrorMessage(vscode.l10n.t("Unable to create necessary objects for displaying query definitions."));
       return '';
     }
@@ -149,10 +139,7 @@ export async function fetchQrydfn(library: string, object: string): Promise<stri
           row.SRCDTA?.toString()+'\n';
       }
       
-      cmdrun = await connection.runCommand({
-        command: `RMVM FILE(QTEMP/DUMMYSRCPF) MBR(${object})`,
-        environment: `ile`
-      });
+      cmdrun = await connection.runCL(`RMVM FILE(QTEMP/DUMMYSRCPF) MBR(${object})`, true);
       await connection.runSQL(`DROP ALIAS QTEMP.${object}`)
     } catch{
       vscode.window.showErrorMessage(vscode.l10n.t("Unable to create necessary objects for displaying query definitions."));

@@ -15,10 +15,10 @@
  */
 
 import Base from "./base";
-import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
+import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, getProtected, executeSqlIfExists } from "../tools";
+import { getColumns, getProtected, executeSqlIfExists, getCLError } from "../tools";
 import { generateDetailTable, generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate, RowActions } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
@@ -134,16 +134,13 @@ export namespace JobQueueActions {
       }
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to hold Job Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Hold JOBQ"))) {
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: `QSYS/HLDJOBQ ${library}/${name}`,
-          environment: `ile`
-        });
+        const cmdrun = await connection.runCL(`QSYS/HLDJOBQ ${library}/${name}`);
 
-        if (cmdrun.code === 0) {
+        if (cmdrun.success) {
           vscode.window.showInformationMessage(vscode.l10n.t("Job Queue {0}/{1} held.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t("Unable to hold Job Queue {0}/{1}:\n{2}", library, name, cmdrun.stderr));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to hold Job Queue {0}/{1}:\n{2}", library, name, getCLError(cmdrun)));
           return false;
         }
       }
@@ -196,16 +193,13 @@ export namespace JobQueueActions {
         return false;
       }
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to release Job Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Release JOBQ"))) {
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: `QSYS/RLSJOBQ ${library}/${name}`,
-          environment: `ile`
-        });
+        const cmdrun = await connection.runCL(`QSYS/RLSJOBQ ${library}/${name}`);
 
-        if (cmdrun.code === 0) {
+        if (cmdrun.success) {
           vscode.window.showInformationMessage(vscode.l10n.t("Job Queue {0}/{1} released.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t("Unable to release Job Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to release Job Queue {0}/{1}:\n{2}", library, name, getCLError(cmdrun)));
           return false;
         }
       } else {
@@ -235,16 +229,13 @@ export namespace JobQueueActions {
       }
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Job Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Clear JOBQ"))) {
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: `QSYS/CLRJOBQ ${library}/${name}`,
-          environment: `ile`
-        });
+        const cmdrun = await connection.runCL(`QSYS/CLRJOBQ ${library}/${name}`);
 
-        if (cmdrun.code === 0) {
+        if (cmdrun.success) {
           vscode.window.showInformationMessage(vscode.l10n.t("Job Queue {0}/{1} cleared.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t("Unable to clear Job Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to clear Job Queue {0}/{1}:\n{2}", library, name, getCLError(cmdrun)));
           return false;
         }
       } else {

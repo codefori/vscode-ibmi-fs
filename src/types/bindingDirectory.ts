@@ -16,13 +16,13 @@
  * @module bindingdirectory
  */
 
-import { CommandResult, IBMiObject } from '@halcyontech/vscode-ibmi-types';
+import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getProtected, executeSqlIfExists } from "../tools";
+import { getProtected, executeSqlIfExists, getCLError } from "../tools";
 import { FastTableColumn, generateFastTable, RowActions } from "../ibmi";
 import ObjectProvider from '../objectProvider';
 import { Links, ObjectRef } from '../links';
@@ -81,17 +81,14 @@ export namespace BindingDirectoryActions {
       // Show confirmation dialog to prevent accidental removal
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to remove {0}?", item.object), { modal: true }, vscode.l10n.t("Remove object"))) {
         // Execute RMVBNDDIRE command on IBM i
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: `RMVBNDDIRE BNDDIR(${bnddir}) OBJ(${item.object})`,
-          environment: `ile`
-        });
+        const cmdrun = await connection.runCL(`RMVBNDDIRE BNDDIR(${bnddir}) OBJ(${item.object})`);
 
         // Check command execution result
-        if (cmdrun.code === 0) {
+        if (cmdrun.success) {
           vscode.window.showInformationMessage(vscode.l10n.t("Item removed."));
           return true;
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t("Unable to remove selected item:\n{0}", String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to remove selected item:\n{0}", getCLError(cmdrun)));
           return false;
         }
       } else {
@@ -161,17 +158,14 @@ export namespace BindingDirectoryActions {
       if (obj && objtype && activation) {
 
         // Execute ADDBNDDIRE command on IBM i
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: `ADDBNDDIRE BNDDIR(${item.library}/${item.name}) OBJ((${obj} ${objtype} ${activation}))`,
-          environment: `ile`
-        });
+        const cmdrun = await connection.runCL(`ADDBNDDIRE BNDDIR(${item.library}/${item.name}) OBJ((${obj} ${objtype} ${activation}))`);
 
         // Check command execution result
-        if (cmdrun.code === 0) {
+        if (cmdrun.success) {
           vscode.window.showInformationMessage(vscode.l10n.t("Item added."));
           return true;
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t("Unable to add selected item:\n{0}", String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to add selected item:\n{0}", getCLError(cmdrun)));
           return false;
         }
       }

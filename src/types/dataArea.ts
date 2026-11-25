@@ -14,9 +14,9 @@
  */
 
 import Base from "./base";
-import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
+import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { getInstance } from "../ibmi";
-import { getColumns, getProtected, executeSqlIfExists } from "../tools";
+import { getColumns, getProtected, executeSqlIfExists, getCLError } from "../tools";
 import { generateDetailTable } from "../ibmi";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
@@ -241,16 +241,13 @@ export namespace DataAreaActions {
       }
 
       if (cmd&&cmd.trim() !== ``) {
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: cmd,
-          environment: `ile`
-        });
+        const cmdrun = await connection.runCL(cmd);
 
-        if (cmdrun.code === 0) {
+        if (cmdrun.success) {
           vscode.window.showInformationMessage(vscode.l10n.t("Data Area {0}/{1} changed.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t("Unable change Data Area {0}/{1}:\n{2}", library, name, cmdrun.stderr));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable change Data Area {0}/{1}:\n{2}", library, name, getCLError(cmdrun)));
           return false;
         }
       } else {

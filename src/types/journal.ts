@@ -15,10 +15,10 @@
  */
 
 import Base from "./base";
-import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
+import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, getProtected, checkTableFunctionExists, executeSqlIfExists } from "../tools";
+import { getColumns, getProtected, checkTableFunctionExists, executeSqlIfExists, getCLError } from "../tools";
 import { generateDetailTable, generateFastTable, FastTableColumn } from "../ibmi";
 import { DocumentManager } from "../documentManager";
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
@@ -145,16 +145,13 @@ export namespace JournalActions {
         return false;
       }
 
-      const cmdrun: CommandResult = await connection.runCommand({
-        command: `QSYS/CHGJRN JRN(${library}/${name}) JRNRCV(*GEN)`,
-        environment: `ile`
-      });
+      const cmdrun = await connection.runCL(`QSYS/CHGJRN JRN(${library}/${name}) JRNRCV(*GEN)`);
 
-      if (cmdrun.code === 0) {
+      if (cmdrun.success) {
         vscode.window.showInformationMessage(vscode.l10n.t("Generated new journal receiver."));
         return true;
       } else {
-        vscode.window.showErrorMessage(vscode.l10n.t("Unable to generate new journal reciever:\n{0}", String(cmdrun.stderr)));
+        vscode.window.showErrorMessage(vscode.l10n.t("Unable to generate new journal reciever:\n{0}", getCLError(cmdrun)));
         return false;
       }
   } else {

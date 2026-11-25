@@ -17,10 +17,10 @@
  */
 
 import Base from "./base";
-import { IBMiObject, CommandResult } from '@halcyontech/vscode-ibmi-types';
+import { IBMiObject } from '@halcyontech/vscode-ibmi-types';
 import { Components } from "../webviewToolkit";
 import { getInstance } from "../ibmi";
-import { getColumns, getProtected, executeSqlIfExists } from "../tools";
+import { getColumns, getProtected, executeSqlIfExists, getCLError } from "../tools";
 import { generateDetailTable, generateFastTable, generateFastTableUpdate, FastTableColumn, FastTableUpdate, RowActions } from "../ibmi";
 
 /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
@@ -147,16 +147,13 @@ export namespace OutputQueueActions {
       }
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to clear Output Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Clear OUTQ"))) {
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: `QSYS/CLROUTQ ${library}/${name}`,
-          environment: `ile`
-        });
+        const cmdrun = await connection.runCL(`QSYS/CLROUTQ ${library}/${name}`);
 
-        if (cmdrun.code === 0) {
+        if (cmdrun.success) {
           vscode.window.showInformationMessage(vscode.l10n.t("Output Queue {0}/{1} cleared.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t("Unable to clear Output Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to clear Output Queue {0}/{1}:\n{2}", library, name, getCLError(cmdrun)));
           return false;
         }
       } else {
@@ -190,17 +187,14 @@ export namespace OutputQueueActions {
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to hold Output Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Hold OUTQ"))) {
 
         // Execute HLDOUTQ command on IBM i
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: `QSYS/HLDOUTQ OUTQ(${library}/${name})`,
-          environment: `ile`
-        });
+        const cmdrun = await connection.runCL(`QSYS/HLDOUTQ OUTQ(${library}/${name})`);
 
         // Check command execution result
-        if (cmdrun.code === 0) {
+        if (cmdrun.success) {
           vscode.window.showInformationMessage(vscode.l10n.t("Output Queue {0}/{1} held.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t("Unable to hold Output Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to hold Output Queue {0}/{1}:\n{2}", library, name, getCLError(cmdrun)));
           return false;
         }
       } else {
@@ -232,17 +226,14 @@ export namespace OutputQueueActions {
 
       if (await vscode.window.showWarningMessage(vscode.l10n.t("Are you sure you want to release Output Queue {0}/{1}?", library, name), { modal: true }, vscode.l10n.t("Release OUTQ"))) {
         // Execute RLSOUTQ command on IBM i
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: `QSYS/RLSOUTQ OUTQ(${library}/${name})`,
-          environment: `ile`
-        });
+        const cmdrun = await connection.runCL(`QSYS/RLSOUTQ OUTQ(${library}/${name})`);
 
         // Check command execution result
-        if (cmdrun.code === 0) {
+        if (cmdrun.success) {
           vscode.window.showInformationMessage(vscode.l10n.t("Output Queue {0}/{1} released.", library, name));
           return true;
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t("Unable to release Output Queue {0}/{1}:\n{2}", library, name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to release Output Queue {0}/{1}:\n{2}", library, name, getCLError(cmdrun)));
           return false;
         }
       } else {
@@ -325,17 +316,14 @@ export namespace OutputQueueActions {
       const connection = ibmi?.getConnection();
       if (connection) {
         // Execute ENDWTR command with immediate option
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: `QSYS/ENDWTR WTR(${name}) OPTION(*IMMED)`,
-          environment: `ile`
-        });
+        const cmdrun = await connection.runCL(`QSYS/ENDWTR WTR(${name}) OPTION(*IMMED)`);
 
         // Check command execution result
-        if (cmdrun.code === 0) {
+        if (cmdrun.success) {
           vscode.window.showInformationMessage(vscode.l10n.t("Writer {0} ended.", name));
           return true;
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t("Unable to end writer {0}:\n{1}", name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to end writer {0}:\n{1}", name, getCLError(cmdrun)));
           return false;
         }
       } else {
@@ -368,17 +356,14 @@ export namespace OutputQueueActions {
         // - STRRMTWTR for remote/network printers
         // - STRPRTWTR for local printer devices
         let cmd = nettype && nettype !== undefined ? `QSYS/STRRMTWTR OUTQ(${library}/${name})`:`QSYS/STRPRTWTR DEV(${name})`;
-        const cmdrun: CommandResult = await connection.runCommand({
-          command: cmd,
-          environment: `ile`
-        });
+        const cmdrun = await connection.runCL(cmd);
 
         // Check command execution result
-        if (cmdrun.code === 0) {
+        if (cmdrun.success) {
           vscode.window.showInformationMessage(vscode.l10n.t("Writer {0} started.", name));
           return true;
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t("Unable to start writer {0}:\n{1}", name, String(cmdrun.stderr)));
+          vscode.window.showErrorMessage(vscode.l10n.t("Unable to start writer {0}:\n{1}", name, getCLError(cmdrun)));
           return false;
         }
       } else {

@@ -18,13 +18,12 @@
  * @module module
  */
 
-import { CommandResult } from '@halcyontech/vscode-ibmi-types';
 import { Tools } from '@halcyontech/vscode-ibmi-types/api/Tools';
 import * as vscode from 'vscode';
 import { Components } from "../webviewToolkit";
 import Base from "./base";
 import { getInstance } from '../ibmi';
-import { getColumns, generateRandomString } from "../tools";
+import { getColumns, generateRandomString, getCLError } from "../tools";
 import { generateDetailTable, FastTableColumn, generateFastTable } from "../ibmi";
 import { PgmRefsComponent } from "../connection/components/pgmRefs";
 import { Links, ObjectRef } from "../links";
@@ -154,13 +153,10 @@ export class Module extends Base {
 
       this.columns = await getColumns(connection, 'QABNDMBA','QSYS');
 
-      let cmdrun: CommandResult = await connection.runCommand({
-        command: `QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*BASIC) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile})`,
-        environment: `ile`
-      });
+      let cmdrun = await connection.runCL(`QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*BASIC) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile})`, true);
 
-      if (cmdrun.code !== 0) {
-        vscode.window.showErrorMessage(vscode.l10n.t("Unable to fetch data:\n{0}", cmdrun.stderr));
+      if (!cmdrun.success) {
+        vscode.window.showErrorMessage(vscode.l10n.t("Unable to fetch data:\n{0}", getCLError(cmdrun)));
         return;
       }
 
@@ -234,10 +230,7 @@ export class Module extends Base {
           baarcs
         FROM QTEMP.${tmpfile}`);
 
-      cmdrun = await connection.runCommand({
-        command: `QSYS/DLTF FILE(QTEMP/${tmpfile})`,
-        environment: `ile`
-      });
+      cmdrun = await connection.runCL(`QSYS/DLTF FILE(QTEMP/${tmpfile})`, true);
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
@@ -263,13 +256,10 @@ export class Module extends Base {
 
       this.columns2 = await getColumns(connection, 'QABNDMSI','QSYS');
 
-      let cmdrun: CommandResult = await connection.runCommand({
-        command: `QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*SIZE) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile})`,
-        environment: `ile`
-      });
+      let cmdrun = await connection.runCL(`QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*SIZE) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile})`, true);
 
-      if (cmdrun.code !== 0) {
-        vscode.window.showErrorMessage(vscode.l10n.t("Unable to fetch data:\n{0}", cmdrun.stderr));
+      if (!cmdrun.success) {
+        vscode.window.showErrorMessage(vscode.l10n.t("Unable to fetch data:\n{0}", getCLError(cmdrun)));
         return;
       }
 
@@ -313,10 +303,7 @@ export class Module extends Base {
           SISTS8 CONCAT ' / ' CONCAT SISTSL8 SISTS8
         FROM QTEMP.${tmpfile}`);
 
-      cmdrun = await connection.runCommand({
-        command: `QSYS/DLTF FILE(QTEMP/${tmpfile})`,
-        environment: `ile`
-      });
+      cmdrun = await connection.runCL(`QSYS/DLTF FILE(QTEMP/${tmpfile})`, true);
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
@@ -339,18 +326,12 @@ export class Module extends Base {
       const tmpfile1=generateRandomString(10);
       const tmpfile2=generateRandomString(10);
 
-      let cmdrun1: CommandResult = await connection.runCommand({
-        command: `QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*IMPORT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile1})`,
-        environment: `ile`
-      });
+      let cmdrun1 = await connection.runCL(`QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*IMPORT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile1})`, true);
 
-      let cmdrun2: CommandResult = await connection.runCommand({
-        command: `QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*EXPORT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile2})`,
-        environment: `ile`
-      });
+      let cmdrun2 = await connection.runCL(`QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*EXPORT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile2})`, true);
 
-      if (cmdrun1.code !== 0 && cmdrun2.code !== 0) {
-        vscode.window.showErrorMessage(vscode.l10n.t("Unable to fetch data:\n{0}\n{1}", cmdrun1.stderr, cmdrun2.stderr));
+      if (!cmdrun1.success && !cmdrun2.success) {
+        vscode.window.showErrorMessage(vscode.l10n.t("Unable to fetch data:\n{0}\n{1}", getCLError(cmdrun1), getCLError(cmdrun2)));
         return;
       }
 
@@ -380,14 +361,8 @@ export class Module extends Base {
         
       this.impexports.push(...entryRows.map(toExport));
       
-      cmdrun1 = await connection.runCommand({
-        command: `QSYS/DLTF FILE(QTEMP/${tmpfile1})`,
-        environment: `ile`
-      });
-      cmdrun1 = await connection.runCommand({
-        command: `QSYS/DLTF FILE(QTEMP/${tmpfile2})`,
-        environment: `ile`
-      });
+      cmdrun1 = await connection.runCL(`QSYS/DLTF FILE(QTEMP/${tmpfile1})`, true);
+      cmdrun1 = await connection.runCL(`QSYS/DLTF FILE(QTEMP/${tmpfile2})`, true);
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
@@ -408,13 +383,10 @@ export class Module extends Base {
 
       const tmpfile=generateRandomString(10);
 
-      let cmdrun: CommandResult = await connection.runCommand({
-        command: `QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*PROCLIST) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile})`,
-        environment: `ile`
-      });
+      let cmdrun = await connection.runCL(`QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*PROCLIST) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile})`, true);
 
-      if (cmdrun.code !== 0 ) {
-        vscode.window.showErrorMessage(vscode.l10n.t("Unable to fetch data:\n{0}", cmdrun.stderr));
+      if (!cmdrun.success) {
+        vscode.window.showErrorMessage(vscode.l10n.t("Unable to fetch data:\n{0}", getCLError(cmdrun)));
         return;
       }
 
@@ -430,10 +402,7 @@ export class Module extends Base {
 
       this.procs.push(...entryRows.map(toEntry));
 
-      cmdrun = await connection.runCommand({
-        command: `QSYS/DLTF FILE(QTEMP/${tmpfile})`,
-        environment: `ile`
-      });
+      cmdrun = await connection.runCL(`QSYS/DLTF FILE(QTEMP/${tmpfile})`, true);
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
@@ -453,13 +422,10 @@ export class Module extends Base {
     if (connection) {
       const tmpfile=generateRandomString(10);
 
-      let cmdrun: CommandResult = await connection.runCommand({
-        command: `QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*REFSYSOBJ) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile})`,
-        environment: `ile`
-      });
+      let cmdrun = await connection.runCL(`QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*REFSYSOBJ) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile})`, true);
 
-      if (cmdrun.code !== 0 ) {
-        vscode.window.showErrorMessage(vscode.l10n.t("Unable to fetch data:\n{0}", cmdrun.stderr));
+      if (!cmdrun.success) {
+        vscode.window.showErrorMessage(vscode.l10n.t("Unable to fetch data:\n{0}", getCLError(cmdrun)));
         return;
       }
 
@@ -472,10 +438,7 @@ export class Module extends Base {
 
       this.sysobj.push(...entryRows.map(toEntry2));
 
-      cmdrun = await connection.runCommand({
-        command: `QSYS/DLTF FILE(QTEMP/${tmpfile})`,
-        environment: `ile`
-      });
+      cmdrun = await connection.runCL(`QSYS/DLTF FILE(QTEMP/${tmpfile})`, true);
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
@@ -494,13 +457,10 @@ export class Module extends Base {
     if (connection) {
       const tmpfile=generateRandomString(10);
 
-      let cmdrun: CommandResult = await connection.runCommand({
-        command: `QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*COPYRIGHT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile})`,
-        environment: `ile`
-      });
+      let cmdrun = await connection.runCL(`QSYS/DSPMOD MODULE(${this.library}/${this.name}) DETAIL(*COPYRIGHT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${tmpfile})`, true);
 
-      if (cmdrun.code !== 0 ) {
-        vscode.window.showErrorMessage(vscode.l10n.t("Unable to fetch data:\n{0}", cmdrun.stderr));
+      if (!cmdrun.success) {
+        vscode.window.showErrorMessage(vscode.l10n.t("Unable to fetch data:\n{0}", getCLError(cmdrun)));
         return;
       }
 
@@ -511,10 +471,7 @@ export class Module extends Base {
 
       this.copyrights.push(...entryRows.map(toCopyRight));
 
-      cmdrun = await connection.runCommand({
-        command: `QSYS/DLTF FILE(QTEMP/${tmpfile})`,
-        environment: `ile`
-      });
+      cmdrun = await connection.runCL(`QSYS/DLTF FILE(QTEMP/${tmpfile})`, true);
     } else {
       vscode.window.showErrorMessage(vscode.l10n.t("Not connected to IBM i"));
       return;
@@ -754,8 +711,7 @@ function renderProcs(exports: Entry[]) {
  */
 function renderSysobj(exports: Entry[]) {
   const columns: FastTableColumn<Entry>[] = [
-    { title: vscode.l10n.t("Library"), width: "1fr", getValue: e => e.arg3 },
-    { title: vscode.l10n.t("Object"), width: "1fr", getValue: e => Links.objectLink(e.entry, e.objectRef) },
+    { title: vscode.l10n.t("Object"), width: "2fr", getValue: e => Links.objectLink(`${e.arg3.trim()}/${e.entry.trim()}`, e.objectRef) },
     { title: vscode.l10n.t("Object type"), width: "0.5fr", getValue: e => e.type },
   ];
 

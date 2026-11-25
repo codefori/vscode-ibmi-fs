@@ -1,9 +1,23 @@
 import IBMi from '@halcyontech/vscode-ibmi-types/api/IBMi';
-import { CommandResult, ObjectFilters } from '@halcyontech/vscode-ibmi-types';
+import { ObjectFilters } from '@halcyontech/vscode-ibmi-types';
 import * as vscode from 'vscode';
 
 /** Regular expression for validating IBM i object names */
 export const IBMI_OBJECT_NAME = /^([\w$#@][\w\d$#@_.]{0,9})$/i;
+
+/** Result of a CL command run with {@link IBMi.runCL} */
+export type CLResult = Awaited<ReturnType<IBMi["runCL"]>>;
+
+/**
+ * Builds the text that explains why a CL command run with {@link IBMi.runCL} failed: the messages
+ * the command sent, or the error reported by the SQL job when the command sent none.
+ *
+ * @param result - The result of the CL command
+ * @returns The messages of the command, one per line
+ */
+export function getCLError(result: CLResult): string {
+  return result.data.map(message => `[${message.id}] ${message.text}`).join("\n") || result.error || "";
+}
 
 /**
  * Generate a random string of 10 alphabetic characters
@@ -447,7 +461,7 @@ export async function promptAndRunCommand(
   clPrompter: CLPrompterFunction,
   seedCommand: string,
   options: PromptAndRunOptions = {}
-): Promise<CommandResult | undefined> {
+): Promise<CLResult | undefined> {
   /** Tells the user nothing ran, so a closed prompter is not mistaken for a command that did */
   const cancelled = () => {
     vscode.window.showWarningMessage(vscode.l10n.t("Operation cancelled by the user"));
@@ -473,7 +487,7 @@ export async function promptAndRunCommand(
     return cancelled();
   }
 
-  const run = async () => connection.runCommand({ command: command, environment: `ile` });
+  const run = async () => connection.runCL(command);
 
   return options.progressTitle
     ? vscode.window.withProgress(
